@@ -56,10 +56,13 @@ async function main() {
       await showModelReport(options);
     });
 
-  // Default command
-  program.action(async () => {
-    await showModelReport({});
-  });
+  // Default command with options
+  program
+    .option("--opencode", "Show only OpenCode usage")
+    .option("--claudecode", "Show only Claude Code usage")
+    .action(async (options) => {
+      await showModelReport(options);
+    });
 
   await program.parseAsync();
 }
