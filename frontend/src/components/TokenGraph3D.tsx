@@ -58,37 +58,45 @@ export function TokenGraph3D({
 
     const obelisk = obeliskRef.current;
 
-    // Set canvas size
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = ISO_CANVAS_WIDTH * dpr;
-    canvas.height = ISO_CANVAS_HEIGHT * dpr;
+    // Set canvas size (don't use DPR scaling - obelisk handles its own rendering)
+    canvas.width = ISO_CANVAS_WIDTH;
+    canvas.height = ISO_CANVAS_HEIGHT;
     canvas.style.width = `${ISO_CANVAS_WIDTH}px`;
     canvas.style.height = `${ISO_CANVAS_HEIGHT}px`;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.scale(dpr, dpr);
-
-    // Clear canvas
+    // Clear canvas with background color
     ctx.fillStyle = theme.background;
     ctx.fillRect(0, 0, ISO_CANVAS_WIDTH, ISO_CANVAS_HEIGHT);
 
-    // Create pixel view with origin point
+    // Create pixel view with origin point (matching reference)
     const point = new obelisk.Point(130, 90);
     const pixelView = new obelisk.PixelView(canvas, point);
 
     // Render cubes for each day
-    // Iterate in reverse order for proper z-ordering
-    for (let weekIndex = weeksData.length - 1; weekIndex >= 0; weekIndex--) {
+    // Iterate FORWARD for proper z-ordering (back to front in isometric)
+    // Reference uses GH_OFFSET=14 for spacing calculation
+    const GH_OFFSET = 14;
+    let transform = GH_OFFSET;
+
+    for (let weekIndex = 0; weekIndex < weeksData.length; weekIndex++) {
       const week = weeksData[weekIndex];
-      for (let dayIndex = 6; dayIndex >= 0; dayIndex--) {
+      const x = transform / (GH_OFFSET + 1);
+      transform += GH_OFFSET;
+
+      let offsetY = 0;
+      for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
         const day = week.days[dayIndex];
+        const y = offsetY / GH_OFFSET;
+        offsetY += 13;
 
         // Calculate cube height based on cost
-        const cubeHeight = day && maxCost > 0
-          ? MIN_CUBE_HEIGHT + (day.totals.cost / maxCost) * (MAX_CUBE_HEIGHT - MIN_CUBE_HEIGHT)
-          : MIN_CUBE_HEIGHT;
+        let cubeHeight = MIN_CUBE_HEIGHT;
+        if (day && maxCost > 0) {
+          cubeHeight = MIN_CUBE_HEIGHT + Math.floor((MAX_CUBE_HEIGHT / maxCost) * day.totals.cost);
+        }
 
         // Get color based on intensity
         const intensity = day?.intensity ?? 0;
@@ -100,10 +108,8 @@ export function TokenGraph3D({
         const color = new obelisk.CubeColor().getByHorizontalColor(colorNum);
         const cube = new obelisk.Cube(dimension, color, false);
 
-        // Position in grid
-        const x = CUBE_SIZE * weekIndex;
-        const y = CUBE_SIZE * dayIndex;
-        const p3d = new obelisk.Point3D(x, y, 0);
+        // Position in grid (matching reference calculation)
+        const p3d = new obelisk.Point3D(CUBE_SIZE * x, CUBE_SIZE * y, 0);
 
         // Render
         pixelView.renderObject(cube, p3d);
