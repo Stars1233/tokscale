@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Token Tracker CLI
- * Display OpenCode, Claude Code, and Codex usage with dynamic width tables
+ * Display OpenCode, Claude Code, Codex, and Gemini usage with dynamic width tables
  */
 
 import { Command } from "commander";
@@ -17,6 +17,7 @@ import {
 } from "./table.js";
 import { readOpenCodeMessages, aggregateOpenCodeByModel } from "./opencode.js";
 import { readClaudeCodeSessions, readCodexSessions } from "./claudecode.js";
+import { readGeminiSessions } from "./gemini.js";
 
 interface UsageSummary {
   source: string;
@@ -34,6 +35,7 @@ interface FilterOptions {
   opencode?: boolean;
   claude?: boolean;
   codex?: boolean;
+  gemini?: boolean;
 }
 
 async function main() {
@@ -41,7 +43,7 @@ async function main() {
 
   program
     .name("token-tracker")
-    .description("Calculate token prices from OpenCode, Claude Code, and Codex sessions")
+    .description("Calculate token prices from OpenCode, Claude Code, Codex, and Gemini sessions")
     .version("1.0.0");
 
   program
@@ -50,6 +52,7 @@ async function main() {
     .option("--opencode", "Show only OpenCode usage")
     .option("--claude", "Show only Claude Code usage")
     .option("--codex", "Show only Codex CLI usage")
+    .option("--gemini", "Show only Gemini CLI usage")
     .action(async (options) => {
       await showMonthlyReport(options);
     });
@@ -60,6 +63,7 @@ async function main() {
     .option("--opencode", "Show only OpenCode usage")
     .option("--claude", "Show only Claude Code usage")
     .option("--codex", "Show only Codex CLI usage")
+    .option("--gemini", "Show only Gemini CLI usage")
     .action(async (options) => {
       await showModelReport(options);
     });
@@ -69,6 +73,7 @@ async function main() {
     .option("--opencode", "Show only OpenCode usage")
     .option("--claude", "Show only Claude Code usage")
     .option("--codex", "Show only Codex CLI usage")
+    .option("--gemini", "Show only Gemini CLI usage")
     .action(async (options) => {
       await showModelReport(options);
     });
@@ -76,8 +81,11 @@ async function main() {
   await program.parseAsync();
 }
 
-function shouldInclude(options: FilterOptions, source: "opencode" | "claude" | "codex"): boolean {
-  const hasFilter = options.opencode || options.claude || options.codex;
+function shouldInclude(
+  options: FilterOptions,
+  source: "opencode" | "claude" | "codex" | "gemini"
+): boolean {
+  const hasFilter = options.opencode || options.claude || options.codex || options.gemini;
   if (!hasFilter) return true; // No filter = include all
   return !!options[source];
 }
@@ -186,6 +194,40 @@ async function showModelReport(options: FilterOptions) {
           cacheRead: data.cacheRead,
           cacheWrite: data.cacheWrite,
           reasoning: 0,
+          messageCount: data.messageCount,
+          cost,
+        });
+      }
+    }
+  }
+
+  // Gemini CLI data (~/.gemini/tmp/)
+  if (shouldInclude(options, "gemini")) {
+    const geminiData = readGeminiSessions();
+    if (geminiData.length > 0) {
+      for (const data of geminiData) {
+        const pricing = fetcher.getModelPricing(data.model);
+        // Gemini: cached tokens are free, thoughts count as output
+        const cost = pricing
+          ? fetcher.calculateCost(
+              {
+                input: data.input,
+                output: data.output + data.thoughts, // thoughts charged as output
+                cacheRead: 0, // cached tokens are free for Gemini
+                cacheWrite: 0,
+              },
+              pricing
+            )
+          : 0;
+
+        summaries.push({
+          source: "Gemini",
+          model: data.model,
+          input: data.input,
+          output: data.output + data.thoughts,
+          cacheRead: data.cached, // Display cached but don't charge
+          cacheWrite: 0,
+          reasoning: data.thoughts,
           messageCount: data.messageCount,
           cost,
         });
@@ -310,7 +352,7 @@ async function showMonthlyReport(options: FilterOptions) {
     }
   }
 
-  // TODO: Add Claude Code and Codex monthly aggregation
+  // TODO: Add Claude Code, Codex, and Gemini monthly aggregation
   // (would need timestamp data from those sources)
 
   if (monthlyData.size === 0) {
