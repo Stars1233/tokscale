@@ -1,8 +1,14 @@
 {
   "name": "token-tracker",
   "version": "1.0.0",
+  "private": true,
   "description": "Calculate token prices from OpenCode and Claude Code sessions",
   "type": "module",
+  "workspaces": [
+    "core",
+    "frontend",
+    "benchmarks"
+  ],
   "bin": {
     "token-tracker": "./dist/cli.js"
   },
@@ -10,9 +16,11 @@
     "build": "tsx src/cli.ts",
     "dev": "tsx src/cli.ts",
     "start": "node dist/cli.js",
-    "build:core": "cd core && yarn build",
-    "build:core:debug": "cd core && yarn build:debug",
-    "build:core:release": "cd core && yarn build",
+    "build:core": "yarn workspace @token-tracker/core build",
+    "build:core:debug": "yarn workspace @token-tracker/core build:debug",
+    "build:core:release": "yarn workspace @token-tracker/core build",
+    "build:frontend": "yarn workspace @token-tracker/frontend build",
+    "dev:frontend": "yarn workspace @token-tracker/frontend dev",
     "bench:generate": "tsx benchmarks/generate.ts",
     "bench:ts": "tsx benchmarks/runner.ts",
     "bench:ts:synthetic": "tsx benchmarks/runner.ts --synthetic --iterations 5 --warmup 1",
@@ -20,6 +28,7 @@
     "bench:rust:synthetic": "tsx benchmarks/runner.ts --implementation rust --synthetic --iterations 5 --warmup 1"
   },
   "dependencies": {
+    "@token-tracker/core": "0.1.0",
     "cli-table3": "^0.6.5",
     "commander": "^14.0.2",
     "date-fns": "^4.1.0",

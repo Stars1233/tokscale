@@ -77,17 +77,17 @@ jobs:
       fail-fast: false
       matrix:
         settings:
-          - host: macos-latest
+          - host: macos-13
             target: x86_64-apple-darwin
             build: |
               cd core
               yarn build
               strip -x *.node
-          - host: macos-latest
+          - host: macos-14
             target: aarch64-apple-darwin
             build: |
               cd core
-              yarn build --target aarch64-apple-darwin
+              yarn build
               strip -x *.node
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
