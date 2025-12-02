@@ -362,6 +362,75 @@ yarn bench
 | Windows | x86_64 | Supported |
 | Windows | aarch64 | Supported |
 
+## Session Data Retention
+
+By default, some AI coding assistants automatically delete old session files. To preserve your usage history for accurate tracking, disable or extend the cleanup period.
+
+| Platform | Default | Config File | Setting to Disable | Source |
+|----------|---------|-------------|-------------------|--------|
+| Claude Code | **30 days** | `~/.claude/settings.json` | `"cleanupPeriodDays": 9999999999` | [Docs](https://docs.anthropic.com/en/docs/claude-code/settings) |
+| Gemini CLI | Disabled | `~/.gemini/settings.json` | `"sessionRetention.enabled": false` | [Docs](https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/session-management.md) |
+| Codex CLI | Disabled | N/A | No cleanup feature | [#6015](https://github.com/openai/codex/issues/6015) |
+| OpenCode | Disabled | N/A | No cleanup feature | [#4980](https://github.com/sst/opencode/issues/4980) |
+
+### Claude Code
+
+**Default**: 30 days cleanup period
+
+Add to `~/.claude/settings.json`:
+```json
+{
+  "cleanupPeriodDays": 9999999999
+}
+```
+
+> Setting an extremely large value (e.g., `9999999999` days ≈ 27 million years) effectively disables cleanup.
+
+### Gemini CLI
+
+**Default**: Cleanup disabled (sessions persist forever)
+
+If you've enabled cleanup and want to disable it, remove or set `enabled: false` in `~/.gemini/settings.json`:
+```json
+{
+  "general": {
+    "sessionRetention": {
+      "enabled": false
+    }
+  }
+}
+```
+
+Or set an extremely long retention period:
+```json
+{
+  "general": {
+    "sessionRetention": {
+      "enabled": true,
+      "maxAge": "9999999d"
+    }
+  }
+}
+```
+
+### Codex CLI
+
+**Default**: No automatic cleanup (sessions persist forever)
+
+Codex CLI does not have built-in session cleanup. Sessions in `~/.codex/sessions/` persist indefinitely.
+
+> **Note**: There's an open feature request for this: [#6015](https://github.com/openai/codex/issues/6015)
+
+### OpenCode
+
+**Default**: No automatic cleanup (sessions persist forever)
+
+OpenCode does not have built-in session cleanup. Sessions in `~/.local/share/opencode/storage/` persist indefinitely.
+
+> **Note**: See [#4980](https://github.com/sst/opencode/issues/4980)
+
+---
+
 ## Data Sources
 
 ### OpenCode
