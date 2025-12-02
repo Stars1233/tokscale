@@ -27,7 +27,7 @@ serde_json = "1"
 
 # File system traversal
 walkdir = "2"
-globset = "0.4"
+globset = "=0.4.15"  # Pin to version without edition2024 requirement
 
 # Date/time handling
 chrono = { version = "0.4", features = ["serde"] }
