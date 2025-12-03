@@ -265,11 +265,17 @@ async function main() {
       await cursorStatus();
     });
 
-  await program.parseAsync();
-  
-  // If no subcommand was provided, run models report by default
-  if (process.argv.length <= 2 || (process.argv[2] && process.argv[2].startsWith('-'))) {
-    // Re-parse with models-like behavior for default action
+  // Check if a subcommand was provided
+  const args = process.argv.slice(2);
+  const hasSubcommand = args.length > 0 && !args[0].startsWith('-');
+  const knownCommands = ['monthly', 'models', 'graph', 'login', 'logout', 'whoami', 'submit', 'cursor', 'help'];
+  const isKnownCommand = hasSubcommand && knownCommands.includes(args[0]);
+
+  if (isKnownCommand) {
+    // Run the specified subcommand
+    await program.parseAsync();
+  } else {
+    // No subcommand or unknown command - run default models report with options
     const defaultProgram = new Command();
     defaultProgram
       .option("--opencode", "Show only OpenCode usage")
