@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Avatar, Button, Flash } from "@primer/react";
+import { TrashIcon, KeyIcon } from "@primer/octicons-react";
 import { Navigation } from "@/components/layout/Navigation";
 import { Footer } from "@/components/layout/Footer";
 
@@ -100,17 +102,12 @@ export default function SettingsPage() {
             Profile
           </h2>
           <div className="flex items-center gap-4">
-            {user.avatarUrl ? (
-              <img
-                src={user.avatarUrl}
-                alt={user.username}
-                className="w-16 h-16 rounded-xl"
-              />
-            ) : (
-              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-white text-xl font-bold">
-                {user.username[0].toUpperCase()}
-              </div>
-            )}
+            <Avatar
+              src={user.avatarUrl || `https://github.com/${user.username}.png`}
+              alt={user.username}
+              size={64}
+              square
+            />
             <div>
               <p className="font-medium text-gray-900 dark:text-white">
                 {user.displayName || user.username}
@@ -125,9 +122,9 @@ export default function SettingsPage() {
               )}
             </div>
           </div>
-          <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+          <Flash variant="default" className="mt-4">
             Profile information is synced from GitHub and cannot be edited here.
-          </p>
+          </Flash>
         </section>
 
         {/* API Tokens Section */}
@@ -145,6 +142,7 @@ export default function SettingsPage() {
 
           {tokens.length === 0 ? (
             <div className="py-8 text-center text-gray-500 dark:text-gray-400">
+              <KeyIcon size={32} className="mx-auto mb-3 opacity-50" />
               <p>No API tokens yet.</p>
               <p className="text-sm mt-2">
                 Run{" "}
@@ -161,23 +159,27 @@ export default function SettingsPage() {
                   key={token.id}
                   className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-xl"
                 >
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {token.name}
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Created {new Date(token.createdAt).toLocaleDateString()}
-                      {token.lastUsedAt && (
-                        <> - Last used {new Date(token.lastUsedAt).toLocaleDateString()}</>
-                      )}
-                    </p>
+                  <div className="flex items-center gap-3">
+                    <KeyIcon size={20} className="text-gray-400" />
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {token.name}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Created {new Date(token.createdAt).toLocaleDateString()}
+                        {token.lastUsedAt && (
+                          <> - Last used {new Date(token.lastUsedAt).toLocaleDateString()}</>
+                        )}
+                      </p>
+                    </div>
                   </div>
-                  <button
+                  <Button
+                    variant="danger"
+                    size="small"
                     onClick={() => handleRevokeToken(token.id)}
-                    className="px-3 py-1 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                   >
                     Revoke
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -192,7 +194,9 @@ export default function SettingsPage() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
             Deleting your account will remove all your submissions and cannot be undone.
           </p>
-          <button
+          <Button
+            variant="danger"
+            leadingVisual={TrashIcon}
             onClick={() => {
               if (
                 confirm(
@@ -203,10 +207,9 @@ export default function SettingsPage() {
                 alert("Account deletion is not yet implemented.");
               }
             }}
-            className="px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
           >
             Delete Account
-          </button>
+          </Button>
         </section>
       </main>
 

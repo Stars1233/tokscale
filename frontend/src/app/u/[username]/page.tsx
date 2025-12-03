@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { Avatar, Label, Button } from "@primer/react";
+import { StarIcon } from "@primer/octicons-react";
 import { Navigation } from "@/components/layout/Navigation";
 import { Footer } from "@/components/layout/Footer";
 import { GraphContainer } from "@/components/GraphContainer";
@@ -159,12 +161,9 @@ export default function ProfilePage() {
             <p className="text-gray-500 dark:text-gray-400 mb-6">
               The user @{username} doesn't exist or hasn't submitted any data yet.
             </p>
-            <Link
-              href="/"
-              className="inline-flex items-center px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
-            >
+            <Button as={Link} href="/" variant="primary">
               Back to Leaderboard
-            </Link>
+            </Button>
           </div>
         </main>
         <Footer />
@@ -180,26 +179,23 @@ export default function ProfilePage() {
         {/* User Header */}
         <div className="mb-6 sm:mb-8">
           <div className="flex items-start gap-4 sm:gap-6 mb-6">
-            {data.user.avatarUrl ? (
-              <img
-                src={data.user.avatarUrl}
-                alt={data.user.username}
-                className="w-16 h-16 sm:w-24 sm:h-24 rounded-xl sm:rounded-2xl ring-2 sm:ring-4 ring-gray-200 dark:ring-gray-700"
-              />
-            ) : (
-              <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-xl sm:rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-white text-xl sm:text-3xl font-bold">
-                {data.user.username[0].toUpperCase()}
-              </div>
-            )}
+            <Avatar
+              src={data.user.avatarUrl || `https://github.com/${data.user.username}.png`}
+              alt={data.user.username}
+              size={96}
+              square
+              className="ring-2 sm:ring-4 ring-gray-200 dark:ring-gray-700 shadow-lg"
+            />
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1">
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
                   {data.user.displayName || data.user.username}
                 </h1>
                 {data.user.rank && (
-                  <span className="px-2 py-0.5 sm:py-1 text-xs sm:text-sm font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg shrink-0">
-                    #{data.user.rank}
-                  </span>
+                  <Label variant={data.user.rank <= 3 ? "attention" : "secondary"} size="large">
+                    {data.user.rank <= 3 && <StarIcon size={14} />}
+                    <span className={data.user.rank <= 3 ? "ml-1" : ""}>#{data.user.rank}</span>
+                  </Label>
                 )}
               </div>
               <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mb-2 sm:mb-3">
@@ -207,12 +203,9 @@ export default function ProfilePage() {
               </p>
               <div className="flex flex-wrap gap-1.5 sm:gap-2">
                 {data.sources.map((source) => (
-                  <span
-                    key={source}
-                    className="px-2 py-0.5 sm:py-1 text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-lg"
-                  >
+                  <Label key={source} variant="secondary">
                     {source}
-                  </span>
+                  </Label>
                 ))}
               </div>
             </div>
@@ -252,30 +245,79 @@ export default function ProfilePage() {
           <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">
             Token Breakdown
           </h2>
+          
+          {/* Visual breakdown bar */}
+          {data.stats.totalTokens > 0 && (
+            <div className="mb-4 sm:mb-6">
+              <div className="h-2 rounded-full overflow-hidden flex bg-gray-100 dark:bg-gray-800">
+                <div 
+                  style={{ 
+                    width: `${(data.stats.inputTokens / data.stats.totalTokens) * 100}%`,
+                    backgroundColor: 'var(--data-blue-color-emphasis, #006edb)'
+                  }}
+                  title={`Input: ${formatNumber(data.stats.inputTokens)}`}
+                />
+                <div 
+                  style={{ 
+                    width: `${(data.stats.outputTokens / data.stats.totalTokens) * 100}%`,
+                    backgroundColor: 'var(--data-purple-color-emphasis, #894ceb)'
+                  }}
+                  title={`Output: ${formatNumber(data.stats.outputTokens)}`}
+                />
+                <div 
+                  style={{ 
+                    width: `${(data.stats.cacheReadTokens / data.stats.totalTokens) * 100}%`,
+                    backgroundColor: 'var(--data-green-color-emphasis, #30a147)'
+                  }}
+                  title={`Cache Read: ${formatNumber(data.stats.cacheReadTokens)}`}
+                />
+                <div 
+                  style={{ 
+                    width: `${(data.stats.cacheCreationTokens / data.stats.totalTokens) * 100}%`,
+                    backgroundColor: 'var(--data-orange-color-emphasis, #eb670f)'
+                  }}
+                  title={`Cache Write: ${formatNumber(data.stats.cacheCreationTokens)}`}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-            <div>
-              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Input</p>
-              <p className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
-                {formatNumber(data.stats.inputTokens)}
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--data-blue-color-emphasis, #006edb)' }} />
+              <div>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Input</p>
+                <p className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
+                  {formatNumber(data.stats.inputTokens)}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Output</p>
-              <p className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
-                {formatNumber(data.stats.outputTokens)}
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--data-purple-color-emphasis, #894ceb)' }} />
+              <div>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Output</p>
+                <p className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
+                  {formatNumber(data.stats.outputTokens)}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Cache Read</p>
-              <p className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
-                {formatNumber(data.stats.cacheReadTokens)}
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--data-green-color-emphasis, #30a147)' }} />
+              <div>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Cache Read</p>
+                <p className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
+                  {formatNumber(data.stats.cacheReadTokens)}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Cache Write</p>
-              <p className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
-                {formatNumber(data.stats.cacheCreationTokens)}
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--data-orange-color-emphasis, #eb670f)' }} />
+              <div>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Cache Write</p>
+                <p className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
+                  {formatNumber(data.stats.cacheCreationTokens)}
+                </p>
+              </div>
             </div>
           </div>
         </div>
