@@ -120,7 +120,11 @@ export function TokenGraph2D({ contributions, palette, year, onDayHover, onDayCl
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
       const result = getDayAtPosition(e.clientX, e.clientY);
-      result ? onDayHover(result.day, result.position) : onDayHover(null, null);
+      if (result) {
+        onDayHover(result.day, result.position);
+      } else {
+        onDayHover(null, null);
+      }
     },
     [getDayAtPosition, onDayHover]
   );
