@@ -121,7 +121,7 @@ export function Navigation() {
                       </p>
                     </div>
                     <Link
-                      href={`/profile/${user.username}`}
+                      href={`/u/${user.username}`}
                       onClick={() => setMenuOpen(false)}
                       className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                     >

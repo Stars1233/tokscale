@@ -202,7 +202,7 @@ export default function LeaderboardPage() {
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                           <Link
-                            href={`/profile/${user.username}`}
+                            href={`/u/${user.username}`}
                             className="flex items-center gap-2 sm:gap-3 group"
                           >
                             {user.avatarUrl ? (
