@@ -101,7 +101,7 @@ export default function LeaderboardPage() {
               <p className="text-xs sm:text-sm" style={{ color: "#696969" }}>
                 Total Cost
               </p>
-              <p className="text-xl sm:text-2xl font-bold" style={{ color: "#4ADE80" }}>
+              <p className="text-xl sm:text-2xl font-bold" style={{ color: "#53d1f3" }}>
                 {data ? formatCurrency(data.stats.totalCost) : "-"}
               </p>
             </div>
@@ -277,7 +277,7 @@ export default function LeaderboardPage() {
                           <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right">
                             <span
                               className="font-medium text-sm sm:text-base"
-                              style={{ color: "#4ADE80" }}
+                              style={{ color: "#53d1f3" }}
                             >
                               {formatCurrency(user.totalCost)}
                             </span>
@@ -326,10 +326,10 @@ export default function LeaderboardPage() {
           </p>
           <div className="space-y-2 font-mono text-sm">
             <div className="p-3 rounded-lg" style={{ backgroundColor: "#1F1F20", color: "#9CA3AF" }}>
-              <span style={{ color: "#4ADE80" }}>$</span> npx token-tracker login
+              <span style={{ color: "#53d1f3" }}>$</span> npx token-tracker login
             </div>
             <div className="p-3 rounded-lg" style={{ backgroundColor: "#1F1F20", color: "#9CA3AF" }}>
-              <span style={{ color: "#4ADE80" }}>$</span> npx token-tracker submit
+              <span style={{ color: "#53d1f3" }}>$</span> npx token-tracker submit
             </div>
           </div>
         </div>

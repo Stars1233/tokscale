@@ -39,7 +39,7 @@ export function Navigation() {
     >
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-500/20 group-hover:scale-105 transition-transform">
+          <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform" style={{ background: "linear-gradient(to bottom right, #53d1f3, #3bc4e8)", boxShadow: "0 10px 15px -3px rgba(83, 209, 243, 0.2)" }}>
             <svg
               className="w-5 h-5 text-white"
               fill="none"

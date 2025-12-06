@@ -88,11 +88,21 @@ export function DataInput({ onDataLoaded }: DataInputProps) {
           }}
           placeholder='{"meta": {...}, "summary": {...}, "contributions": [...]}'
           className={`w-full h-72 p-4 font-mono text-sm rounded-2xl border-2 resize-y focus:outline-none focus:ring-4 transition-all duration-200 ${
-            error ? "border-red-500 focus:ring-red-500/20" : "border-[#262627] focus:border-green-500 focus:ring-green-500/20"
+            error ? "border-red-500 focus:ring-red-500/20" : "border-[#262627]"
           }`}
           style={{
             backgroundColor: "#1F1F20",
             color: "#FFFFFF",
+          }}
+          onFocus={(e) => {
+            if (!error) {
+              e.currentTarget.style.borderColor = "#53d1f3";
+            }
+          }}
+          onBlur={(e) => {
+            if (!error) {
+              e.currentTarget.style.borderColor = "#262627";
+            }
           }}
         />
         <p className="mt-2 text-sm" style={{ color: "#696969" }}>
@@ -115,7 +125,8 @@ export function DataInput({ onDataLoaded }: DataInputProps) {
         <button
           onClick={parseJson}
           disabled={isLoading || !rawJson.trim()}
-          className="px-6 py-3 rounded-full font-semibold text-sm bg-green-600 hover:bg-green-700 active:bg-green-800 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-lg hover:shadow-green-500/25 hover:-translate-y-0.5 active:translate-y-0"
+          className="px-6 py-3 rounded-full font-semibold text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 hover:opacity-90"
+          style={{ backgroundColor: "#53d1f3", boxShadow: "0 10px 15px -3px rgba(83, 209, 243, 0.25)" }}
         >
           Parse JSON
         </button>

@@ -38,7 +38,7 @@ export default function LocalViewerPage() {
                   {data.meta.dateRange.start} - {data.meta.dateRange.end}
                 </span>
                 <span style={{ color: "#3F3F3F" }}>|</span>
-                <span className="font-semibold" style={{ color: "#4ADE80" }}>
+                <span className="font-semibold" style={{ color: "#53d1f3" }}>
                   ${data.summary.totalCost.toFixed(2)} total
                 </span>
                 <span style={{ color: "#3F3F3F" }}>|</span>

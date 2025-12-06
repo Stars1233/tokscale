@@ -84,7 +84,7 @@ export default function DevicePage() {
           style={{ backgroundColor: "#141415", borderColor: "#262627" }}
         >
           <div className="text-center mb-8">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-500/25">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: "linear-gradient(to bottom right, #53d1f3, #3bc4e8)", boxShadow: "0 10px 15px -3px rgba(83, 209, 243, 0.25)" }}>
               <svg
                 className="w-8 h-8 text-white"
                 fill="none"
@@ -127,14 +127,14 @@ export default function DevicePage() {
             <div className="text-center">
               <div
                 className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: "rgba(74, 222, 128, 0.1)" }}
+                style={{ backgroundColor: "rgba(83, 209, 243, 0.1)" }}
               >
                 <svg
                   className="w-8 h-8"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
-                  style={{ color: "#4ADE80" }}
+                  style={{ color: "#53d1f3" }}
                 >
                   <path
                     strokeLinecap="round"
@@ -163,11 +163,13 @@ export default function DevicePage() {
                   onChange={handleCodeChange}
                   placeholder="XXXX-XXXX"
                   maxLength={9}
-                  className="w-full px-4 py-4 text-center text-2xl font-mono tracking-[0.3em] border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full px-4 py-4 text-center text-2xl font-mono tracking-[0.3em] border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent"
                   style={{
                     backgroundColor: "#1F1F20",
                     borderColor: "#262627",
                     color: "#FFFFFF",
+                    // @ts-expect-error CSS custom property
+                    "--tw-ring-color": "#53d1f3",
                   }}
                   autoFocus
                 />
@@ -180,7 +182,8 @@ export default function DevicePage() {
               <button
                 type="submit"
                 disabled={code.length < 9 || status === "loading"}
-                className="w-full px-6 py-3 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="w-full px-6 py-3 text-white font-medium rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors hover:opacity-90"
+                style={{ backgroundColor: "#53d1f3" }}
               >
                 {status === "loading" ? "Authorizing..." : "Authorize Device"}
               </button>

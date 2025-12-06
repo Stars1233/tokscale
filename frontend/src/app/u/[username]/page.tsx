@@ -181,7 +181,8 @@ export default function ProfilePage() {
             </p>
             <Link
               href="/"
-              className="inline-flex items-center px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
+              className="inline-flex items-center px-4 py-2 text-white font-medium rounded-lg transition-colors hover:opacity-90"
+              style={{ backgroundColor: "#53d1f3" }}
             >
               Back to Leaderboard
             </Link>

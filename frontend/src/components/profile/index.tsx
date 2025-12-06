@@ -76,7 +76,7 @@ export function ProfileHeader({ user, stats, lastUpdated }: ProfileHeaderProps) 
               >
                 <span
                   className="text-base font-medium"
-                  style={{ fontFamily: "Inter, sans-serif", color: "#85CAFF" }}
+                  style={{ color: "#85CAFF" }}
                 >
                   #{user.rank}
                 </span>
@@ -86,13 +86,13 @@ export function ProfileHeader({ user, stats, lastUpdated }: ProfileHeaderProps) 
             <div className="flex flex-col gap-[6px] flex-1 justify-end min-w-0">
               <h1
                 className="text-2xl font-bold truncate leading-[1.2]"
-                style={{ fontFamily: "Figtree, sans-serif", color: "#FFFFFF" }}
+                style={{ color: "#FFFFFF" }}
               >
                 {user.displayName || user.username}
               </h1>
               <p
                 className="text-sm font-bold leading-none"
-                style={{ fontFamily: "Figtree, sans-serif", color: "#696969" }}
+                style={{ color: "#696969" }}
               >
                 @{user.username}
               </p>
@@ -104,14 +104,13 @@ export function ProfileHeader({ user, stats, lastUpdated }: ProfileHeaderProps) 
           <div className="flex flex-col gap-[15px] flex-1 min-w-[120px]">
             <span
               className="text-base font-semibold leading-none"
-              style={{ fontFamily: "Figtree, sans-serif", color: "#85CAFF" }}
+              style={{ color: "#85CAFF" }}
             >
               Total Usage Cost
             </span>
             <span
               className="text-[27px] font-bold leading-none"
               style={{
-                fontFamily: "Figtree, sans-serif",
                 background: "linear-gradient(117deg, #169AFF 0%, #9FD4FB 26%, #B9DFF8 52%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
@@ -125,13 +124,13 @@ export function ProfileHeader({ user, stats, lastUpdated }: ProfileHeaderProps) 
           <div className="flex flex-col gap-[15px] flex-1 min-w-[120px]">
             <span
               className="text-base font-semibold leading-none"
-              style={{ fontFamily: "Figtree, sans-serif", color: "#FFFFFF" }}
+              style={{ color: "#FFFFFF" }}
             >
               Total Tokens
             </span>
             <span
               className="text-[27px] font-bold leading-none"
-              style={{ fontFamily: "Figtree, sans-serif", color: "#FFFFFF" }}
+              style={{ color: "#FFFFFF" }}
             >
               {formatNumber(stats.totalTokens)}
             </span>
@@ -145,7 +144,7 @@ export function ProfileHeader({ user, stats, lastUpdated }: ProfileHeaderProps) 
         {lastUpdated && (
           <span
             className="text-sm leading-[1.21]"
-            style={{ fontFamily: "Inter, sans-serif", color: "#696969" }}
+            style={{ color: "#696969" }}
           >
             Last Updated: {lastUpdated}
           </span>
@@ -159,7 +158,7 @@ export function ProfileHeader({ user, stats, lastUpdated }: ProfileHeaderProps) 
             <Image src="/icons/icon-share.svg" alt="Share" width={20} height={20} />
             <span
               className="text-sm leading-none"
-              style={{ fontFamily: "Figtree, sans-serif", color: "#FFFFFF" }}
+              style={{ color: "#FFFFFF" }}
             >
               Share
             </span>
@@ -175,7 +174,7 @@ export function ProfileHeader({ user, stats, lastUpdated }: ProfileHeaderProps) 
             <Image src="/icons/icon-github.svg" alt="GitHub" width={20} height={20} />
             <span
               className="text-sm leading-none"
-              style={{ fontFamily: "Figtree, sans-serif", color: "#FFFFFF" }}
+              style={{ color: "#FFFFFF" }}
             >
               GitHub
             </span>
@@ -217,7 +216,6 @@ export function ProfileTabBar({ activeTab, onTabChange }: ProfileTabBarProps) {
           <span
             className="text-lg font-semibold leading-none whitespace-nowrap"
             style={{
-              fontFamily: "Figtree, sans-serif",
               color: activeTab === tab.id ? "#FFFFFF" : "rgba(255, 255, 255, 0.5)",
             }}
           >
@@ -286,7 +284,7 @@ export function TokenBreakdown({ stats }: TokenBreakdownProps) {
             <p className="text-xs" style={{ color: "#696969" }}>Input</p>
             <p
               className="text-base sm:text-lg font-semibold"
-              style={{ fontFamily: "Figtree, sans-serif", color: "#FFFFFF" }}
+              style={{ color: "#FFFFFF" }}
             >
               {formatNumber(inputTokens)}
             </p>
@@ -298,7 +296,7 @@ export function TokenBreakdown({ stats }: TokenBreakdownProps) {
             <p className="text-xs" style={{ color: "#696969" }}>Output</p>
             <p
               className="text-base sm:text-lg font-semibold"
-              style={{ fontFamily: "Figtree, sans-serif", color: "#FFFFFF" }}
+              style={{ color: "#FFFFFF" }}
             >
               {formatNumber(outputTokens)}
             </p>
@@ -310,7 +308,7 @@ export function TokenBreakdown({ stats }: TokenBreakdownProps) {
             <p className="text-xs" style={{ color: "#696969" }}>Cache Read</p>
             <p
               className="text-base sm:text-lg font-semibold"
-              style={{ fontFamily: "Figtree, sans-serif", color: "#FFFFFF" }}
+              style={{ color: "#FFFFFF" }}
             >
               {formatNumber(cacheReadTokens)}
             </p>
@@ -322,7 +320,7 @@ export function TokenBreakdown({ stats }: TokenBreakdownProps) {
             <p className="text-xs" style={{ color: "#696969" }}>Cache Write</p>
             <p
               className="text-base sm:text-lg font-semibold"
-              style={{ fontFamily: "Figtree, sans-serif", color: "#FFFFFF" }}
+              style={{ color: "#FFFFFF" }}
             >
               {formatNumber(cacheWriteTokens)}
             </p>
@@ -389,61 +387,4 @@ export function ProfileEmptyActivity() {
   );
 }
 
-export function MockupBadge() {
-  return (
-    <div
-      className="mb-6 p-3 rounded-xl border"
-      style={{ backgroundColor: "rgba(217, 119, 6, 0.1)", borderColor: "rgba(217, 119, 6, 0.3)" }}
-    >
-      <p className="text-sm flex items-center gap-2" style={{ color: "#F59E0B" }}>
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-        <span>
-          <strong>Mockup Preview</strong> — This is a preview using local token usage data from
-          your machine.
-        </span>
-      </p>
-    </div>
-  );
-}
 
-export function ProfileCTA() {
-  return (
-    <div
-      className="rounded-2xl p-6 sm:p-8"
-      style={{
-        background: "linear-gradient(135deg, #059669 0%, #10B981 100%)",
-      }}
-    >
-      <h2
-        className="text-xl sm:text-2xl font-bold mb-2"
-        style={{ fontFamily: "Figtree, sans-serif", color: "#FFFFFF" }}
-      >
-        Want your own profile?
-      </h2>
-      <p className="mb-4" style={{ color: "rgba(255, 255, 255, 0.8)" }}>
-        Share your AI token usage and compete on the leaderboard!
-      </p>
-      <div className="flex flex-wrap gap-3">
-        <code
-          className="px-4 py-2 rounded-lg text-sm font-mono"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.2)", color: "#FFFFFF" }}
-        >
-          token-tracker login
-        </code>
-        <code
-          className="px-4 py-2 rounded-lg text-sm font-mono"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.2)", color: "#FFFFFF" }}
-        >
-          token-tracker submit
-        </code>
-      </div>
-    </div>
-  );
-}

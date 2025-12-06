@@ -28,8 +28,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} ${figtree.variable} ${jetbrainsMono.variable} antialiased`}>
+    <html lang="en" className={`${figtree.variable} ${inter.variable} ${jetbrainsMono.variable}`}>
+      <body className={`${figtree.className} antialiased`}>
         <Providers>
           {children}
         </Providers>
