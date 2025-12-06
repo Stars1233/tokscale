@@ -75,16 +75,7 @@ export function Navigation() {
           >
             Leaderboard
           </Link>
-          <Link
-            href="/local"
-            className="px-4 py-2 text-sm font-medium rounded-lg transition-colors"
-            style={{
-              backgroundColor: isActive("/local") ? "#262627" : "transparent",
-              color: isActive("/local") ? "#FFFFFF" : "#696969",
-            }}
-          >
-            Local Viewer
-          </Link>
+
         </nav>
 
         <div className="flex items-center gap-3">
