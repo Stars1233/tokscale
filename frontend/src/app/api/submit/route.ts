@@ -85,23 +85,8 @@ export async function POST(request: Request) {
     const metrics = extractMetrics(data);
     const submissionHash = generateSubmissionHash(data);
 
-    // Check for duplicate submission
-    const [existingSubmission] = await db
-      .select({ id: submissions.id })
-      .from(submissions)
-      .where(eq(submissions.submissionHash, submissionHash))
-      .limit(1);
-
-    if (existingSubmission) {
-      return NextResponse.json(
-        {
-          error: "Duplicate submission",
-          message: "This exact data has already been submitted",
-          submissionId: existingSubmission.id,
-        },
-        { status: 409 }
-      );
-    }
+    // Delete all previous submissions for this user (replace mode)
+    await db.delete(submissions).where(eq(submissions.userId, tokenRecord.userId));
 
     // Step 4: Insert submission
     const [newSubmission] = await db
