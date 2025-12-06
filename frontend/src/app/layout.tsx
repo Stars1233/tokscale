@@ -22,8 +22,18 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Token Tracker",
-  description: "Visualize your AI token usage",
+  title: "Token Usage Leaderboard",
+  description: "The Kardashev Scale for AI Devs",
+  openGraph: {
+    title: "Token Usage Leaderboard",
+    description: "The Kardashev Scale for AI Devs",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Token Usage Leaderboard",
+    description: "The Kardashev Scale for AI Devs",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
