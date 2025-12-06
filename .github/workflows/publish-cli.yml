@@ -1,0 +1,52 @@
+name: Publish CLI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - packages/cli/package.json
+
+jobs:
+  publish-cli:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check if version changed
+        id: version-check
+        run: |
+          if git diff HEAD~1 HEAD -- packages/cli/package.json | grep -E '^[+-]\s*"version"'; then
+            echo "Version changed"
+            echo "version_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "Version not changed"
+            echo "version_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.version-check.outputs.version_changed == 'true'
+        with:
+          node-version: 20
+          registry-url: https://npm.pkg.github.com/
+          scope: '@0xinevitable'
+
+      - name: Install dependencies
+        if: steps.version-check.outputs.version_changed == 'true'
+        run: yarn install
+
+      - name: Build core
+        if: steps.version-check.outputs.version_changed == 'true'
+        run: yarn build:core
+
+      - name: Publish CLI to GitHub Packages
+        if: steps.version-check.outputs.version_changed == 'true'
+        working-directory: packages/cli
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

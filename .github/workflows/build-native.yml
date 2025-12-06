@@ -368,7 +368,7 @@ jobs:
         with:
           node-version: 20
           registry-url: "https://npm.pkg.github.com"
-          scope: "@wakeru-ai"
+          scope: "@0xinevitable"
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
@@ -393,35 +393,4 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Publish CLI package to GitHub npm registry (after core)
-  publish-cli:
-    name: Publish CLI to GitHub
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    needs:
-      - publish-core
-    permissions:
-      contents: read
-      packages: write
 
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          registry-url: "https://npm.pkg.github.com"
-          scope: "@wakeru-ai"
-
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-
-      - name: Build CLI
-        run: yarn workspace @wakeru-ai/token-tracker build
-
-      - name: Publish CLI
-        working-directory: packages/cli
-        run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

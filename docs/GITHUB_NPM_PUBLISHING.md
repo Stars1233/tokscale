@@ -5,7 +5,7 @@
 This document outlines the architecture and implementation plan for publishing the `token-tracker` CLI to GitHub's private npm registry, enabling users to run:
 
 ```bash
-npx @wakeru-ai/token-tracker [command]
+npx @0xinevitable/token-tracker [command]
 ```
 
 ## Current Structure (Implemented)
@@ -16,11 +16,11 @@ token-tracker/
 ├── .npmrc                    # GitHub registry config
 ├── packages/
 │   └── cli/
-│       ├── package.json      # @wakeru-ai/token-tracker
+│       ├── package.json      # @0xinevitable/token-tracker
 │       ├── src/              # CLI TypeScript source
 │       ├── dist/             # Built CLI (included in publish)
 │       └── tsconfig.json
-├── core/                     # @wakeru-ai/token-tracker-core (napi-rs native)
+├── core/                     # @0xinevitable/token-tracker-core (napi-rs native)
 │   ├── package.json
 │   ├── src/                  # Rust source
 │   ├── index.js              # Generated loader
@@ -44,8 +44,8 @@ Root `package.json`:
 
 | Package | Scope | Purpose |
 |---------|-------|---------|
-| `@wakeru-ai/token-tracker` | CLI | Main CLI tool, published to GitHub npm |
-| `@wakeru-ai/token-tracker-core` | Core | Native Rust module with binaries |
+| `@0xinevitable/token-tracker` | CLI | Main CLI tool, published to GitHub npm |
+| `@0xinevitable/token-tracker-core` | Core | Native Rust module with binaries |
 
 ---
 
@@ -57,7 +57,7 @@ Root `package.json`:
 
 ```json
 {
-  "name": "@wakeru-ai/token-tracker",
+  "name": "@0xinevitable/token-tracker",
   "version": "1.0.0",
   "description": "Calculate token prices from AI coding sessions",
   "type": "module",
@@ -74,10 +74,10 @@ Root `package.json`:
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/wakeru-ai/token-usage-tracker.git"
+    "url": "https://github.com/0xinevitable/token-usage-tracker.git"
   },
   "dependencies": {
-    "@wakeru-ai/token-tracker-core": "^0.1.0",
+    "@0xinevitable/token-tracker-core": "^0.1.0",
     ...
   }
 }
@@ -85,7 +85,7 @@ Root `package.json`:
 
 **Key Changes:**
 - Remove `"private": true`
-- Change name to `@wakeru-ai/token-tracker`
+- Change name to `@0xinevitable/token-tracker`
 - Add `publishConfig` for GitHub registry
 - Add `files` to control what gets published
 - Update core dependency name
@@ -94,7 +94,7 @@ Root `package.json`:
 
 ```json
 {
-  "name": "@wakeru-ai/token-tracker-core",
+  "name": "@0xinevitable/token-tracker-core",
   "version": "0.1.0",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
@@ -102,7 +102,7 @@ Root `package.json`:
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/wakeru-ai/token-usage-tracker.git",
+    "url": "https://github.com/0xinevitable/token-usage-tracker.git",
     "directory": "core"
   },
   "files": [
@@ -118,8 +118,8 @@ Root `package.json`:
 #### 2.1 Create .npmrc (Repository Root)
 
 ```ini
-# GitHub npm registry for @wakeru-ai scope
-@wakeru-ai:registry=https://npm.pkg.github.com
+# GitHub npm registry for @0xinevitable scope
+@0xinevitable:registry=https://npm.pkg.github.com
 
 # Auth token (set via environment variable or npm login)
 //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
@@ -127,24 +127,24 @@ Root `package.json`:
 
 #### 2.2 User Authentication Requirements
 
-Users need to authenticate to use `npx @wakeru-ai/token-tracker`:
+Users need to authenticate to use `npx @0xinevitable/token-tracker`:
 
 **Option A: Environment Variable**
 ```bash
 export GITHUB_TOKEN=ghp_xxxxxxxxxxxx
-npx @wakeru-ai/token-tracker
+npx @0xinevitable/token-tracker
 ```
 
 **Option B: Global .npmrc**
 ```bash
 # ~/.npmrc
-@wakeru-ai:registry=https://npm.pkg.github.com
+@0xinevitable:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=ghp_xxxxxxxxxxxx
 ```
 
 **Option C: npm login**
 ```bash
-npm login --registry=https://npm.pkg.github.com --scope=@wakeru-ai
+npm login --registry=https://npm.pkg.github.com --scope=@0xinevitable
 ```
 
 ### Phase 3: CI/CD Workflow Updates
@@ -169,7 +169,7 @@ publish-core:
       with:
         node-version: 20
         registry-url: "https://npm.pkg.github.com"
-        scope: "@wakeru-ai"
+        scope: "@0xinevitable"
 
     - name: Download all artifacts
       uses: actions/download-artifact@v4
@@ -207,7 +207,7 @@ publish-cli:
       with:
         node-version: 20
         registry-url: "https://npm.pkg.github.com"
-        scope: "@wakeru-ai"
+        scope: "@0xinevitable"
 
     - name: Install dependencies
       run: yarn install --frozen-lockfile
@@ -260,10 +260,10 @@ Add `tsconfig.json` if not present:
 
 ### How CLI Finds Core Package
 
-When a user runs `npx @wakeru-ai/token-tracker`:
+When a user runs `npx @0xinevitable/token-tracker`:
 
-1. npm downloads `@wakeru-ai/token-tracker` from GitHub registry
-2. npm sees dependency on `@wakeru-ai/token-tracker-core`
+1. npm downloads `@0xinevitable/token-tracker` from GitHub registry
+2. npm sees dependency on `@0xinevitable/token-tracker-core`
 3. npm downloads core package (includes platform-specific `.node` binary)
 4. napi-rs `index.js` auto-detects platform and loads correct binary
 
@@ -309,7 +309,7 @@ module.exports = nativeBinding;
 ```bash
 # Create GitHub Personal Access Token with `read:packages` scope
 # Then configure npm:
-echo "@wakeru-ai:registry=https://npm.pkg.github.com" >> ~/.npmrc
+echo "@0xinevitable:registry=https://npm.pkg.github.com" >> ~/.npmrc
 echo "//npm.pkg.github.com/:_authToken=YOUR_TOKEN" >> ~/.npmrc
 ```
 
@@ -317,10 +317,10 @@ echo "//npm.pkg.github.com/:_authToken=YOUR_TOKEN" >> ~/.npmrc
 
 ```bash
 # Run directly via npx
-npx @wakeru-ai/token-tracker
+npx @0xinevitable/token-tracker
 
 # Or install globally
-npm install -g @wakeru-ai/token-tracker
+npm install -g @0xinevitable/token-tracker
 token-tracker
 ```
 
@@ -381,8 +381,8 @@ git tag cli-v1.0.0
 
 If issues arise:
 
-1. **Unpublish**: `npm unpublish @wakeru-ai/token-tracker@version`
-2. **Deprecate**: `npm deprecate @wakeru-ai/token-tracker@version "message"`
+1. **Unpublish**: `npm unpublish @0xinevitable/token-tracker@version`
+2. **Deprecate**: `npm deprecate @0xinevitable/token-tracker@version "message"`
 3. **Revert**: Push new version with fixes
 
 ---
@@ -391,10 +391,10 @@ If issues arise:
 
 - [ ] Core package publishes successfully
 - [ ] CLI package publishes successfully
-- [ ] `npx @wakeru-ai/token-tracker --version` works
+- [ ] `npx @0xinevitable/token-tracker --version` works
 - [ ] Platform binaries load correctly (macOS, Linux, Windows)
 - [ ] New user can authenticate and install
-- [ ] Global install works: `npm i -g @wakeru-ai/token-tracker`
+- [ ] Global install works: `npm i -g @0xinevitable/token-tracker`
 
 ---
 
@@ -403,7 +403,7 @@ If issues arise:
 | File | Changes |
 |------|---------|
 | `package.json` | Remove private, rename, add publishConfig, files |
-| `core/package.json` | Rename to @wakeru-ai scope, add publishConfig |
+| `core/package.json` | Rename to @0xinevitable scope, add publishConfig |
 | `.npmrc` | Create with GitHub registry config |
 | `.github/workflows/build-native.yml` | Update publish jobs |
 | `tsconfig.json` | Add/update for CLI build |
@@ -444,7 +444,7 @@ Users need a GitHub Personal Access Token (PAT) with `read:packages` scope to in
 
 ```bash
 # Add to ~/.npmrc
-echo "@wakeru-ai:registry=https://npm.pkg.github.com" >> ~/.npmrc
+echo "@0xinevitable:registry=https://npm.pkg.github.com" >> ~/.npmrc
 echo "//npm.pkg.github.com/:_authToken=ghp_YOUR_TOKEN_HERE" >> ~/.npmrc
 ```
 
@@ -452,13 +452,13 @@ echo "//npm.pkg.github.com/:_authToken=ghp_YOUR_TOKEN_HERE" >> ~/.npmrc
 
 ```bash
 export GITHUB_TOKEN=ghp_YOUR_TOKEN_HERE
-npx @wakeru-ai/token-tracker
+npx @0xinevitable/token-tracker
 ```
 
 #### Option 3: npm login
 
 ```bash
-npm login --registry=https://npm.pkg.github.com --scope=@wakeru-ai
+npm login --registry=https://npm.pkg.github.com --scope=@0xinevitable
 # Username: your-github-username
 # Password: ghp_YOUR_TOKEN_HERE
 # Email: your-email@example.com
@@ -468,14 +468,14 @@ npm login --registry=https://npm.pkg.github.com --scope=@wakeru-ai
 
 ```bash
 # Run directly via npx
-npx @wakeru-ai/token-tracker
+npx @0xinevitable/token-tracker
 
 # Or install globally
-npm install -g @wakeru-ai/token-tracker
+npm install -g @0xinevitable/token-tracker
 token-tracker
 
 # With specific command
-npx @wakeru-ai/token-tracker graph --year 2025
+npx @0xinevitable/token-tracker graph --year 2025
 ```
 
 ### Troubleshooting
@@ -489,7 +489,7 @@ npx @wakeru-ai/token-tracker graph --year 2025
 
 ### For Organization Members
 
-If you're a member of the `wakeru-ai` organization:
+If you're a member of the `0xinevitable` organization:
 - You automatically have read access to private packages
 - Use your regular GitHub PAT with `read:packages` scope
 
