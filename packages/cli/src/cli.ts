@@ -132,8 +132,8 @@ async function main() {
 
   program
     .name("token-tracker")
-    .description("Calculate token prices from OpenCode, Claude Code, Codex, and Gemini sessions")
-    .version("1.0.0");
+    .description("Token Usage Leaderboard CLI - Track AI coding costs across OpenCode, Claude Code, Codex, Gemini, and Cursor")
+    .version("1.0.2");
 
   program
     .command("monthly")
@@ -455,7 +455,13 @@ async function showModelReport(options: FilterOptions & DateFilterOptions & { be
   spinner.stop();
 
   if (report.entries.length === 0) {
-    console.log(pc.yellow("  No usage data found.\n"));
+    const onlyCursor = enabledSources?.length === 1 && enabledSources[0] === 'cursor';
+    if (onlyCursor && !cursorSync.synced) {
+      console.log(pc.yellow("  No Cursor data available."));
+      console.log(pc.gray("  Run 'token-tracker cursor login' to authenticate with Cursor.\n"));
+    } else {
+      console.log(pc.yellow("  No usage data found.\n"));
+    }
     return;
   }
 

@@ -2,10 +2,9 @@
   "name": "token-tracker-monorepo",
   "version": "1.0.0",
   "private": true,
-  "description": "Token Tracker Monorepo - Calculate token prices from AI coding sessions",
+  "description": "Token Usage Leaderboard - The Kardashev Scale for AI Devs",
   "type": "module",
   "workspaces": [
-    "core",
     "packages/*",
     "frontend",
     "benchmarks"
@@ -15,24 +14,11 @@
     "build": "yarn build:core && yarn build:cli",
     "build:cli": "yarn workspace @0xinevitable/token-tracker build",
     "build:core": "yarn workspace @0xinevitable/token-tracker-core build",
-    "build:core:debug": "yarn workspace @0xinevitable/token-tracker-core build:debug",
-    "build:frontend": "yarn workspace @token-tracker/frontend build",
     "cli": "yarn workspace @0xinevitable/token-tracker dev",
-    "cli:login": "yarn workspace @0xinevitable/token-tracker dev login",
-    "cli:submit": "yarn workspace @0xinevitable/token-tracker dev submit",
-    "cli:whoami": "yarn workspace @0xinevitable/token-tracker dev whoami",
-    "dev": "yarn workspace @0xinevitable/token-tracker dev",
-    "dev:frontend": "yarn workspace @token-tracker/frontend dev",
-    "start": "yarn workspace @0xinevitable/token-tracker start",
-    "bench:generate": "tsx benchmarks/generate.ts",
-    "bench:ts": "tsx benchmarks/runner.ts",
-    "bench:ts:synthetic": "tsx benchmarks/runner.ts --synthetic --iterations 5 --warmup 1",
-    "bench:rust": "tsx benchmarks/runner.ts --implementation rust",
-    "bench:rust:synthetic": "tsx benchmarks/runner.ts --implementation rust --synthetic --iterations 5 --warmup 1"
+    "dev:frontend": "yarn workspace @token-tracker/frontend dev"
   },
   "devDependencies": {
     "@napi-rs/cli": "^3.4.1",
-    "@opencode-ai/plugin": "^1.0.128",
     "@types/node": "^20.0.0",
     "tsx": "^4.0.0",
     "typescript": "^5.0.0"
