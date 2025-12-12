@@ -1,5 +1,5 @@
 import { Show } from "solid-js";
-import type { TabType } from "../App.js";
+import type { TabType } from "../types/index.js";
 
 interface HeaderProps {
   activeTab: TabType;

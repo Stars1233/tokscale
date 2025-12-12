@@ -1,5 +1,5 @@
 import { Show } from "solid-js";
-import type { SourceType, SortType, TabType } from "../App.js";
+import type { SourceType, SortType, TabType } from "../types/index.js";
 import type { ColorPaletteName } from "../config/themes.js";
 import type { TotalBreakdown } from "../hooks/useData.js";
 import { getPalette } from "../config/themes.js";

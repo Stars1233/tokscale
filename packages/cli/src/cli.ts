@@ -43,6 +43,7 @@ import { createSpinner } from "./spinner.js";
 import * as fs from "node:fs";
 import { performance } from "node:perf_hooks";
 import type { SourceType } from "./graph-types.js";
+import type { TUIOptions, TabType } from "./tui/types/index.js";
 
 interface FilterOptions {
   opencode?: boolean;
@@ -127,6 +128,22 @@ function getDateRangeLabel(options: DateFilterOptions): string | null {
   return null;
 }
 
+function buildTUIOptions(
+  options: FilterOptions & DateFilterOptions,
+  initialTab?: TabType
+): TUIOptions {
+  const dateFilters = getDateFilters(options);
+  const enabledSources = getEnabledSources(options);
+
+  return {
+    initialTab,
+    enabledSources: enabledSources as TUIOptions["enabledSources"],
+    since: dateFilters.since,
+    until: dateFilters.until,
+    year: dateFilters.year,
+  };
+}
+
 async function main() {
   const program = new Command();
 
@@ -137,7 +154,8 @@ async function main() {
 
   program
     .command("monthly")
-    .description("Show monthly usage report")
+    .description("Show monthly usage report (launches TUI by default)")
+    .option("--light", "Use legacy CLI table output instead of TUI")
     .option("--opencode", "Show only OpenCode usage")
     .option("--claude", "Show only Claude Code usage")
     .option("--codex", "Show only Codex CLI usage")
@@ -151,12 +169,18 @@ async function main() {
     .option("--year <year>", "Filter to specific year")
     .option("--benchmark", "Show processing time")
     .action(async (options) => {
-      await showMonthlyReport(options);
+      if (options.light) {
+        await showMonthlyReport(options);
+      } else {
+        const { launchTUI } = await import("./tui/index.js");
+        await launchTUI(buildTUIOptions(options, "daily"));
+      }
     });
 
   program
     .command("models")
-    .description("Show usage breakdown by model")
+    .description("Show usage breakdown by model (launches TUI by default)")
+    .option("--light", "Use legacy CLI table output instead of TUI")
     .option("--opencode", "Show only OpenCode usage")
     .option("--claude", "Show only Claude Code usage")
     .option("--codex", "Show only Codex CLI usage")
@@ -170,7 +194,12 @@ async function main() {
     .option("--year <year>", "Filter to specific year")
     .option("--benchmark", "Show processing time")
     .action(async (options) => {
-      await showModelReport(options);
+      if (options.light) {
+        await showModelReport(options);
+      } else {
+        const { launchTUI } = await import("./tui/index.js");
+        await launchTUI(buildTUIOptions(options, "model"));
+      }
     });
 
   program
@@ -255,9 +284,20 @@ async function main() {
   program
     .command("tui")
     .description("Launch interactive terminal UI")
-    .action(async () => {
+    .option("--opencode", "Show only OpenCode usage")
+    .option("--claude", "Show only Claude Code usage")
+    .option("--codex", "Show only Codex CLI usage")
+    .option("--gemini", "Show only Gemini CLI usage")
+    .option("--cursor", "Show only Cursor IDE usage")
+    .option("--today", "Show only today's usage")
+    .option("--week", "Show last 7 days")
+    .option("--month", "Show current month")
+    .option("--since <date>", "Start date (YYYY-MM-DD)")
+    .option("--until <date>", "End date (YYYY-MM-DD)")
+    .option("--year <year>", "Filter to specific year")
+    .action(async (options) => {
       const { launchTUI } = await import("./tui/index.js");
-      await launchTUI();
+      await launchTUI(buildTUIOptions(options));
     });
 
   // =========================================================================
@@ -291,17 +331,21 @@ async function main() {
 
   // Check if a subcommand was provided
   const args = process.argv.slice(2);
-  const hasSubcommand = args.length > 0 && !args[0].startsWith('-');
+  const firstArg = args[0] || '';
+  // Global flags should go to main program
+  const isGlobalFlag = ['--help', '-h', '--version', '-V'].includes(firstArg);
+  const hasSubcommand = args.length > 0 && !firstArg.startsWith('-');
   const knownCommands = ['monthly', 'models', 'graph', 'login', 'logout', 'whoami', 'submit', 'cursor', 'tui', 'help'];
-  const isKnownCommand = hasSubcommand && knownCommands.includes(args[0]);
+  const isKnownCommand = hasSubcommand && knownCommands.includes(firstArg);
 
-  if (isKnownCommand) {
-    // Run the specified subcommand
+  if (isKnownCommand || isGlobalFlag) {
+    // Run the specified subcommand or show full help/version
     await program.parseAsync();
   } else {
-    // No subcommand or unknown command - run default models report with options
+    // No subcommand - launch TUI by default, or legacy CLI with --light
     const defaultProgram = new Command();
     defaultProgram
+      .option("--light", "Use legacy CLI table output instead of TUI")
       .option("--opencode", "Show only OpenCode usage")
       .option("--claude", "Show only Claude Code usage")
       .option("--codex", "Show only Codex CLI usage")
@@ -315,7 +359,14 @@ async function main() {
       .option("--year <year>", "Filter to specific year")
       .option("--benchmark", "Show processing time")
       .parse();
-    await showModelReport(defaultProgram.opts());
+    
+    const opts = defaultProgram.opts();
+    if (opts.light) {
+      await showModelReport(opts);
+    } else {
+      const { launchTUI } = await import("./tui/index.js");
+      await launchTUI(buildTUIOptions(opts));
+    }
   }
 }
 

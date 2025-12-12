@@ -1,5 +1,5 @@
 import { createSignal, createEffect, on, type Accessor } from "solid-js";
-import type { SourceType } from "../App.js";
+import type { SourceType } from "../types/index.js";
 import {
   isNativeAvailable,
   parseLocalSourcesNative,
@@ -12,7 +12,13 @@ import { syncCursorCache, loadCursorCredentials } from "../../cursor.js";
 import { getModelColor } from "../utils/colors.js";
 import type { ChartDataPoint } from "../components/BarChart.js";
 
-export type { SortType } from "../App.js";
+export type { SortType } from "../types/index.js";
+
+export interface DateFilters {
+  since?: string;
+  until?: string;
+  year?: string;
+}
 
 export interface ModelEntry {
   source: string;
@@ -115,7 +121,7 @@ function buildContributionGrid(contributions: ContributionDay[]): GridCell[][] {
   return grid;
 }
 
-async function loadData(enabledSources: Set<SourceType>): Promise<TUIData> {
+async function loadData(enabledSources: Set<SourceType>, dateFilters?: DateFilters): Promise<TUIData> {
   if (!isNativeAvailable()) {
     throw new Error("Native module not available");
   }
@@ -123,6 +129,7 @@ async function loadData(enabledSources: Set<SourceType>): Promise<TUIData> {
   const sources = Array.from(enabledSources);
   const localSources = sources.filter(s => s !== "cursor");
   const includeCursor = sources.includes("cursor");
+  const { since, until, year } = dateFilters ?? {};
 
   const pricingFetcher = new PricingFetcher();
   
@@ -130,7 +137,7 @@ async function loadData(enabledSources: Set<SourceType>): Promise<TUIData> {
     pricingFetcher.fetchPricing(),
     includeCursor && loadCursorCredentials() ? syncCursorCache() : Promise.resolve({ synced: false, rows: 0 }),
     localSources.length > 0
-      ? parseLocalSourcesNative({ sources: localSources as ("opencode" | "claude" | "codex" | "gemini")[] })
+      ? parseLocalSourcesNative({ sources: localSources as ("opencode" | "claude" | "codex" | "gemini")[], since, until, year })
       : Promise.resolve({ messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, processingTimeMs: 0 } as ParsedMessages),
   ]);
 
@@ -147,12 +154,18 @@ async function loadData(enabledSources: Set<SourceType>): Promise<TUIData> {
     localMessages: localMessages || emptyMessages,
     pricing: pricingFetcher.toPricingEntries(),
     includeCursor: includeCursor && cursorSync.synced,
+    since,
+    until,
+    year,
   });
 
   const graph = finalizeGraphNative({
     localMessages: localMessages || emptyMessages,
     pricing: pricingFetcher.toPricingEntries(),
     includeCursor: includeCursor && cursorSync.synced,
+    since,
+    until,
+    year,
   });
 
   const modelEntries: ModelEntry[] = report.entries.map(e => ({
@@ -353,7 +366,7 @@ async function loadData(enabledSources: Set<SourceType>): Promise<TUIData> {
   };
 }
 
-export function useData(enabledSources: Accessor<Set<SourceType>>) {
+export function useData(enabledSources: Accessor<Set<SourceType>>, dateFilters?: DateFilters) {
   const [data, setData] = createSignal<TUIData | null>(null);
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
@@ -368,7 +381,7 @@ export function useData(enabledSources: Accessor<Set<SourceType>>) {
     ([sources]) => {
       setLoading(true);
       setError(null);
-      loadData(sources)
+      loadData(sources, dateFilters)
         .then(setData)
         .catch((e) => setError(e.message))
         .finally(() => setLoading(false));

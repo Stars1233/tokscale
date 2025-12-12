@@ -1,6 +1,10 @@
+import type { ColorPaletteName } from "../config/themes.js";
+
 export type TabType = "overview" | "model" | "daily" | "stats";
 export type SortType = "cost" | "name" | "tokens";
 export type SourceType = "opencode" | "claude" | "codex" | "cursor" | "gemini";
+
+export type { ColorPaletteName };
 
 export interface ModelEntry {
   source: string;
@@ -91,6 +95,19 @@ export interface TUIData {
 export interface TUISettings {
   colorPalette: string;
 }
+
+export interface TUIOptions {
+  initialTab?: TabType;
+  enabledSources?: SourceType[];
+  sortBy?: SortType;
+  sortDesc?: boolean;
+  since?: string;
+  until?: string;
+  year?: string;
+  colorPalette?: ColorPaletteName;
+}
+
+
 
 export const LAYOUT = {
   HEADER_HEIGHT: 2,

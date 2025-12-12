@@ -7,16 +7,16 @@ import { DailyView } from "./components/DailyView.js";
 import { StatsView } from "./components/StatsView.js";
 import { OverviewView } from "./components/OverviewView.js";
 import { LoadingSpinner } from "./components/LoadingSpinner.js";
-import { useData } from "./hooks/useData.js";
+import { useData, type DateFilters } from "./hooks/useData.js";
 import type { ColorPaletteName } from "./config/themes.js";
 import { DEFAULT_PALETTE, getPaletteNames } from "./config/themes.js";
 import { loadSettings, saveSettings } from "./config/settings.js";
+import type { TUIOptions, TabType, SortType, SourceType } from "./types/index.js";
 
-export type TabType = "overview" | "model" | "daily" | "stats";
-export type SortType = "cost" | "name" | "tokens";
-export type SourceType = "opencode" | "claude" | "codex" | "cursor" | "gemini";
+export type AppProps = TUIOptions;
 
 const TABS: readonly TabType[] = ["overview", "model", "daily", "stats"] as const;
+const ALL_SOURCES: readonly SourceType[] = ["opencode", "claude", "codex", "cursor", "gemini"] as const;
 const PALETTE_NAMES = getPaletteNames();
 
 function cycleTabForward(current: TabType): TabType {
@@ -29,25 +29,31 @@ function cycleTabBackward(current: TabType): TabType {
   return TABS[(idx - 1 + TABS.length) % TABS.length];
 }
 
-export function App() {
+export function App(props: AppProps) {
   const terminalDimensions = useTerminalDimensions();
   const columns = () => terminalDimensions().width;
   const rows = () => terminalDimensions().height;
 
   const settings = loadSettings();
-  const [activeTab, setActiveTab] = createSignal<TabType>("overview");
+  const [activeTab, setActiveTab] = createSignal<TabType>(props.initialTab ?? "overview");
   const [enabledSources, setEnabledSources] = createSignal<Set<SourceType>>(
-    new Set(["opencode", "claude", "codex", "cursor", "gemini"])
+    new Set(props.enabledSources ?? ALL_SOURCES)
   );
-  const [sortBy, setSortBy] = createSignal<SortType>("cost");
-  const [sortDesc, setSortDesc] = createSignal(true);
+  const [sortBy, setSortBy] = createSignal<SortType>(props.sortBy ?? "cost");
+  const [sortDesc, setSortDesc] = createSignal(props.sortDesc ?? true);
   const [selectedIndex, setSelectedIndex] = createSignal(0);
   const [scrollOffset, setScrollOffset] = createSignal(0);
   const [colorPalette, setColorPalette] = createSignal<ColorPaletteName>(
-    (settings.colorPalette as ColorPaletteName) || DEFAULT_PALETTE
+    props.colorPalette ?? (settings.colorPalette as ColorPaletteName) ?? DEFAULT_PALETTE
   );
 
-  const { data, loading, error, refresh } = useData(() => enabledSources());
+  const dateFilters: DateFilters = {
+    since: props.since,
+    until: props.until,
+    year: props.year,
+  };
+
+  const { data, loading, error, refresh } = useData(() => enabledSources(), dateFilters);
 
   const contentHeight = () => Math.max(rows() - 6, 12);
   const overviewChartHeight = () => Math.max(5, Math.floor(contentHeight() * 0.35));
