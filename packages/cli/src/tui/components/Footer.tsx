@@ -54,8 +54,10 @@ export function Footer(props: FooterProps) {
           <text fg="cyan">{formatTokens(totals().input)}</text>
           <text dim>Out:</text>
           <text fg="cyan">{formatTokens(totals().output)}</text>
-          <text dim>Cache:</text>
+          <text dim>CR:</text>
           <text fg="cyan">{formatTokens(totals().cacheRead)}</text>
+          <text dim>CW:</text>
+          <text fg="cyan">{formatTokens(totals().cacheWrite)}</text>
           <text dim>|</text>
           <text fg="green" bold>{`$${totals().cost.toFixed(2)}`}</text>
           <text dim>({props.modelCount} models)</text>

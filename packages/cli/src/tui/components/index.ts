@@ -8,3 +8,4 @@ export { BarChart } from "./BarChart.js";
 export type { ChartDataPoint } from "./BarChart.js";
 export { Legend } from "./Legend.js";
 export { ModelListItem } from "./ModelListItem.js";
+export { LoadingSpinner } from "./LoadingSpinner.js";

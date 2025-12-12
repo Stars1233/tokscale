@@ -6,6 +6,7 @@ import { ModelView } from "./components/ModelView.js";
 import { DailyView } from "./components/DailyView.js";
 import { StatsView } from "./components/StatsView.js";
 import { OverviewView } from "./components/OverviewView.js";
+import { LoadingSpinner } from "./components/LoadingSpinner.js";
 import { useData } from "./hooks/useData.js";
 import type { ColorPaletteName } from "./config/themes.js";
 import { DEFAULT_PALETTE, getPaletteNames } from "./config/themes.js";
@@ -187,9 +188,7 @@ export function App() {
       <box flexDirection="column" flexGrow={1} paddingX={1}>
         <Switch>
           <Match when={loading()}>
-            <box justifyContent="center" alignItems="center" flexGrow={1}>
-              <text fg="cyan">Loading data...</text>
-            </box>
+            <LoadingSpinner />
           </Match>
           <Match when={error()}>
             <box justifyContent="center" alignItems="center" flexGrow={1}>
