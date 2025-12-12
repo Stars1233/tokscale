@@ -17,11 +17,17 @@ Get real-time pricing calculations using [LiteLLM's pricing data](https://github
 
 ## Features
 
-- **Multi-platform support** - Track usage across OpenCode, Claude Code, Codex CLI, and Gemini CLI
+- **Interactive TUI Mode** - Beautiful terminal UI powered by OpenTUI (default mode)
+  - 4 interactive views: Overview, Models, Daily, Stats
+  - Keyboard & mouse navigation
+  - GitHub-style contribution graph with 9 color themes
+  - Real-time filtering and sorting
+  - Zero flicker rendering (native Zig engine)
+- **Multi-platform support** - Track usage across OpenCode, Claude Code, Codex CLI, Cursor IDE, and Gemini CLI
 - **Real-time pricing** - Fetches current pricing from LiteLLM with 1-hour disk cache
 - **Detailed breakdowns** - Input, output, cache read/write, and reasoning token tracking
 - **Native Rust core** - All parsing and aggregation done in Rust for 10x faster processing
-- **GitHub-style visualization** - Interactive contribution graph with 2D and 3D views
+- **Web visualization** - Interactive contribution graph with 2D and 3D views
 - **Dark/Light/System themes** - GitHub Primer design system with 3-way theme toggle
 - **Flexible filtering** - Filter by platform, date range, or year
 - **Export to JSON** - Generate data for external visualization tools
@@ -32,6 +38,7 @@ Get real-time pricing calculations using [LiteLLM's pricing data](https://github
 ### Prerequisites
 
 - Node.js 18+
+- Bun (for TUI development mode)
 - (Optional) Rust toolchain for native module
 
 ### Quick Start
@@ -65,18 +72,41 @@ yarn dev graph --benchmark
 ### Basic Commands
 
 ```bash
-# Show usage breakdown by model (default)
+# Launch interactive TUI (default)
 token-tracker
 
-# Show usage breakdown by model
-token-tracker models
+# Launch TUI with specific tab
+token-tracker models    # Models tab
+token-tracker monthly   # Daily tab
 
-# Show monthly usage report  
-token-tracker monthly
+# Use legacy CLI table output
+token-tracker --light
+token-tracker models --light
+
+# Launch TUI explicitly
+token-tracker tui
 
 # Export contribution graph data as JSON
 token-tracker graph --output data.json
 ```
+
+### TUI Features
+
+The interactive TUI mode provides:
+
+- **4 Views**: Overview (chart + top models), Models, Daily, Stats (contribution graph)
+- **Keyboard Navigation**:
+  - `1-4` or `←/→/Tab`: Switch views
+  - `↑/↓`: Navigate lists
+  - `c/n/t`: Sort by cost/name/tokens
+  - `1-5`: Toggle sources (OpenCode/Claude/Codex/Cursor/Gemini)
+  - `p`: Cycle through 9 color themes
+  - `r`: Refresh data
+  - `e`: Export to JSON
+  - `q`: Quit
+- **Mouse Support**: Click tabs, buttons, and filters
+- **Themes**: Green, Halloween, Teal, Blue, Pink, Purple, Orange, Monochrome, YlGnBu
+- **Settings Persistence**: Theme preference saved to `~/.config/token-tracker/tui-settings.json`
 
 ### Filtering by Platform
 
@@ -160,17 +190,25 @@ token-tracker logout
 
 ```
 token-tracker/
-├── src/                    # TypeScript CLI
+├── packages/cli/src/       # TypeScript CLI
 │   ├── cli.ts              # Commander.js entry point
+│   ├── tui/                # OpenTUI interactive interface
+│   │   ├── App.tsx         # Main TUI app (Solid.js)
+│   │   ├── components/     # TUI components
+│   │   ├── hooks/          # Data fetching & state
+│   │   ├── config/         # Themes & settings
+│   │   ├── utils/          # Formatting utilities
+│   │   └── types/          # TypeScript types
 │   ├── opencode.ts         # OpenCode session parser
 │   ├── claudecode.ts       # Claude Code & Codex parser
 │   ├── gemini.ts           # Gemini CLI parser
+│   ├── cursor.ts           # Cursor IDE integration
 │   ├── graph.ts            # Graph data generation
 │   ├── pricing.ts          # LiteLLM pricing fetcher
 │   ├── table.ts            # Terminal table rendering
 │   └── native.ts           # Native module loader
 │
-├── core/                   # Rust native module (napi-rs)
+├── packages/core/          # Rust native module (napi-rs)
 │   ├── src/
 │   │   ├── lib.rs          # NAPI exports
 │   │   ├── scanner.rs      # Parallel file discovery
@@ -231,7 +269,9 @@ All heavy computation is done in Rust. The CLI requires the native module to run
 | Layer | Technology | Purpose |
 |-------|------------|---------|
 | CLI | [Commander.js](https://github.com/tj/commander.js) | Command-line parsing |
-| Tables | [cli-table3](https://github.com/cli-table/cli-table3) | Terminal table rendering |
+| TUI | [OpenTUI](https://github.com/sst/opentui) + [Solid.js](https://www.solidjs.com/) | Interactive terminal UI (zero-flicker rendering) |
+| Runtime | [Bun](https://bun.sh/) | Fast JavaScript runtime (required for TUI dev mode) |
+| Tables | [cli-table3](https://github.com/cli-table/cli-table3) | Terminal table rendering (legacy CLI) |
 | Colors | [picocolors](https://github.com/alexeyraspopov/picocolors) | Terminal colors |
 | Native | [napi-rs](https://napi.rs/) | Node.js bindings for Rust |
 | Parallelism | [Rayon](https://github.com/rayon-rs/rayon) | Data parallelism in Rust |
@@ -368,23 +408,33 @@ cargo --version
 # Install dependencies
 yarn install
 
-# Build native module (optional but recommended)
-cd core && yarn build && cd ..
+# Install Bun (required for TUI development)
+curl -fsSL https://bun.sh/install | bash
 
-# Run in development mode
-yarn dev
+# Build native module (optional but recommended)
+cd packages/core && yarn build && cd ../..
+
+# Run in development mode (launches TUI)
+cd packages/cli && bun src/cli.ts
+
+# Or use legacy CLI mode
+cd packages/cli && bun src/cli.ts --light
 ```
 
 ### Project Scripts
 
 | Script | Description |
 |--------|-------------|
-| `yarn dev` | Run CLI in development mode |
+| `yarn dev` | Run CLI in development mode (TUI with Bun) |
+| `yarn dev:node` | Run CLI with Node.js (tsx) |
+| `yarn tui` | Launch TUI explicitly |
 | `yarn build:core` | Build native Rust module (release) |
 | `yarn build:core:debug` | Build native module (debug) |
 | `yarn bench:generate` | Generate synthetic benchmark data |
 | `yarn bench:ts` | Run TypeScript benchmarks |
 | `yarn bench:rust` | Run Rust native benchmarks |
+
+**Note**: TUI development requires Bun runtime due to OpenTUI's native modules (top-level await, tree-sitter).
 
 ### Testing
 
@@ -589,6 +639,8 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
+- [OpenTUI](https://github.com/sst/opentui) for zero-flicker terminal UI framework
+- [Solid.js](https://www.solidjs.com/) for reactive rendering
 - [LiteLLM](https://github.com/BerriAI/litellm) for pricing data
 - [napi-rs](https://napi.rs/) for Rust/Node.js bindings
 - [Isometric Contributions](https://github.com/jasonlong/isometric-contributions) for 3D graph inspiration
