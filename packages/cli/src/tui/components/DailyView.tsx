@@ -27,8 +27,6 @@ export function DailyView(props: DailyViewProps) {
 
   const visibleEntries = createMemo(() => sortedEntries().slice(0, props.height - 3));
 
-  const formatCost = (cost: number) => `$${cost.toFixed(2)}`;
-
   return (
     <box flexDirection="column">
       <box flexDirection="row">
