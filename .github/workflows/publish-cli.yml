@@ -48,7 +48,7 @@ jobs:
 
       - name: Build CLI
         if: steps.version-check.outputs.version_changed == 'true'
-        run: bun --filter @0xinevitable/token-tracker run build
+        run: bun run --cwd packages/cli build
 
       - name: Publish CLI
         if: steps.version-check.outputs.version_changed == 'true'

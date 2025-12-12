@@ -208,7 +208,7 @@ jobs:
         run: bun install
 
       - name: Build CLI
-        run: bun --filter @0xinevitable/token-tracker run build
+        run: bun run --cwd packages/cli build
 
       - name: Publish CLI
         working-directory: packages/cli

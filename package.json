@@ -12,10 +12,10 @@
   "scripts": {
     "postinstall": "bun run build:core",
     "build": "bun run build:core && bun run build:cli",
-    "build:cli": "bun --filter @0xinevitable/token-tracker run build",
-    "build:core": "bun --filter @0xinevitable/token-tracker-core run build",
-    "cli": "bun --filter @0xinevitable/token-tracker run dev",
-    "dev:frontend": "bun --filter @token-tracker/frontend run dev"
+    "build:cli": "bun run --cwd packages/cli build",
+    "build:core": "bun run --cwd packages/core build",
+    "cli": "bun run --cwd packages/cli dev",
+    "dev:frontend": "bun run --cwd frontend dev"
   },
   "devDependencies": {
     "@napi-rs/cli": "^3.4.1",
