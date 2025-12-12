@@ -1,4 +1,3 @@
-import { Box, Text } from "ink";
 import type { ReactNode } from "react";
 
 export interface ChartDataPoint {
@@ -28,7 +27,7 @@ function getDominantColor(models: { modelId: string; tokens: number; color: stri
 }
 
 export function BarChart({ data, width, height }: BarChartProps) {
-  if (data.length === 0) return <Text dimColor>No chart data</Text>;
+  if (data.length === 0) return <text dim>No chart data</text>;
 
   const safeHeight = Math.max(height, 1);
   const maxTotal = Math.max(...data.map((d) => d.total), 1);
@@ -47,9 +46,9 @@ export function BarChart({ data, width, height }: BarChartProps) {
     const barElements = visibleData.map((point, i) => {
       if (point.total <= prevThreshold) {
         return (
-          <Text key={i} dimColor>
+          <text key={i} dim>
             {" ".repeat(barWidth)}
-          </Text>
+          </text>
         );
       }
 
@@ -57,27 +56,27 @@ export function BarChart({ data, width, height }: BarChartProps) {
 
       if (point.total >= rowThreshold) {
         return (
-          <Text key={i} color={color}>
+          <text key={i} fg={color}>
             {"█".repeat(barWidth)}
-          </Text>
+          </text>
         );
       }
 
       const ratio = thresholdDiff > 0 ? (point.total - prevThreshold) / thresholdDiff : 1;
       const blockIndex = Math.min(8, Math.max(1, Math.floor(ratio * 8)));
       return (
-        <Text key={i} color={color}>
+        <text key={i} fg={color}>
           {BLOCKS[blockIndex].repeat(barWidth)}
-        </Text>
+        </text>
       );
     });
 
     const yLabel = row === safeHeight - 1 ? formatNumber(maxTotal).padStart(6) : "      ";
     rows.push(
-      <Box key={row}>
-        <Text dimColor>{yLabel}│</Text>
+      <box key={row}>
+        <text dim>{yLabel}│</text>
         {barElements}
-      </Box>
+      </box>
     );
   }
 
@@ -98,21 +97,21 @@ export function BarChart({ data, width, height }: BarChartProps) {
   const labelPadding = dateLabels.length > 0 ? Math.floor(axisWidth / dateLabels.length) : 0;
 
   return (
-    <Box flexDirection="column">
-      <Text bold>Tokens per Day</Text>
+    <box flexDirection="column">
+      <text bold>Tokens per Day</text>
       {rows}
-      <Box>
-        <Text dimColor>{"     0│"}</Text>
-        <Text dimColor>{"─".repeat(axisWidth)}</Text>
-      </Box>
+      <box>
+        <text dim>{"     0│"}</text>
+        <text dim>{"─".repeat(axisWidth)}</text>
+      </box>
       {dateLabels.length > 0 && (
-        <Box>
-          <Text dimColor>{"       "}</Text>
-          <Text dimColor>
+        <box>
+          <text dim>{"       "}</text>
+          <text dim>
             {dateLabels.map((l) => l.padEnd(labelPadding)).join("")}
-          </Text>
-        </Box>
+          </text>
+        </box>
       )}
-    </Box>
+    </box>
   );
 }

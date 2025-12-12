@@ -1,7 +1,10 @@
-import { render } from "ink";
+import { createCliRenderer } from "@opentui/core";
+import { createRoot } from "@opentui/react";
 import { App } from "./App.js";
 
 export async function launchTUI() {
-  const { waitUntilExit } = render(<App />);
-  await waitUntilExit();
+  const renderer = await createCliRenderer({
+    exitOnCtrlC: false,
+  });
+  createRoot(renderer).render(<App />);
 }

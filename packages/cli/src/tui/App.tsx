@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Box, Text, useInput, useApp, useStdout } from "ink";
+import { useState } from "react";
+import { useKeyboard, useTerminalDimensions } from "@opentui/react";
 import { Header } from "./components/Header.js";
 import { Footer } from "./components/Footer.js";
 import { ModelView } from "./components/ModelView.js";
@@ -7,6 +7,9 @@ import { DailyView } from "./components/DailyView.js";
 import { StatsView } from "./components/StatsView.js";
 import { OverviewView } from "./components/OverviewView.js";
 import { useData } from "./hooks/useData.js";
+import type { ColorPaletteName } from "./config/themes.js";
+import { DEFAULT_PALETTE, getPaletteNames } from "./config/themes.js";
+import { loadSettings, saveSettings } from "./config/settings.js";
 
 export type TabType = "overview" | "model" | "daily" | "stats";
 export type SortType = "cost" | "name" | "tokens";
@@ -19,43 +22,38 @@ export interface AppState {
   sortDesc: boolean;
   selectedIndex: number;
   scrollOffset: number;
-}
-
-function useStdoutDimensions(): [number, number] {
-  const { stdout } = useStdout();
-  const [dimensions, setDimensions] = useState<[number, number]>([stdout.columns || 80, stdout.rows || 24]);
-  
-  useEffect(() => {
-    const handler = () => setDimensions([stdout.columns || 80, stdout.rows || 24]);
-    stdout.on("resize", handler);
-    return () => { stdout.off("resize", handler); };
-  }, [stdout]);
-  
-  return dimensions;
+  colorPalette: ColorPaletteName;
 }
 
 export function App() {
-  const { exit } = useApp();
-  const [columns, rows] = useStdoutDimensions();
+  const { width: columns, height: rows } = useTerminalDimensions();
   
-  const [state, setState] = useState<AppState>({
-    activeTab: "overview",
-    enabledSources: new Set(["opencode", "claude", "codex", "cursor", "gemini"]),
-    sortBy: "cost",
-    sortDesc: true,
-    selectedIndex: 0,
-    scrollOffset: 0,
+  const [state, setState] = useState<AppState>(() => {
+    const settings = loadSettings();
+    return {
+      activeTab: "overview",
+      enabledSources: new Set(["opencode", "claude", "codex", "cursor", "gemini"]),
+      sortBy: "cost",
+      sortDesc: true,
+      selectedIndex: 0,
+      scrollOffset: 0,
+      colorPalette: (settings.colorPalette as ColorPaletteName) || DEFAULT_PALETTE,
+    };
   });
 
   const { data, loading, error, refresh } = useData(state.enabledSources);
 
-  useInput((input, key) => {
-    if (input === "q") {
-      exit();
-      return;
+  const contentHeight = Math.max(rows - 6, 12);
+  const overviewChartHeight = Math.max(5, Math.floor(contentHeight * 0.35));
+  const overviewListHeight = Math.max(4, contentHeight - overviewChartHeight - 4);
+  const overviewItemsPerPage = Math.max(1, Math.floor(overviewListHeight / 2));
+
+  useKeyboard((key) => {
+    if (key.name === "q") {
+      process.exit(0);
     }
 
-    if (input === "r") {
+    if (key.name === "r") {
       refresh();
       return;
     }
@@ -66,7 +64,7 @@ export function App() {
       return tabs[(idx + 1) % tabs.length];
     };
 
-    if (key.tab || input === "d") {
+    if (key.name === "tab" || key.name === "d") {
       setState((s) => ({
         ...s,
         activeTab: cycleTab(s.activeTab),
@@ -76,20 +74,32 @@ export function App() {
       return;
     }
 
-    if (input === "c") {
+    if (key.name === "c") {
       setState((s) => ({ ...s, sortBy: "cost", sortDesc: true }));
       return;
     }
-    if (input === "n") {
+    if (key.name === "n") {
       setState((s) => ({ ...s, sortBy: "name", sortDesc: false }));
       return;
     }
-    if (input === "t") {
+    if (key.name === "t") {
       setState((s) => ({ ...s, sortBy: "tokens", sortDesc: true }));
       return;
     }
 
-    if (input === "1") {
+    if (key.name === "p") {
+      setState((s) => {
+        const palettes = getPaletteNames();
+        const currentIdx = palettes.indexOf(s.colorPalette);
+        const nextIdx = (currentIdx + 1) % palettes.length;
+        const newPalette = palettes[nextIdx];
+        saveSettings({ colorPalette: newPalette });
+        return { ...s, colorPalette: newPalette };
+      });
+      return;
+    }
+
+    if (key.name === "1") {
       setState((s) => {
         const newSources = new Set(s.enabledSources);
         if (newSources.has("opencode")) newSources.delete("opencode");
@@ -98,7 +108,7 @@ export function App() {
       });
       return;
     }
-    if (input === "2") {
+    if (key.name === "2") {
       setState((s) => {
         const newSources = new Set(s.enabledSources);
         if (newSources.has("claude")) newSources.delete("claude");
@@ -107,7 +117,7 @@ export function App() {
       });
       return;
     }
-    if (input === "3") {
+    if (key.name === "3") {
       setState((s) => {
         const newSources = new Set(s.enabledSources);
         if (newSources.has("codex")) newSources.delete("codex");
@@ -116,7 +126,7 @@ export function App() {
       });
       return;
     }
-    if (input === "4") {
+    if (key.name === "4") {
       setState((s) => {
         const newSources = new Set(s.enabledSources);
         if (newSources.has("cursor")) newSources.delete("cursor");
@@ -125,7 +135,7 @@ export function App() {
       });
       return;
     }
-    if (input === "5") {
+    if (key.name === "5") {
       setState((s) => {
         const newSources = new Set(s.enabledSources);
         if (newSources.has("gemini")) newSources.delete("gemini");
@@ -135,7 +145,7 @@ export function App() {
       return;
     }
 
-    if (key.upArrow) {
+    if (key.name === "up") {
       setState((s) => {
         if (s.activeTab === "overview" && s.scrollOffset > 0) {
           return { ...s, scrollOffset: s.scrollOffset - 1 };
@@ -144,7 +154,7 @@ export function App() {
       });
       return;
     }
-    if (key.downArrow) {
+    if (key.name === "down") {
       setState((s) => {
         if (s.activeTab === "overview") {
           const chartH = Math.max(5, Math.floor(contentHeight * 0.35));
@@ -158,7 +168,7 @@ export function App() {
       return;
     }
 
-    if (input === "e" && data) {
+    if (key.name === "e" && data) {
       import("node:fs").then((fs) => {
         const exportData = {
           exportedAt: new Date().toISOString(),
@@ -175,25 +185,19 @@ export function App() {
     }
   });
 
-  const contentHeight = Math.max(rows - 6, 12);
-  
-  const overviewChartHeight = Math.max(5, Math.floor(contentHeight * 0.35));
-  const overviewListHeight = Math.max(4, contentHeight - overviewChartHeight - 4);
-  const overviewItemsPerPage = Math.max(1, Math.floor(overviewListHeight / 2));
-
   return (
-    <Box flexDirection="column" width={columns} height={rows}>
+    <box flexDirection="column" width={columns} height={rows}>
       <Header activeTab={state.activeTab} />
       
-      <Box flexDirection="column" flexGrow={1} paddingX={1}>
+      <box flexDirection="column" flexGrow={1} paddingX={1}>
         {loading ? (
-          <Box justifyContent="center" alignItems="center" flexGrow={1}>
-            <Text color="cyan">Loading data...</Text>
-          </Box>
+          <box justifyContent="center" alignItems="center" flexGrow={1}>
+            <text fg="cyan">Loading data...</text>
+          </box>
         ) : error ? (
-          <Box justifyContent="center" alignItems="center" flexGrow={1}>
-            <Text color="red">Error: {error}</Text>
-          </Box>
+          <box justifyContent="center" alignItems="center" flexGrow={1}>
+            <text fg="red">Error: {error}</text>
+          </box>
         ) : (
           <>
             {state.activeTab === "overview" && (
@@ -224,11 +228,15 @@ export function App() {
               />
             )}
             {state.activeTab === "stats" && (
-              <StatsView data={data} height={contentHeight} />
+              <StatsView 
+                data={data} 
+                height={contentHeight} 
+                colorPalette={state.colorPalette}
+              />
             )}
           </>
         )}
-      </Box>
+      </box>
 
       <Footer 
         enabledSources={state.enabledSources}
@@ -239,7 +247,8 @@ export function App() {
         scrollStart={state.scrollOffset}
         scrollEnd={Math.min(state.scrollOffset + overviewItemsPerPage, data?.topModels.length ?? 0)}
         totalItems={data?.topModels.length}
+        colorPalette={state.colorPalette}
       />
-    </Box>
+    </box>
   );
 }

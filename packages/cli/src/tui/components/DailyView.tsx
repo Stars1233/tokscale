@@ -1,4 +1,3 @@
-import { Box, Text } from "ink";
 import type { TUIData, SortType } from "../hooks/useData.js";
 
 interface DailyViewProps {
@@ -32,43 +31,43 @@ export function DailyView({ data, sortBy, sortDesc, selectedIndex, height }: Dai
   const formatCost = (cost: number) => `$${cost.toFixed(2)}`;
 
   return (
-    <Box flexDirection="column">
-      <Box>
-        <Text color="cyan" bold>
+    <box flexDirection="column">
+      <box>
+        <text fg="cyan" bold>
           {"  Date".padEnd(14)}
           {"Input".padStart(14)}
           {"Output".padStart(14)}
           {"Cache".padStart(14)}
           {"Total".padStart(16)}
           {"Cost".padStart(12)}
-        </Text>
-      </Box>
-      <Box borderStyle="single" borderTop={false} borderLeft={false} borderRight={false} borderBottom borderColor="gray" />
+        </text>
+      </box>
+      <box borderStyle="single" borderTop={false} borderLeft={false} borderRight={false} borderBottom borderColor="gray" />
       
       {visibleEntries.map((entry, i) => {
         const isSelected = i === selectedIndex;
         
         return (
-          <Box key={entry.date}>
-            <Text 
+          <box key={entry.date}>
+            <text 
               backgroundColor={isSelected ? "blue" : undefined}
-              color={isSelected ? "white" : undefined}
+              fg={isSelected ? "white" : undefined}
             >
               {entry.date.padEnd(14)}
               {formatNum(entry.input).padStart(14)}
               {formatNum(entry.output).padStart(14)}
               {formatNum(entry.cache).padStart(14)}
               {formatNum(entry.total).padStart(16)}
-            </Text>
-            <Text 
-              color="green" 
+            </text>
+            <text 
+              fg="green" 
               backgroundColor={isSelected ? "blue" : undefined}
             >
               {formatCost(entry.cost).padStart(12)}
-            </Text>
-          </Box>
+            </text>
+          </box>
         );
       })}
-    </Box>
+    </box>
   );
 }

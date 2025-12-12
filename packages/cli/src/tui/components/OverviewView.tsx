@@ -1,4 +1,3 @@
-import { Box, Text } from "ink";
 import { BarChart } from "./BarChart.js";
 import { Legend } from "./Legend.js";
 import { ModelListItem } from "./ModelListItem.js";
@@ -18,7 +17,7 @@ function formatCost(cost: number): string {
 }
 
 export function OverviewView({ data, selectedIndex, scrollOffset, height, width }: OverviewViewProps) {
-  if (!data) return <Text dimColor>No data</Text>;
+  if (!data) return <text dim>No data</text>;
 
   const safeHeight = Math.max(height, 12);
   const chartHeight = Math.max(5, Math.floor(safeHeight * 0.35));
@@ -32,19 +31,22 @@ export function OverviewView({ data, selectedIndex, scrollOffset, height, width 
   const endIndex = Math.min(scrollOffset + visibleModels.length, totalModels);
 
   return (
-    <Box flexDirection="column" gap={1}>
-      <Box flexDirection="column">
+    <box flexDirection="column" gap={1}>
+      <box flexDirection="column">
         <BarChart data={data.chartData} width={width - 4} height={chartHeight} />
         <Legend models={topModelsForLegend} />
-      </Box>
+      </box>
 
-      <Box flexDirection="column">
-        <Box justifyContent="space-between" marginBottom={0}>
-          <Text bold>Models by Cost</Text>
-          <Text dimColor>Total: <Text color="green">{formatCost(data.totalCost)}</Text></Text>
-        </Box>
+      <box flexDirection="column">
+        <box justifyContent="space-between" marginBottom={0}>
+          <text bold>Models by Cost</text>
+          <box>
+            <text dim>Total: </text>
+            <text fg="green">{formatCost(data.totalCost)}</text>
+          </box>
+        </box>
         
-        <Box flexDirection="column">
+        <box flexDirection="column">
           {visibleModels.map((model, i) => (
             <ModelListItem
               key={model.modelId}
@@ -55,14 +57,12 @@ export function OverviewView({ data, selectedIndex, scrollOffset, height, width 
               isSelected={scrollOffset + i === selectedIndex}
             />
           ))}
-        </Box>
+        </box>
         
         {totalModels > visibleModels.length && (
-          <Text dimColor>
-            ↓ {scrollOffset + 1}-{endIndex} of {totalModels} models (↑↓ to scroll)
-          </Text>
+          <text dim>{`↓ ${scrollOffset + 1}-${endIndex} of ${totalModels} models (↑↓ to scroll)`}</text>
         )}
-      </Box>
-    </Box>
+      </box>
+    </box>
   );
 }

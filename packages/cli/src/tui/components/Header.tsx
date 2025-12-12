@@ -1,4 +1,3 @@
-import { Box, Text } from "ink";
 import type { TabType } from "../App.js";
 
 interface HeaderProps {
@@ -7,25 +6,25 @@ interface HeaderProps {
 
 export function Header({ activeTab }: HeaderProps) {
   return (
-    <Box paddingX={1} paddingY={0} justifyContent="space-between">
-      <Box gap={2}>
+    <box paddingX={1} paddingY={0} justifyContent="space-between">
+      <box gap={2}>
         <Tab name="Overview" active={activeTab === "overview"} />
         <Tab name="Models" active={activeTab === "model"} />
         <Tab name="Daily" active={activeTab === "daily"} />
         <Tab name="Stats" active={activeTab === "stats"} />
-      </Box>
-      <Text color="cyan" bold>Token Usage Tracker</Text>
-    </Box>
+      </box>
+      <text fg="cyan" bold>Token Usage Tracker</text>
+    </box>
   );
 }
 
 function Tab({ name, active }: { name: string; active: boolean }) {
   if (active) {
     return (
-      <Box>
-        <Text backgroundColor="cyan" color="black" bold> {name} </Text>
-      </Box>
+      <box>
+        <text backgroundColor="cyan" fg="black" bold>{` ${name} `}</text>
+      </box>
     );
   }
-  return <Text dimColor>{name}</Text>;
+  return <text dim>{name}</text>;
 }
