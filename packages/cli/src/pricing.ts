@@ -113,8 +113,16 @@ export class PricingFetcher {
       return this.pricingData;
     }
 
-    // Fetch from LiteLLM
-    const response = await fetch(LITELLM_PRICING_URL);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    
+    let response: Response;
+    try {
+      response = await fetch(LITELLM_PRICING_URL, { signal: controller.signal });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+    
     if (!response.ok) {
       throw new Error(`Failed to fetch pricing: ${response.status}`);
     }
