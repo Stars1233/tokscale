@@ -50,14 +50,27 @@ export function App() {
       return;
     }
 
-    const cycleTab = (current: TabType): TabType => {
-      const tabs: TabType[] = ["overview", "model", "daily", "stats"];
+    const tabs: TabType[] = ["overview", "model", "daily", "stats"];
+    
+    const cycleTabForward = (current: TabType): TabType => {
       const idx = tabs.indexOf(current);
       return tabs[(idx + 1) % tabs.length];
     };
 
-    if (key.name === "tab" || key.name === "d") {
-      setActiveTab(cycleTab(activeTab()));
+    const cycleTabBackward = (current: TabType): TabType => {
+      const idx = tabs.indexOf(current);
+      return tabs[(idx - 1 + tabs.length) % tabs.length];
+    };
+
+    if (key.name === "tab" || key.name === "d" || key.name === "right") {
+      setActiveTab(cycleTabForward(activeTab()));
+      setSelectedIndex(0);
+      setScrollOffset(0);
+      return;
+    }
+
+    if (key.name === "left") {
+      setActiveTab(cycleTabBackward(activeTab()));
       setSelectedIndex(0);
       setScrollOffset(0);
       return;

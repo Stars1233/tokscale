@@ -53,7 +53,7 @@ export function Footer(props: FooterProps) {
       </box>
       <box>
         <text dim>
-          {`↑↓ scroll • tab/d view • c/n/t sort • 1-5 filter • p theme (${palette().name}) • r refresh • q quit`}
+          {`↑↓ scroll • ←→/tab view • c/n/t sort • 1-5 filter • p theme (${palette().name}) • r refresh • q quit`}
         </text>
       </box>
     </box>

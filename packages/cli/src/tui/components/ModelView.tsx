@@ -1,5 +1,6 @@
 import { For } from "solid-js";
 import type { TUIData, SortType } from "../hooks/useData.js";
+import { getModelColor } from "../utils/colors.js";
 
 interface ModelViewProps {
   data: TUIData;
@@ -53,11 +54,12 @@ export function ModelView(props: ModelViewProps) {
 
           return (
             <box flexDirection="row">
+              <text fg={getModelColor(entry.model)} backgroundColor={isSelected() ? "blue" : undefined}>●</text>
               <text
                 backgroundColor={isSelected() ? "blue" : undefined}
                 fg={isSelected() ? "white" : undefined}
               >
-                {displayName.padEnd(24)}
+                {displayName.padEnd(23)}
                 {formatNum(entry.input).padStart(12)}
                 {formatNum(entry.output).padStart(12)}
                 {formatNum(entry.cacheRead).padStart(12)}

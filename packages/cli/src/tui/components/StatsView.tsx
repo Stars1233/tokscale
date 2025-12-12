@@ -2,6 +2,7 @@ import { For } from "solid-js";
 import type { TUIData } from "../hooks/useData.js";
 import type { ColorPaletteName } from "../config/themes.js";
 import { getPalette, getGradeColor } from "../config/themes.js";
+import { getModelColor } from "../utils/colors.js";
 
 interface StatsViewProps {
   data: TUIData;
@@ -81,7 +82,7 @@ export function StatsView(props: StatsViewProps) {
           <box flexDirection="column">
             <box flexDirection="row" gap={1}>
               <text dim>Favorite model:</text>
-              <text fg="cyan">{props.data.stats.favoriteModel}</text>
+              <text fg={getModelColor(props.data.stats.favoriteModel)}>{props.data.stats.favoriteModel}</text>
             </box>
             <box flexDirection="row" gap={1}>
               <text dim>Sessions:</text>
