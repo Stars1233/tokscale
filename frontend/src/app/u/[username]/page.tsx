@@ -13,11 +13,14 @@ import {
   ProfileModels,
   ProfileActivity,
   ProfileEmptyActivity,
+  ProfileStats,
   type ProfileUser,
   type ProfileStatsData,
   type ProfileTab,
+  type ModelUsage,
 } from "@/components/profile";
 import type { TokenContributionData, DailyContribution, SourceType } from "@/lib/types";
+import { calculateCurrentStreak, calculateLongestStreak } from "@/lib/utils";
 
 interface ProfileData {
   user: {
@@ -44,6 +47,7 @@ interface ProfileData {
   };
   sources: string[];
   models: string[];
+  modelUsage?: ModelUsage[];
   contributions: DailyContribution[];
 }
 
@@ -208,10 +212,20 @@ export default function ProfilePage() {
           <ProfileTabBar activeTab={activeTab} onTabChange={setActiveTab} />
 
           {activeTab === "activity" && (
-            graphData ? <ProfileActivity data={graphData} /> : <ProfileEmptyActivity />
+            graphData ? (
+              <div className="flex flex-col gap-6">
+                <ProfileActivity data={graphData} />
+                <ProfileStats
+                  stats={stats}
+                  currentStreak={calculateCurrentStreak(graphData.contributions)}
+                  longestStreak={calculateLongestStreak(graphData.contributions)}
+                  favoriteModel={data.models.filter(m => m !== "<synthetic>")[0]}
+                />
+              </div>
+            ) : <ProfileEmptyActivity />
           )}
           {activeTab === "breakdown" && <TokenBreakdown stats={stats} />}
-          {activeTab === "models" && <ProfileModels models={data.models} />}
+          {activeTab === "models" && <ProfileModels models={data.models} modelUsage={data.modelUsage} />}
         </div>
       </main>
 

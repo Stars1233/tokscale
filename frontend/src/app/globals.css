@@ -74,6 +74,10 @@ button {
   cursor: pointer;
 }
 
+a:hover {
+  text-decoration: none;
+}
+
 .bg-canvas { background-color: #141415; }
 .bg-canvas-subtle { background-color: #1F1F20; }
 .bg-card { background-color: #1F1F20; }

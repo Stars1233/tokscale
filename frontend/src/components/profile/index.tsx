@@ -238,6 +238,13 @@ export interface TokenBreakdownProps {
 export function TokenBreakdown({ stats }: TokenBreakdownProps) {
   const { totalTokens, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens } = stats;
 
+  const tokenTypes = [
+    { label: "Input", value: inputTokens, color: "#006edb", percentage: totalTokens > 0 ? (inputTokens / totalTokens) * 100 : 0 },
+    { label: "Output", value: outputTokens, color: "#894ceb", percentage: totalTokens > 0 ? (outputTokens / totalTokens) * 100 : 0 },
+    { label: "Cache Read", value: cacheReadTokens, color: "#30a147", percentage: totalTokens > 0 ? (cacheReadTokens / totalTokens) * 100 : 0 },
+    { label: "Cache Write", value: cacheWriteTokens, color: "#eb670f", percentage: totalTokens > 0 ? (cacheWriteTokens / totalTokens) * 100 : 0 },
+  ];
+
   return (
     <div
       className="rounded-2xl border p-4 sm:p-6"
@@ -246,103 +253,199 @@ export function TokenBreakdown({ stats }: TokenBreakdownProps) {
       {totalTokens > 0 && (
         <div className="mb-6">
           <div
-            className="h-2 rounded-full overflow-hidden flex"
+            className="h-3 rounded-full overflow-hidden flex"
             style={{ backgroundColor: "#262627" }}
           >
-            <div
-              style={{
-                width: `${(inputTokens / totalTokens) * 100}%`,
-                backgroundColor: "#006edb",
-              }}
-              title={`Input: ${formatNumber(inputTokens)}`}
-            />
-            <div
-              style={{
-                width: `${(outputTokens / totalTokens) * 100}%`,
-                backgroundColor: "#894ceb",
-              }}
-              title={`Output: ${formatNumber(outputTokens)}`}
-            />
-            <div
-              style={{
-                width: `${(cacheReadTokens / totalTokens) * 100}%`,
-                backgroundColor: "#30a147",
-              }}
-              title={`Cache Read: ${formatNumber(cacheReadTokens)}`}
-            />
-            <div
-              style={{
-                width: `${(cacheWriteTokens / totalTokens) * 100}%`,
-                backgroundColor: "#eb670f",
-              }}
-              title={`Cache Write: ${formatNumber(cacheWriteTokens)}`}
-            />
+            {tokenTypes.map((type) => (
+              <div
+                key={type.label}
+                style={{
+                  width: `${type.percentage}%`,
+                  backgroundColor: type.color,
+                }}
+                title={`${type.label}: ${formatNumber(type.value)}`}
+              />
+            ))}
           </div>
         </div>
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#006edb" }} />
-          <div>
-            <p className="text-xs" style={{ color: "#696969" }}>Input</p>
-            <p
-              className="text-base sm:text-lg font-semibold"
-              style={{ color: "#FFFFFF" }}
-            >
-              {formatNumber(inputTokens)}
-            </p>
+        {tokenTypes.map((type) => (
+          <div key={type.label} className="flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: type.color }} />
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-xs" style={{ color: "#696969" }}>{type.label}</p>
+                {type.percentage > 0 && (
+                  <span className="text-xs" style={{ color: "#525252" }}>
+                    {type.percentage.toFixed(1)}%
+                  </span>
+                )}
+              </div>
+              <p
+                className="text-base sm:text-lg font-semibold"
+                style={{ color: "#FFFFFF" }}
+              >
+                {formatNumber(type.value)}
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#894ceb" }} />
-          <div>
-            <p className="text-xs" style={{ color: "#696969" }}>Output</p>
-            <p
-              className="text-base sm:text-lg font-semibold"
-              style={{ color: "#FFFFFF" }}
-            >
-              {formatNumber(outputTokens)}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#30a147" }} />
-          <div>
-            <p className="text-xs" style={{ color: "#696969" }}>Cache Read</p>
-            <p
-              className="text-base sm:text-lg font-semibold"
-              style={{ color: "#FFFFFF" }}
-            >
-              {formatNumber(cacheReadTokens)}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#eb670f" }} />
-          <div>
-            <p className="text-xs" style={{ color: "#696969" }}>Cache Write</p>
-            <p
-              className="text-base sm:text-lg font-semibold"
-              style={{ color: "#FFFFFF" }}
-            >
-              {formatNumber(cacheWriteTokens)}
-            </p>
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );
 }
 
-export interface ProfileModelsProps {
-  models: string[];
+export interface ProfileStatsProps {
+  stats: ProfileStatsData;
+  currentStreak?: number;
+  longestStreak?: number;
+  favoriteModel?: string;
 }
 
-export function ProfileModels({ models }: ProfileModelsProps) {
+export function ProfileStats({ stats, currentStreak = 0, longestStreak = 0, favoriteModel }: ProfileStatsProps) {
+  const statItems = [
+    { label: "Active Days", value: stats.activeDays.toString(), color: "#53d1f3" },
+    { label: "Current Streak", value: `${currentStreak} days`, color: "#53d1f3" },
+    { label: "Longest Streak", value: `${longestStreak} days`, color: "#53d1f3" },
+    { label: "Submissions", value: (stats.submissionCount ?? 0).toString(), color: "#53d1f3" },
+  ];
+
+  return (
+    <div
+      className="rounded-2xl border p-4 sm:p-6"
+      style={{ backgroundColor: "#141415", borderColor: "#262627" }}
+    >
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+        {statItems.map((item) => (
+          <div key={item.label} className="flex flex-col gap-1">
+            <p className="text-xs sm:text-sm" style={{ color: "#696969" }}>{item.label}</p>
+            <p
+              className="text-lg sm:text-xl font-bold"
+              style={{ color: item.color }}
+            >
+              {item.value}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {favoriteModel && (
+        <div className="mt-4 pt-4 border-t" style={{ borderColor: "#262627" }}>
+          <div className="flex items-center gap-2">
+            <span className="text-sm" style={{ color: "#696969" }}>Favorite Model:</span>
+            <span
+              className="px-2 py-1 rounded-md text-sm font-medium"
+              style={{ backgroundColor: "#262627", color: "#FFFFFF" }}
+            >
+              {favoriteModel}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const MODEL_COLORS: Record<string, string> = {
+  "claude": "#D97706",
+  "sonnet": "#D97706",
+  "opus": "#DC2626",
+  "haiku": "#059669",
+  "gpt": "#10B981",
+  "o1": "#6366F1",
+  "o3": "#8B5CF6",
+  "gemini": "#3B82F6",
+  "deepseek": "#06B6D4",
+  "codex": "#F59E0B",
+};
+
+function getModelColor(modelName: string): string {
+  const lowerName = modelName.toLowerCase();
+  for (const [key, color] of Object.entries(MODEL_COLORS)) {
+    if (lowerName.includes(key)) return color;
+  }
+  return "#6B7280";
+}
+
+export interface ModelUsage {
+  model: string;
+  tokens: number;
+  cost: number;
+  percentage: number;
+}
+
+export interface ProfileModelsProps {
+  models: string[];
+  modelUsage?: ModelUsage[];
+}
+
+export function ProfileModels({ models, modelUsage }: ProfileModelsProps) {
   const filteredModels = models.filter((m) => m !== "<synthetic>");
 
   if (filteredModels.length === 0) return null;
+
+  if (modelUsage && modelUsage.length > 0) {
+    const sortedUsage = [...modelUsage].sort((a, b) => b.cost - a.cost);
+
+    return (
+      <div
+        className="rounded-2xl border overflow-hidden"
+        style={{ backgroundColor: "#141415", borderColor: "#262627" }}
+      >
+        <div
+          className="grid grid-cols-[1fr_auto_auto_auto] gap-4 px-4 sm:px-6 py-3 text-xs font-medium uppercase tracking-wider border-b"
+          style={{ backgroundColor: "#1F1F20", borderColor: "#262627", color: "#696969" }}
+        >
+          <div>Model</div>
+          <div className="text-right w-20 sm:w-24">Tokens</div>
+          <div className="text-right w-16 sm:w-20">Cost</div>
+          <div className="text-right w-12 sm:w-16">%</div>
+        </div>
+
+        <div className="divide-y" style={{ borderColor: "#262627" }}>
+          {sortedUsage.map((usage, index) => (
+            <div
+              key={usage.model}
+              className="grid grid-cols-[1fr_auto_auto_auto] gap-4 px-4 sm:px-6 py-3 items-center"
+              style={{
+                backgroundColor: index % 2 === 1 ? "#1A1A1B" : "transparent",
+              }}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <div
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: getModelColor(usage.model) }}
+                />
+                <span
+                  className="text-sm font-medium truncate"
+                  style={{ color: "#FFFFFF" }}
+                >
+                  {usage.model}
+                </span>
+              </div>
+              <div className="text-right w-20 sm:w-24">
+                <span className="text-sm" style={{ color: "#FFFFFF" }}>
+                  {formatNumber(usage.tokens)}
+                </span>
+              </div>
+              <div className="text-right w-16 sm:w-20">
+                <span className="text-sm font-medium" style={{ color: "#53d1f3" }}>
+                  {formatCurrency(usage.cost)}
+                </span>
+              </div>
+              <div className="text-right w-12 sm:w-16">
+                <span className="text-sm" style={{ color: "#696969" }}>
+                  {usage.percentage.toFixed(1)}%
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -353,9 +456,13 @@ export function ProfileModels({ models }: ProfileModelsProps) {
         {filteredModels.map((model) => (
           <span
             key={model}
-            className="px-3 py-1.5 rounded-full text-sm font-medium"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium"
             style={{ backgroundColor: "#262627", color: "#FFFFFF" }}
           >
+            <span
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: getModelColor(model) }}
+            />
             {model}
           </span>
         ))}

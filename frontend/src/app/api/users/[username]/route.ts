@@ -226,8 +226,27 @@ export async function GET(_request: Request, { params }: RouteParams) {
       };
     });
 
-    // Calculate active days
     const activeDays = contributions.filter((c) => c.tokens > 0).length;
+
+    const modelUsageMap = new Map<string, { tokens: number; cost: number }>();
+    for (const day of contributions) {
+      for (const [model, tokens] of Object.entries(day.models)) {
+        const existing = modelUsageMap.get(model) || { tokens: 0, cost: 0 };
+        existing.tokens += tokens;
+        modelUsageMap.set(model, existing);
+      }
+    }
+
+    const totalModelTokens = Array.from(modelUsageMap.values()).reduce((sum, m) => sum + m.tokens, 0);
+    const modelUsage = Array.from(modelUsageMap.entries())
+      .filter(([model]) => model !== "<synthetic>")
+      .map(([model, data]) => ({
+        model,
+        tokens: data.tokens,
+        cost: 0,
+        percentage: totalModelTokens > 0 ? (data.tokens / totalModelTokens) * 100 : 0,
+      }))
+      .sort((a, b) => b.tokens - a.tokens);
 
     return NextResponse.json({
       user: {
@@ -254,6 +273,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
       },
       sources: latestSubmission?.sourcesUsed || [],
       models: latestSubmission?.modelsUsed || [],
+      modelUsage,
       contributions: graphContributions,
     });
   } catch (error) {
