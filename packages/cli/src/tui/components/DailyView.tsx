@@ -1,4 +1,4 @@
-import { For, createMemo, type Accessor } from "solid-js";
+import { Index, createMemo, type Accessor } from "solid-js";
 import type { TUIData, SortType } from "../hooks/useData.js";
 import { formatTokensCompact, formatCostFull } from "../utils/format.js";
 
@@ -45,28 +45,28 @@ export function DailyView(props: DailyViewProps) {
         </text>
       </box>
 
-      <For each={visibleEntries()}>
+      <Index each={visibleEntries()}>
         {(entry, i) => (
           <box flexDirection="row">
             <text
-              backgroundColor={i() === props.selectedIndex() ? "blue" : (i() % 2 === 0 ? "brightBlack" : undefined)}
-              fg={i() === props.selectedIndex() ? "white" : undefined}
+              backgroundColor={i === props.selectedIndex() ? "blue" : (i % 2 === 0 ? "brightBlack" : undefined)}
+              fg={i === props.selectedIndex() ? "white" : undefined}
             >
-              {entry.date.padEnd(14)}
-              {formatTokensCompact(entry.input).padStart(14)}
-              {formatTokensCompact(entry.output).padStart(14)}
-              {formatTokensCompact(entry.cache).padStart(14)}
-              {formatTokensCompact(entry.total).padStart(16)}
+              {entry().date.padEnd(14)}
+              {formatTokensCompact(entry().input).padStart(14)}
+              {formatTokensCompact(entry().output).padStart(14)}
+              {formatTokensCompact(entry().cache).padStart(14)}
+              {formatTokensCompact(entry().total).padStart(16)}
             </text>
             <text
               fg="green"
-              backgroundColor={i() === props.selectedIndex() ? "blue" : (i() % 2 === 0 ? "brightBlack" : undefined)}
+              backgroundColor={i === props.selectedIndex() ? "blue" : (i % 2 === 0 ? "brightBlack" : undefined)}
             >
-              {formatCostFull(entry.cost).padStart(12)}
+              {formatCostFull(entry().cost).padStart(12)}
             </text>
           </box>
         )}
-      </For>
+      </Index>
     </box>
   );
 }

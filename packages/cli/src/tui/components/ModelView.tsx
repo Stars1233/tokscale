@@ -1,4 +1,4 @@
-import { For, createMemo, type Accessor } from "solid-js";
+import { Index, createMemo, type Accessor } from "solid-js";
 import type { TUIData, SortType } from "../hooks/useData.js";
 import { getModelColor } from "../utils/colors.js";
 import { formatTokensCompact, formatCostFull } from "../utils/format.js";
@@ -92,32 +92,32 @@ export function ModelView(props: ModelViewProps) {
         </text>
       </box>
 
-      <For each={formattedRows()}>
+      <Index each={formattedRows()}>
         {(row, i) => (
           <box flexDirection="row">
             <text 
-              fg={getModelColor(row.entry.model)} 
-              backgroundColor={i() === props.selectedIndex() ? "blue" : (i() % 2 === 0 ? "brightBlack" : undefined)}
+              fg={getModelColor(row().entry.model)} 
+              backgroundColor={i === props.selectedIndex() ? "blue" : (i % 2 === 0 ? "brightBlack" : undefined)}
             >●</text>
             <text
-              backgroundColor={i() === props.selectedIndex() ? "blue" : (i() % 2 === 0 ? "brightBlack" : undefined)}
-              fg={i() === props.selectedIndex() ? "white" : undefined}
+              backgroundColor={i === props.selectedIndex() ? "blue" : (i % 2 === 0 ? "brightBlack" : undefined)}
+              fg={i === props.selectedIndex() ? "white" : undefined}
             >
-              {row.displayName.padEnd(row.nameWidth)}
-              {row.input.padStart(INPUT_COL_WIDTH)}
-              {row.output.padStart(OUTPUT_COL_WIDTH)}
-              {row.cache.padStart(CACHE_COL_WIDTH)}
-              {row.total.padStart(TOTAL_COL_WIDTH)}
+              {row().displayName.padEnd(row().nameWidth)}
+              {row().input.padStart(INPUT_COL_WIDTH)}
+              {row().output.padStart(OUTPUT_COL_WIDTH)}
+              {row().cache.padStart(CACHE_COL_WIDTH)}
+              {row().total.padStart(TOTAL_COL_WIDTH)}
             </text>
             <text
               fg="green"
-              backgroundColor={i() === props.selectedIndex() ? "blue" : (i() % 2 === 0 ? "brightBlack" : undefined)}
+              backgroundColor={i === props.selectedIndex() ? "blue" : (i % 2 === 0 ? "brightBlack" : undefined)}
             >
-              {row.cost.padStart(COST_COL_WIDTH)}
+              {row().cost.padStart(COST_COL_WIDTH)}
             </text>
           </box>
         )}
-      </For>
+      </Index>
     </box>
   );
 }
