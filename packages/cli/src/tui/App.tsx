@@ -108,48 +108,49 @@ export function App(props: AppProps) {
       return;
     }
 
-    if (key.name === "c") {
-      if (key.meta || key.ctrl) {
-        const d = data();
-        if (!d) return;
-        
-        let textToCopy = "";
-        const tab = activeTab();
-        
-        if (tab === "model") {
-          const sorted = [...d.modelEntries].sort((a, b) => {
-            if (sortBy() === "cost") return sortDesc() ? b.cost - a.cost : a.cost - b.cost;
-            if (sortBy() === "tokens") return sortDesc() ? b.total - a.total : a.total - b.total;
-            return sortDesc() ? b.model.localeCompare(a.model) : a.model.localeCompare(b.model);
-          });
-          const entry = sorted[selectedIndex()];
-          if (entry) {
-            textToCopy = `${entry.source} ${entry.model}: ${entry.total.toLocaleString()} tokens, $${entry.cost.toFixed(2)}`;
-          }
-        } else if (tab === "daily") {
-          const sorted = [...d.dailyEntries].sort((a, b) => {
-            if (sortBy() === "cost") return sortDesc() ? b.cost - a.cost : a.cost - b.cost;
-            if (sortBy() === "tokens") return sortDesc() ? b.total - a.total : a.total - b.total;
-            return sortDesc() ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date);
-          });
-          const entry = sorted[selectedIndex()];
-          if (entry) {
-            textToCopy = `${entry.date}: ${entry.total.toLocaleString()} tokens, $${entry.cost.toFixed(2)}`;
-          }
-        } else if (tab === "overview") {
-          const model = d.topModels[scrollOffset() + selectedIndex()];
-          if (model) {
-            textToCopy = `${model.modelId}: ${model.totalTokens.toLocaleString()} tokens, $${model.cost.toFixed(2)}`;
-          }
-        }
-        
-        if (textToCopy) {
-          clipboardy.write(textToCopy).catch(() => {});
-        }
-        return;
-      }
+    if (key.name === "c" && !key.meta && !key.ctrl) {
       setSortBy("cost");
       setSortDesc(true);
+      return;
+    }
+
+    if (key.name === "y") {
+      const d = data();
+      if (!d) return;
+      
+      let textToCopy = "";
+      const tab = activeTab();
+      
+      if (tab === "model") {
+        const sorted = [...d.modelEntries].sort((a, b) => {
+          if (sortBy() === "cost") return sortDesc() ? b.cost - a.cost : a.cost - b.cost;
+          if (sortBy() === "tokens") return sortDesc() ? b.total - a.total : a.total - b.total;
+          return sortDesc() ? b.model.localeCompare(a.model) : a.model.localeCompare(b.model);
+        });
+        const entry = sorted[selectedIndex()];
+        if (entry) {
+          textToCopy = `${entry.source} ${entry.model}: ${entry.total.toLocaleString()} tokens, $${entry.cost.toFixed(2)}`;
+        }
+      } else if (tab === "daily") {
+        const sorted = [...d.dailyEntries].sort((a, b) => {
+          if (sortBy() === "cost") return sortDesc() ? b.cost - a.cost : a.cost - b.cost;
+          if (sortBy() === "tokens") return sortDesc() ? b.total - a.total : a.total - b.total;
+          return sortDesc() ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date);
+        });
+        const entry = sorted[selectedIndex()];
+        if (entry) {
+          textToCopy = `${entry.date}: ${entry.total.toLocaleString()} tokens, $${entry.cost.toFixed(2)}`;
+        }
+      } else if (tab === "overview") {
+        const model = d.topModels[scrollOffset() + selectedIndex()];
+        if (model) {
+          textToCopy = `${model.modelId}: ${model.totalTokens.toLocaleString()} tokens, $${model.cost.toFixed(2)}`;
+        }
+      }
+      
+      if (textToCopy) {
+        clipboardy.write(textToCopy).catch(() => {});
+      }
       return;
     }
     if (key.name === "n") {

@@ -64,7 +64,7 @@ export function Footer(props: FooterProps) {
         </box>
       </box>
       <box flexDirection="row" gap={1}>
-        <text dim>↑↓ scroll • ←→/tab view • ⌘C copy •</text>
+        <text dim>↑↓ scroll • ←→/tab view • y copy •</text>
         <box onMouseDown={props.onPaletteChange}>
           <text fg="magenta">{`[p:${palette().name}]`}</text>
         </box>
