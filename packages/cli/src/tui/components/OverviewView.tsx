@@ -1,4 +1,4 @@
-import { Show, For } from "solid-js";
+import { Show, For, type Accessor } from "solid-js";
 import { BarChart } from "./BarChart.js";
 import { Legend } from "./Legend.js";
 import { ModelListItem } from "./ModelListItem.js";
@@ -7,8 +7,8 @@ import { formatCost } from "../utils/format.js";
 
 interface OverviewViewProps {
   data: TUIData;
-  selectedIndex: number;
-  scrollOffset: number;
+  selectedIndex: Accessor<number>;
+  scrollOffset: Accessor<number>;
   height: number;
   width: number;
 }
@@ -21,9 +21,9 @@ export function OverviewView(props: OverviewViewProps) {
 
   const topModelsForLegend = () => props.data.topModels.slice(0, 5).map(m => m.modelId);
 
-  const visibleModels = () => props.data.topModels.slice(props.scrollOffset, props.scrollOffset + itemsPerPage());
+  const visibleModels = () => props.data.topModels.slice(props.scrollOffset(), props.scrollOffset() + itemsPerPage());
   const totalModels = () => props.data.topModels.length;
-  const endIndex = () => Math.min(props.scrollOffset + visibleModels().length, totalModels());
+  const endIndex = () => Math.min(props.scrollOffset() + visibleModels().length, totalModels());
 
   return (
     <box flexDirection="column" gap={1}>
@@ -49,14 +49,14 @@ export function OverviewView(props: OverviewViewProps) {
                 percentage={model.percentage}
                 inputTokens={model.inputTokens}
                 outputTokens={model.outputTokens}
-                isSelected={props.scrollOffset + i() === props.selectedIndex}
+                isSelected={props.scrollOffset() + i() === props.selectedIndex()}
               />
             )}
           </For>
         </box>
 
         <Show when={totalModels() > visibleModels().length}>
-          <text dim>{`↓ ${props.scrollOffset + 1}-${endIndex()} of ${totalModels()} models (↑↓ to scroll)`}</text>
+          <text dim>{`↓ ${props.scrollOffset() + 1}-${endIndex()} of ${totalModels()} models (↑↓ to scroll)`}</text>
         </Show>
       </box>
     </box>

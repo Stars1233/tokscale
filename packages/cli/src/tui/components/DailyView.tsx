@@ -1,4 +1,4 @@
-import { For, createMemo } from "solid-js";
+import { For, createMemo, type Accessor } from "solid-js";
 import type { TUIData, SortType } from "../hooks/useData.js";
 import { formatTokensCompact, formatCostFull } from "../utils/format.js";
 
@@ -6,7 +6,7 @@ interface DailyViewProps {
   data: TUIData;
   sortBy: SortType;
   sortDesc: boolean;
-  selectedIndex: number;
+  selectedIndex: Accessor<number>;
   height: number;
 }
 
@@ -47,7 +47,7 @@ export function DailyView(props: DailyViewProps) {
 
       <For each={visibleEntries()}>
         {(entry, i) => {
-          const isSelected = () => i() === props.selectedIndex;
+          const isSelected = () => i() === props.selectedIndex();
           const stripe = () => (i() % 2 === 0 ? "brightBlack" : undefined);
           const rowBg = () => (isSelected() ? "blue" : stripe());
 

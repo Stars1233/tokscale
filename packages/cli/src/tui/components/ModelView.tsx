@@ -1,4 +1,4 @@
-import { For, createMemo } from "solid-js";
+import { For, createMemo, type Accessor } from "solid-js";
 import type { TUIData, SortType } from "../hooks/useData.js";
 import { getModelColor } from "../utils/colors.js";
 import { formatTokensCompact, formatCostFull } from "../utils/format.js";
@@ -16,7 +16,7 @@ interface ModelViewProps {
   data: TUIData;
   sortBy: SortType;
   sortDesc: boolean;
-  selectedIndex: number;
+  selectedIndex: Accessor<number>;
   height: number;
   width: number;
 }
@@ -94,7 +94,7 @@ export function ModelView(props: ModelViewProps) {
 
       <For each={formattedRows()}>
         {(row, i) => {
-          const isSelected = () => i() === props.selectedIndex;
+          const isSelected = () => i() === props.selectedIndex();
           const stripe = () => (i() % 2 === 0 ? "brightBlack" : undefined);
           const rowBg = () => (isSelected() ? "blue" : stripe());
 

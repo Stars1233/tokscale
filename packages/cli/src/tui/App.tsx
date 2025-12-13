@@ -261,8 +261,8 @@ export function App(props: AppProps) {
               <Match when={activeTab() === "overview"}>
                 <OverviewView
                   data={data()!}
-                  selectedIndex={selectedIndex()}
-                  scrollOffset={scrollOffset()}
+                  selectedIndex={selectedIndex}
+                  scrollOffset={scrollOffset}
                   height={contentHeight()}
                   width={columns()}
                 />
@@ -272,7 +272,7 @@ export function App(props: AppProps) {
                   data={data()!}
                   sortBy={sortBy()}
                   sortDesc={sortDesc()}
-                  selectedIndex={selectedIndex()}
+                  selectedIndex={selectedIndex}
                   height={contentHeight()}
                   width={columns()}
                 />
@@ -282,7 +282,7 @@ export function App(props: AppProps) {
                   data={data()!}
                   sortBy={sortBy()}
                   sortDesc={sortDesc()}
-                  selectedIndex={selectedIndex()}
+                  selectedIndex={selectedIndex}
                   height={contentHeight()}
                 />
               </Match>
