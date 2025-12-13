@@ -235,6 +235,13 @@ export async function GET(_request: Request, { params }: RouteParams) {
         existing.tokens += tokens;
         modelUsageMap.set(model, existing);
       }
+      for (const source of Object.values(day.sources)) {
+        if (typeof source === 'object' && source.modelId && source.cost) {
+          const existing = modelUsageMap.get(source.modelId) || { tokens: 0, cost: 0 };
+          existing.cost += source.cost;
+          modelUsageMap.set(source.modelId, existing);
+        }
+      }
     }
 
     const totalModelTokens = Array.from(modelUsageMap.values()).reduce((sum, m) => sum + m.tokens, 0);
@@ -243,10 +250,10 @@ export async function GET(_request: Request, { params }: RouteParams) {
       .map(([model, data]) => ({
         model,
         tokens: data.tokens,
-        cost: 0,
+        cost: data.cost,
         percentage: totalModelTokens > 0 ? (data.tokens / totalModelTokens) * 100 : 0,
       }))
-      .sort((a, b) => b.tokens - a.tokens);
+      .sort((a, b) => b.cost - a.cost || b.tokens - a.tokens);
 
     return NextResponse.json({
       user: {
