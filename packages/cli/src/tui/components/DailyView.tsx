@@ -39,7 +39,6 @@ export function DailyView(props: DailyViewProps) {
           {"Cost".padStart(12)}
         </text>
       </box>
-      <box borderStyle="single" borderTop={false} borderLeft={false} borderRight={false} borderBottom borderColor="gray" />
 
       <For each={visibleEntries()}>
         {(entry, i) => {
