@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { SegmentedControl, Pagination, Avatar } from "@primer/react";
+import { Pagination, Avatar } from "@primer/react";
+import { TabBar } from "@/components/TabBar";
 import { Navigation } from "@/components/layout/Navigation";
 import { Footer } from "@/components/layout/Footer";
 import { LeaderboardSkeleton } from "@/components/Skeleton";
+import { BlackholeHero } from "@/components/BlackholeHero";
 
 type Period = "all" | "month" | "week";
 
@@ -74,6 +76,8 @@ export default function LeaderboardPage() {
       <Navigation />
 
       <main className="flex-1 max-w-7xl mx-auto px-6 py-10 w-full">
+        <BlackholeHero />
+
         <div className="mb-10">
           <h1 className="text-3xl font-bold mb-2" style={{ color: "#FFFFFF" }}>
             Leaderboard
@@ -131,24 +135,18 @@ export default function LeaderboardPage() {
         </div>
 
         <div className="mb-6">
-          <SegmentedControl
-            aria-label="Period filter"
-            onChange={(index) => {
-              const periods: Period[] = ["all", "month", "week"];
-              setPeriod(periods[index]);
+          <TabBar
+            tabs={[
+              { id: "all" as Period, label: "All Time" },
+              { id: "month" as Period, label: "This Month" },
+              { id: "week" as Period, label: "This Week" },
+            ]}
+            activeTab={period}
+            onTabChange={(tab) => {
+              setPeriod(tab);
               setPage(1);
             }}
-          >
-            <SegmentedControl.Button selected={period === "all"}>
-              All Time
-            </SegmentedControl.Button>
-            <SegmentedControl.Button selected={period === "month"}>
-              This Month
-            </SegmentedControl.Button>
-            <SegmentedControl.Button selected={period === "week"}>
-              This Week
-            </SegmentedControl.Button>
-          </SegmentedControl>
+          />
         </div>
 
         {isLoading ? (

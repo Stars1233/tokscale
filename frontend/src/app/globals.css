@@ -48,13 +48,18 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-figtree), var(--font-inter);
+  --font-sans: var(--font-figtree), system-ui, -apple-system, sans-serif;
   --font-mono: var(--font-mono);
+}
+
+* {
+  font-family: var(--font-figtree), system-ui, -apple-system, sans-serif;
 }
 
 body {
   background: #141415;
   color: #FFFFFF;
+  font-family: var(--font-figtree), system-ui, -apple-system, sans-serif;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -63,6 +68,14 @@ body {
 code, pre, .font-mono {
   font-family: var(--font-mono), ui-monospace, SFMono-Regular, "SF Mono", 
     Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+button {
+  cursor: pointer;
+}
+
+a:hover {
+  text-decoration: none;
 }
 
 .bg-canvas { background-color: #141415; }
