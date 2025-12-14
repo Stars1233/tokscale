@@ -1,13 +1,15 @@
 import { Show, For, createMemo, type Accessor } from "solid-js";
 import { BarChart } from "./BarChart.js";
 import { Legend } from "./Legend.js";
-import type { TUIData } from "../hooks/useData.js";
+import type { TUIData, SortType } from "../hooks/useData.js";
 import { formatCost, formatTokens, formatTokensCompact } from "../utils/format.js";
 import { getModelColor } from "../utils/colors.js";
 import { isNarrow, isVeryNarrow } from "../utils/responsive.js";
 
 interface OverviewViewProps {
   data: TUIData;
+  sortBy: SortType;
+  sortDesc: boolean;
   selectedIndex: Accessor<number>;
   scrollOffset: Accessor<number>;
   height: number;
@@ -32,8 +34,18 @@ export function OverviewView(props: OverviewViewProps) {
     return name.length > max ? name.slice(0, max - 1) + "…" : name;
   };
 
-  const visibleModels = () => props.data.topModels.slice(props.scrollOffset(), props.scrollOffset() + itemsPerPage());
-  const totalModels = () => props.data.topModels.length;
+  const sortedModels = createMemo(() => {
+    const models = [...props.data.topModels];
+    return models.sort((a, b) => {
+      let cmp = 0;
+      if (props.sortBy === "cost") cmp = a.cost - b.cost;
+      else if (props.sortBy === "tokens") cmp = a.totalTokens - b.totalTokens;
+      return props.sortDesc ? -cmp : cmp;
+    });
+  });
+
+  const visibleModels = () => sortedModels().slice(props.scrollOffset(), props.scrollOffset() + itemsPerPage());
+  const totalModels = () => sortedModels().length;
   const endIndex = () => Math.min(props.scrollOffset() + visibleModels().length, totalModels());
 
   return (
@@ -66,9 +78,25 @@ export function OverviewView(props: OverviewViewProps) {
                     <text fg={isActive() ? "white" : undefined} bg={bgColor()}>{` ${truncateModelName(model.modelId)} `}</text>
                     <text dim bg={bgColor()}>{`(${model.percentage.toFixed(1)}%)`}</text>
                   </box>
-                  <text dim>{isVeryNarrowTerminal() 
-                    ? `  ${formatTokensCompact(model.inputTokens)}/${formatTokensCompact(model.outputTokens)}/${formatTokensCompact(model.cacheReadTokens)}/${formatTokensCompact(model.cacheWriteTokens)}`
-                    : `  In: ${formatTokens(model.inputTokens)} · Out: ${formatTokens(model.outputTokens)} · CR: ${formatTokens(model.cacheReadTokens)} · CW: ${formatTokens(model.cacheWriteTokens)}`}</text>
+                  <box flexDirection="row">
+                    <Show when={isVeryNarrowTerminal()} fallback={
+                      <>
+                        <text dim>{"  In: "}</text><text fg="cyan">{formatTokens(model.inputTokens)}</text>
+                        <text dim>{" · Out: "}</text><text fg="cyan">{formatTokens(model.outputTokens)}</text>
+                        <text dim>{" · CR: "}</text><text fg="cyan">{formatTokens(model.cacheReadTokens)}</text>
+                        <text dim>{" · CW: "}</text><text fg="cyan">{formatTokens(model.cacheWriteTokens)}</text>
+                      </>
+                    }>
+                      <text dim>{"  "}</text>
+                      <text fg="cyan">{formatTokensCompact(model.inputTokens)}</text>
+                      <text dim>{"/"}</text>
+                      <text fg="cyan">{formatTokensCompact(model.outputTokens)}</text>
+                      <text dim>{"/"}</text>
+                      <text fg="cyan">{formatTokensCompact(model.cacheReadTokens)}</text>
+                      <text dim>{"/"}</text>
+                      <text fg="cyan">{formatTokensCompact(model.cacheWriteTokens)}</text>
+                    </Show>
+                  </box>
                 </box>
               );
             }}
