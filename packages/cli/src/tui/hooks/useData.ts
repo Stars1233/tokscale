@@ -203,7 +203,8 @@ async function loadData(enabledSources: Set<SourceType>, dateFilters?: DateFilte
     output: e.output,
     cacheWrite: e.cacheWrite,
     cacheRead: e.cacheRead,
-    total: e.input + e.output + e.cacheWrite + e.cacheRead,
+    reasoning: e.reasoning,
+    total: e.input + e.output + e.cacheWrite + e.cacheRead + e.reasoning,
     cost: e.cost,
   }));
 
@@ -371,12 +372,14 @@ async function loadData(enabledSources: Set<SourceType>, dateFilters?: DateFilte
     })
     .sort((a, b) => b.cost - a.cost);
 
+  const totalReasoning = modelEntries.reduce((sum, e) => sum + e.reasoning, 0);
   const totals: TotalBreakdown = {
     input: report.totalInput,
     output: report.totalOutput,
     cacheWrite: report.totalCacheWrite,
     cacheRead: report.totalCacheRead,
-    total: report.totalInput + report.totalOutput + report.totalCacheWrite + report.totalCacheRead,
+    reasoning: totalReasoning,
+    total: report.totalInput + report.totalOutput + report.totalCacheWrite + report.totalCacheRead + totalReasoning,
     cost: report.totalCost,
   };
 

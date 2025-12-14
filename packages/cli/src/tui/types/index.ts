@@ -13,6 +13,7 @@ export interface ModelEntry {
   output: number;
   cacheWrite: number;
   cacheRead: number;
+  reasoning: number;
   total: number;
   cost: number;
 }
@@ -42,6 +43,7 @@ export interface TotalBreakdown {
   output: number;
   cacheWrite: number;
   cacheRead: number;
+  reasoning: number;
   total: number;
   cost: number;
 }

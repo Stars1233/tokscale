@@ -35,7 +35,7 @@ export function Footer(props: FooterProps) {
     props.scrollStart !== undefined && 
     props.scrollEnd !== undefined;
 
-  const totals = () => props.totals || { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0, cost: 0 };
+  const totals = () => props.totals || { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0, total: 0, cost: 0 };
 
   return (
     <box flexDirection="column" paddingX={1}>
