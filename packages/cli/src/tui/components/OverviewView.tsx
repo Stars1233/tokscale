@@ -81,20 +81,20 @@ export function OverviewView(props: OverviewViewProps) {
                   <box flexDirection="row">
                     <Show when={isVeryNarrowTerminal()} fallback={
                       <>
-                        <text dim>{"  In: "}</text><text fg="cyan">{formatTokens(model.inputTokens)}</text>
-                        <text dim>{" · Out: "}</text><text fg="cyan">{formatTokens(model.outputTokens)}</text>
-                        <text dim>{" · CR: "}</text><text fg="cyan">{formatTokens(model.cacheReadTokens)}</text>
-                        <text dim>{" · CW: "}</text><text fg="cyan">{formatTokens(model.cacheWriteTokens)}</text>
+                        <text dim>{"  In: "}</text><text>{formatTokens(model.inputTokens)}</text>
+                        <text dim>{" · Out: "}</text><text>{formatTokens(model.outputTokens)}</text>
+                        <text dim>{" · CR: "}</text><text>{formatTokens(model.cacheReadTokens)}</text>
+                        <text dim>{" · CW: "}</text><text>{formatTokens(model.cacheWriteTokens)}</text>
                       </>
                     }>
                       <text dim>{"  "}</text>
-                      <text fg="cyan">{formatTokensCompact(model.inputTokens)}</text>
+                      <text>{formatTokensCompact(model.inputTokens)}</text>
                       <text dim>{"/"}</text>
-                      <text fg="cyan">{formatTokensCompact(model.outputTokens)}</text>
+                      <text>{formatTokensCompact(model.outputTokens)}</text>
                       <text dim>{"/"}</text>
-                      <text fg="cyan">{formatTokensCompact(model.cacheReadTokens)}</text>
+                      <text>{formatTokensCompact(model.cacheReadTokens)}</text>
                       <text dim>{"/"}</text>
-                      <text fg="cyan">{formatTokensCompact(model.cacheWriteTokens)}</text>
+                      <text>{formatTokensCompact(model.cacheWriteTokens)}</text>
                     </Show>
                   </box>
                 </box>
