@@ -67,8 +67,8 @@ export function OverviewView(props: OverviewViewProps) {
                     <text dim bg={bgColor()}>{`(${model.percentage.toFixed(1)}%)`}</text>
                   </box>
                   <text dim>{isVeryNarrowTerminal() 
-                    ? `  ${formatTokensCompact(model.inputTokens)}/${formatTokensCompact(model.outputTokens)}`
-                    : `  In: ${formatTokens(model.inputTokens)} · Out: ${formatTokens(model.outputTokens)}`}</text>
+                    ? `  ${formatTokensCompact(model.inputTokens)}/${formatTokensCompact(model.outputTokens)}/${formatTokensCompact(model.cacheReadTokens)}/${formatTokensCompact(model.cacheWriteTokens)}`
+                    : `  In: ${formatTokens(model.inputTokens)} · Out: ${formatTokens(model.outputTokens)} · CR: ${formatTokens(model.cacheReadTokens)} · CW: ${formatTokens(model.cacheWriteTokens)}`}</text>
                 </box>
               );
             }}
