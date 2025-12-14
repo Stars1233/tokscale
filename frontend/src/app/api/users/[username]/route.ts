@@ -244,14 +244,14 @@ export async function GET(_request: Request, { params }: RouteParams) {
       }
     }
 
-    const totalModelTokens = Array.from(modelUsageMap.values()).reduce((sum, m) => sum + m.tokens, 0);
+    const totalModelCost = Array.from(modelUsageMap.values()).reduce((sum, m) => sum + m.cost, 0);
     const modelUsage = Array.from(modelUsageMap.entries())
       .filter(([model]) => model !== "<synthetic>")
       .map(([model, data]) => ({
         model,
         tokens: data.tokens,
         cost: data.cost,
-        percentage: totalModelTokens > 0 ? (data.tokens / totalModelTokens) * 100 : 0,
+        percentage: totalModelCost > 0 ? (data.cost / totalModelCost) * 100 : 0,
       }))
       .sort((a, b) => b.cost - a.cost || b.tokens - a.tokens);
 
