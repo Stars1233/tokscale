@@ -81,20 +81,20 @@ export function OverviewView(props: OverviewViewProps) {
                   <box flexDirection="row">
                     <Show when={isVeryNarrowTerminal()} fallback={
                       <>
-                        <text fg="blackBright">{"  In: "}</text><text fg="gray">{formatTokens(model.inputTokens)}</text>
-                        <text fg="blackBright">{" · Out: "}</text><text fg="gray">{formatTokens(model.outputTokens)}</text>
-                        <text fg="blackBright">{" · CR: "}</text><text fg="gray">{formatTokens(model.cacheReadTokens)}</text>
-                        <text fg="blackBright">{" · CW: "}</text><text fg="gray">{formatTokens(model.cacheWriteTokens)}</text>
+                        <text fg="#666666">{"  In: "}</text><text fg="#AAAAAA">{formatTokens(model.inputTokens)}</text>
+                        <text fg="#666666">{" · Out: "}</text><text fg="#AAAAAA">{formatTokens(model.outputTokens)}</text>
+                        <text fg="#666666">{" · CR: "}</text><text fg="#AAAAAA">{formatTokens(model.cacheReadTokens)}</text>
+                        <text fg="#666666">{" · CW: "}</text><text fg="#AAAAAA">{formatTokens(model.cacheWriteTokens)}</text>
                       </>
                     }>
-                      <text fg="blackBright">{"  "}</text>
-                      <text fg="gray">{formatTokensCompact(model.inputTokens)}</text>
-                      <text fg="blackBright">{"/"}</text>
-                      <text fg="gray">{formatTokensCompact(model.outputTokens)}</text>
-                      <text fg="blackBright">{"/"}</text>
-                      <text fg="gray">{formatTokensCompact(model.cacheReadTokens)}</text>
-                      <text fg="blackBright">{"/"}</text>
-                      <text fg="gray">{formatTokensCompact(model.cacheWriteTokens)}</text>
+                      <text fg="#666666">{"  "}</text>
+                      <text fg="#AAAAAA">{formatTokensCompact(model.inputTokens)}</text>
+                      <text fg="#666666">{"/"}</text>
+                      <text fg="#AAAAAA">{formatTokensCompact(model.outputTokens)}</text>
+                      <text fg="#666666">{"/"}</text>
+                      <text fg="#AAAAAA">{formatTokensCompact(model.cacheReadTokens)}</text>
+                      <text fg="#666666">{"/"}</text>
+                      <text fg="#AAAAAA">{formatTokensCompact(model.cacheWriteTokens)}</text>
                     </Show>
                   </box>
                 </box>
