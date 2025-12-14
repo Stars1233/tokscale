@@ -156,6 +156,7 @@ async function main() {
     .command("monthly")
     .description("Show monthly usage report (launches TUI by default)")
     .option("--light", "Use legacy CLI table output instead of TUI")
+    .option("--json", "Output as JSON (for scripting)")
     .option("--opencode", "Show only OpenCode usage")
     .option("--claude", "Show only Claude Code usage")
     .option("--codex", "Show only Codex CLI usage")
@@ -169,7 +170,9 @@ async function main() {
     .option("--year <year>", "Filter to specific year")
     .option("--benchmark", "Show processing time")
     .action(async (options) => {
-      if (options.light) {
+      if (options.json) {
+        await outputJsonReport("monthly", options);
+      } else if (options.light) {
         await showMonthlyReport(options);
       } else {
         const { launchTUI } = await import("./tui/index.js");
@@ -181,6 +184,7 @@ async function main() {
     .command("models")
     .description("Show usage breakdown by model (launches TUI by default)")
     .option("--light", "Use legacy CLI table output instead of TUI")
+    .option("--json", "Output as JSON (for scripting)")
     .option("--opencode", "Show only OpenCode usage")
     .option("--claude", "Show only Claude Code usage")
     .option("--codex", "Show only Codex CLI usage")
@@ -194,7 +198,9 @@ async function main() {
     .option("--year <year>", "Filter to specific year")
     .option("--benchmark", "Show processing time")
     .action(async (options) => {
-      if (options.light) {
+      if (options.json) {
+        await outputJsonReport("models", options);
+      } else if (options.light) {
         await showModelReport(options);
       } else {
         const { launchTUI } = await import("./tui/index.js");
@@ -342,10 +348,11 @@ async function main() {
     // Run the specified subcommand or show full help/version
     await program.parseAsync();
   } else {
-    // No subcommand - launch TUI by default, or legacy CLI with --light
+    // No subcommand - launch TUI by default, or legacy CLI with --light, or JSON with --json
     const defaultProgram = new Command();
     defaultProgram
       .option("--light", "Use legacy CLI table output instead of TUI")
+      .option("--json", "Output as JSON (for scripting)")
       .option("--opencode", "Show only OpenCode usage")
       .option("--claude", "Show only Claude Code usage")
       .option("--codex", "Show only Codex CLI usage")
@@ -361,7 +368,9 @@ async function main() {
       .parse();
     
     const opts = defaultProgram.opts();
-    if (opts.light) {
+    if (opts.json) {
+      await outputJsonReport("models", opts);
+    } else if (opts.light) {
       await showModelReport(opts);
     } else {
       const { launchTUI } = await import("./tui/index.js");
@@ -705,6 +714,56 @@ async function showMonthlyReport(options: FilterOptions & DateFilterOptions & { 
   }
 
   console.log();
+}
+
+type JsonReportType = "models" | "monthly";
+
+async function outputJsonReport(
+  reportType: JsonReportType,
+  options: FilterOptions & DateFilterOptions
+) {
+  await ensureNativeModule();
+
+  const dateFilters = getDateFilters(options);
+  const enabledSources = getEnabledSources(options);
+  const onlyCursor = enabledSources?.length === 1 && enabledSources[0] === 'cursor';
+  const includeCursor = !enabledSources || enabledSources.includes('cursor');
+  const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor'])
+    .filter(s => s !== 'cursor');
+
+  const { fetcher, cursorSync, localMessages } = await loadDataSourcesParallel(
+    onlyCursor ? [] : localSources,
+    dateFilters
+  );
+  
+  if (!localMessages && !onlyCursor) {
+    console.error(JSON.stringify({ error: "Failed to parse local session files" }));
+    process.exit(1);
+  }
+
+  const emptyMessages: ParsedMessages = { messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, processingTimeMs: 0 };
+
+  if (reportType === "models") {
+    const report = await finalizeReportAsync({
+      localMessages: localMessages || emptyMessages,
+      pricing: fetcher.toPricingEntries(),
+      includeCursor: includeCursor && cursorSync.synced,
+      since: dateFilters.since,
+      until: dateFilters.until,
+      year: dateFilters.year,
+    });
+    console.log(JSON.stringify(report, null, 2));
+  } else {
+    const report = await finalizeMonthlyReportAsync({
+      localMessages: localMessages || emptyMessages,
+      pricing: fetcher.toPricingEntries(),
+      includeCursor: includeCursor && cursorSync.synced,
+      since: dateFilters.since,
+      until: dateFilters.until,
+      year: dateFilters.year,
+    });
+    console.log(JSON.stringify(report, null, 2));
+  }
 }
 
 interface GraphCommandOptions extends FilterOptions, DateFilterOptions {

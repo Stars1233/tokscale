@@ -1,6 +1,7 @@
 import { For, createMemo, type Accessor } from "solid-js";
 import type { TUIData, SortType } from "../hooks/useData.js";
 import { formatTokensCompact, formatCostFull } from "../utils/format.js";
+import { isNarrow } from "../utils/responsive.js";
 
 const STRIPE_BG = "#232328";
 
@@ -10,9 +11,12 @@ interface DailyViewProps {
   sortDesc: boolean;
   selectedIndex: Accessor<number>;
   height: number;
+  width?: number;
 }
 
 export function DailyView(props: DailyViewProps) {
+  const isNarrowTerminal = () => isNarrow(props.width);
+  
   const sortedEntries = createMemo(() => {
     const entries = props.data.dailyEntries;
     const sortBy = props.sortBy;
@@ -34,16 +38,25 @@ export function DailyView(props: DailyViewProps) {
   const totalHeader = () => (props.sortBy === "tokens" ? `${sortArrow()} Total` : "Total");
   const costHeader = () => (props.sortBy === "cost" ? `${sortArrow()} Cost` : "Cost");
 
+  const renderHeader = () => {
+    if (isNarrowTerminal()) {
+      return `${"Date".padEnd(12)}${totalHeader().padStart(14)}${costHeader().padStart(10)}`;
+    }
+    return `${"  " + dateHeader().padEnd(12)}${"Input".padStart(14)}${"Output".padStart(14)}${"Cache".padStart(14)}${totalHeader().padStart(16)}${costHeader().padStart(12)}`;
+  };
+
+  const renderRow = (entry: typeof visibleEntries extends () => (infer T)[] ? T : never) => {
+    if (isNarrowTerminal()) {
+      return `${entry.date.padEnd(12)}${formatTokensCompact(entry.total).padStart(14)}`;
+    }
+    return `${entry.date.padEnd(14)}${formatTokensCompact(entry.input).padStart(14)}${formatTokensCompact(entry.output).padStart(14)}${formatTokensCompact(entry.cache).padStart(14)}${formatTokensCompact(entry.total).padStart(16)}`;
+  };
+
   return (
     <box flexDirection="column">
       <box flexDirection="row">
         <text fg="cyan" bold>
-          {`  ${dateHeader()}`.padEnd(14)}
-          {"Input".padStart(14)}
-          {"Output".padStart(14)}
-          {"Cache".padStart(14)}
-          {totalHeader().padStart(16)}
-          {costHeader().padStart(12)}
+          {renderHeader()}
         </text>
       </box>
 
@@ -58,17 +71,13 @@ export function DailyView(props: DailyViewProps) {
                 bg={rowBg()}
                 fg={isActive() ? "white" : undefined}
               >
-                {entry.date.padEnd(14)}
-                {formatTokensCompact(entry.input).padStart(14)}
-                {formatTokensCompact(entry.output).padStart(14)}
-                {formatTokensCompact(entry.cache).padStart(14)}
-                {formatTokensCompact(entry.total).padStart(16)}
+                {renderRow(entry)}
               </text>
               <text
                 fg="green"
                 bg={rowBg()}
               >
-                {formatCostFull(entry.cost).padStart(12)}
+                {formatCostFull(entry.cost).padStart(isNarrowTerminal() ? 10 : 12)}
               </text>
             </box>
           );

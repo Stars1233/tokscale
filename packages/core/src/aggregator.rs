@@ -16,29 +16,33 @@ pub fn aggregate_by_date(messages: Vec<UnifiedMessage>) -> Vec<DailyContribution
         return Vec::new();
     }
 
+    // Estimate unique days (typically 1-365) - use message count / 10 as heuristic
+    let estimated_days = (messages.len() / 10).max(30).min(400);
+
     // Parallel aggregation using fold/reduce pattern
     let daily_map: HashMap<String, DayAccumulator> = messages
         .into_par_iter()
         .fold(
-            HashMap::new,
+            || HashMap::with_capacity(estimated_days),
             |mut acc: HashMap<String, DayAccumulator>, msg| {
                 let entry = acc.entry(msg.date.clone()).or_default();
                 entry.add_message(&msg);
                 acc
             },
         )
-        .reduce(HashMap::new, |mut a, b| {
-            for (date, acc) in b {
-                a.entry(date).or_default().merge(acc);
-            }
-            a
-        });
+        .reduce(
+            || HashMap::with_capacity(estimated_days),
+            |mut a, b| {
+                for (date, acc) in b {
+                    a.entry(date).or_default().merge(acc);
+                }
+                a
+            },
+        );
 
-    // Convert to sorted vector
-    let mut contributions: Vec<DailyContribution> = daily_map
-        .into_iter()
-        .map(|(date, acc)| acc.into_contribution(date))
-        .collect();
+    // Convert to sorted vector with pre-allocated capacity
+    let mut contributions: Vec<DailyContribution> = Vec::with_capacity(daily_map.len());
+    contributions.extend(daily_map.into_iter().map(|(date, acc)| acc.into_contribution(date)));
 
     // Sort by date
     contributions.sort_by(|a, b| a.date.cmp(&b.date));
@@ -59,9 +63,8 @@ pub fn calculate_summary(contributions: &[DailyContribution]) -> DataSummary {
         .map(|c| c.totals.cost)
         .fold(0.0, f64::max);
 
-    // Collect unique sources and models
-    let mut sources_set = std::collections::HashSet::new();
-    let mut models_set = std::collections::HashSet::new();
+    let mut sources_set = std::collections::HashSet::with_capacity(5);
+    let mut models_set = std::collections::HashSet::with_capacity(20);
 
     for c in contributions {
         for s in &c.sources {
@@ -88,7 +91,7 @@ pub fn calculate_summary(contributions: &[DailyContribution]) -> DataSummary {
 
 /// Calculate year summaries
 pub fn calculate_years(contributions: &[DailyContribution]) -> Vec<YearSummary> {
-    let mut years_map: HashMap<String, YearAccumulator> = HashMap::new();
+    let mut years_map: HashMap<String, YearAccumulator> = HashMap::with_capacity(5);
 
     for c in contributions {
         let year = &c.date[0..4];
@@ -104,16 +107,14 @@ pub fn calculate_years(contributions: &[DailyContribution]) -> Vec<YearSummary> 
         }
     }
 
-    let mut years: Vec<YearSummary> = years_map
-        .into_iter()
-        .map(|(year, acc)| YearSummary {
-            year,
-            total_tokens: acc.tokens,
-            total_cost: acc.cost,
-            range_start: acc.start,
-            range_end: acc.end,
-        })
-        .collect();
+    let mut years: Vec<YearSummary> = Vec::with_capacity(years_map.len());
+    years.extend(years_map.into_iter().map(|(year, acc)| YearSummary {
+        year,
+        total_tokens: acc.tokens,
+        total_cost: acc.cost,
+        range_start: acc.start,
+        range_end: acc.end,
+    }));
 
     years.sort_by(|a, b| a.year.cmp(&b.year));
     years
@@ -154,11 +155,20 @@ pub fn generate_graph_result(
 // Internal helpers
 // =============================================================================
 
-#[derive(Default)]
 struct DayAccumulator {
     totals: DailyTotals,
     token_breakdown: TokenBreakdown,
     sources: HashMap<String, SourceContribution>,
+}
+
+impl Default for DayAccumulator {
+    fn default() -> Self {
+        Self {
+            totals: DailyTotals::default(),
+            token_breakdown: TokenBreakdown::default(),
+            sources: HashMap::with_capacity(8),
+        }
+    }
 }
 
 impl DayAccumulator {
