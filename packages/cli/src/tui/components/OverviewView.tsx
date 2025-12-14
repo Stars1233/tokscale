@@ -40,7 +40,7 @@ export function OverviewView(props: OverviewViewProps) {
     <box flexDirection="column" gap={1}>
       <box flexDirection="column">
         <BarChart data={props.data.chartData} width={props.width - 4} height={chartHeight()} />
-        <Legend models={topModelsForLegend()} />
+        <Legend models={topModelsForLegend()} width={props.width} />
       </box>
 
       <box flexDirection="column">
