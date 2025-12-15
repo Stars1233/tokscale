@@ -11,6 +11,63 @@ function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function normalizeCursorModelName(modelId: string): string | null {
+  const lower = modelId.toLowerCase();
+
+  if (lower.includes("opus")) {
+    if (lower.includes("4.5") || lower.includes("4-5")) {
+      return "opus-4-5";
+    } else if (lower.includes("4")) {
+      return "opus-4";
+    }
+  }
+  if (lower.includes("sonnet")) {
+    if (lower.includes("4.5") || lower.includes("4-5")) {
+      return "sonnet-4-5";
+    } else if (lower.includes("4")) {
+      return "sonnet-4";
+    } else if (lower.includes("3.7") || lower.includes("3-7")) {
+      return "sonnet-3-7";
+    } else if (lower.includes("3.5") || lower.includes("3-5")) {
+      return "sonnet-3-5";
+    }
+  }
+  if (lower.includes("haiku") && (lower.includes("4.5") || lower.includes("4-5"))) {
+    return "haiku-4-5";
+  }
+
+  if (lower === "o3") {
+    return "o3";
+  }
+  if (lower.startsWith("gpt-4o") || lower === "gpt-4o") {
+    return "gpt-4o";
+  }
+  if (lower.startsWith("gpt-4.1") || lower.includes("gpt-4.1")) {
+    return "gpt-4.1";
+  }
+
+  if (lower.includes("gemini-2.5-pro")) {
+    return "gemini-2.5-pro";
+  }
+  if (lower.includes("gemini-2.5-flash")) {
+    return "gemini-2.5-flash";
+  }
+
+  return null;
+}
+
+function isWordBoundaryMatch(haystack: string, needle: string): boolean {
+  const pos = haystack.indexOf(needle);
+  if (pos === -1) return false;
+
+  const beforeOk = pos === 0 || !/[a-zA-Z0-9]/.test(haystack[pos - 1]);
+  const afterOk =
+    pos + needle.length === haystack.length ||
+    !/[a-zA-Z0-9]/.test(haystack[pos + needle.length]);
+
+  return beforeOk && afterOk;
+}
+
 const LITELLM_PRICING_URL =
   "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json";
 
@@ -176,27 +233,39 @@ export class PricingFetcher {
       }
     }
 
-    // Fuzzy matching - more strict to avoid false positives
-    // e.g., "gpt-4" should NOT match "gpt-4o"
-    const lowerModelID = modelID.toLowerCase();
-    
-    // First pass: exact match after normalizing (removing provider prefix)
-    for (const [key, pricing] of Object.entries(this.pricingData)) {
-      const lowerKey = key.toLowerCase();
-      const normalizedKey = lowerKey.replace(/^(anthropic|openai|google|bedrock|vertex_ai)\//, "");
-      if (normalizedKey === lowerModelID) {
-        return pricing;
+    const normalized = normalizeCursorModelName(modelID);
+    if (normalized) {
+      if (this.pricingData[normalized]) {
+        return this.pricingData[normalized];
+      }
+      for (const prefix of prefixes) {
+        if (this.pricingData[prefix + normalized]) {
+          return this.pricingData[prefix + normalized];
+        }
       }
     }
-    
-    // Second pass: match model ID as a complete segment (word boundary)
-    // This prevents "gpt-4" from matching "gpt-4o" but allows "gpt-4-turbo" to match "gpt-4"
-    for (const [key, pricing] of Object.entries(this.pricingData)) {
+
+    const lowerModelID = modelID.toLowerCase();
+    const lowerNormalized = normalized?.toLowerCase();
+    const sortedKeys = Object.keys(this.pricingData).sort();
+
+    for (const key of sortedKeys) {
       const lowerKey = key.toLowerCase();
-      // Check if modelID matches as a prefix followed by a version/variant separator
-      const regex = new RegExp(`(^|/)${escapeRegex(lowerModelID)}(-\\d|$|@|:)`, "i");
-      if (regex.test(lowerKey)) {
-        return pricing;
+      if (isWordBoundaryMatch(lowerKey, lowerModelID)) {
+        return this.pricingData[key];
+      }
+      if (lowerNormalized && isWordBoundaryMatch(lowerKey, lowerNormalized)) {
+        return this.pricingData[key];
+      }
+    }
+
+    for (const key of sortedKeys) {
+      const lowerKey = key.toLowerCase();
+      if (isWordBoundaryMatch(lowerModelID, lowerKey)) {
+        return this.pricingData[key];
+      }
+      if (lowerNormalized && isWordBoundaryMatch(lowerNormalized, lowerKey)) {
+        return this.pricingData[key];
       }
     }
 

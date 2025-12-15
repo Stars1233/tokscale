@@ -127,9 +127,8 @@ export function generateModelReport(
     usage.reasoning += msg.tokens.reasoning;
     usage.messageCount++;
 
-    // Use pre-calculated cost if available (e.g., from Cursor), otherwise calculate from pricing
-    const msgCost = msg.cost > 0 ? msg.cost : calculateCost(msg.tokens, pricingMap.get(msg.modelId));
-    usage.cost += msgCost;
+    const calculatedCost = calculateCost(msg.tokens, pricingMap.get(msg.modelId));
+    usage.cost += calculatedCost > 0 ? calculatedCost : msg.cost;
   }
 
   const entries = Array.from(aggregated.values()).sort((a, b) => b.cost - a.cost);
@@ -207,9 +206,8 @@ export function generateMonthlyReport(
     usage.cacheWrite += msg.tokens.cacheWrite;
     usage.messageCount++;
 
-    // Use pre-calculated cost if available (e.g., from Cursor), otherwise calculate from pricing
-    const msgCost = msg.cost > 0 ? msg.cost : calculateCost(msg.tokens, pricingMap.get(msg.modelId));
-    usage.cost += msgCost;
+    const calculatedCost = calculateCost(msg.tokens, pricingMap.get(msg.modelId));
+    usage.cost += calculatedCost > 0 ? calculatedCost : msg.cost;
   }
 
   const entries: MonthlyUsage[] = Array.from(aggregated.entries())
@@ -285,8 +283,8 @@ export function generateGraphData(
       byDate.set(msg.date, dayData);
     }
 
-    // Use pre-calculated cost if available (e.g., from Cursor), otherwise calculate from pricing
-    const msgCost = msg.cost > 0 ? msg.cost : calculateCost(msg.tokens, pricingMap.get(msg.modelId));
+    const calculatedCost = calculateCost(msg.tokens, pricingMap.get(msg.modelId));
+    const msgCost = calculatedCost > 0 ? calculatedCost : msg.cost;
 
     dayData.tokens.input += msg.tokens.input;
     dayData.tokens.output += msg.tokens.output;
