@@ -48,23 +48,33 @@ function buildContributionGrid(contributions: ContributionDay[]): GridCell[][] {
   const grid: GridCell[][] = Array.from({ length: 7 }, () => []);
 
   const today = new Date();
-  const startYear = today.getFullYear();
-  const startMonth = today.getMonth();
-  const startDay = today.getDate() - 364;
-  const startDate = new Date(startYear, startMonth, startDay);
+  const todayStr = today.toISOString().split("T")[0];
+  
+  const startDate = new Date(today);
+  startDate.setDate(startDate.getDate() - 364);
+  while (startDate.getDay() !== 0) {
+    startDate.setDate(startDate.getDate() - 1);
+  }
+
+  const endDate = new Date(today);
+  while (endDate.getDay() !== 6) {
+    endDate.setDate(endDate.getDate() + 1);
+  }
 
   const contributionMap = new Map(contributions.map(c => [c.date, c.level]));
 
   const currentDate = new Date(startDate);
-  while (currentDate <= today) {
+  while (currentDate <= endDate) {
     const year = currentDate.getFullYear();
     const month = String(currentDate.getMonth() + 1).padStart(2, "0");
     const day = String(currentDate.getDate()).padStart(2, "0");
     const dateStr = `${year}-${month}-${day}`;
     const dayOfWeek = currentDate.getDay();
-    const level = contributionMap.get(dateStr) || 0;
+    
+    const isFuture = dateStr > todayStr;
+    const level = isFuture ? 0 : (contributionMap.get(dateStr) || 0);
 
-    grid[dayOfWeek].push({ date: dateStr, level });
+    grid[dayOfWeek].push({ date: isFuture ? null : dateStr, level });
     currentDate.setDate(currentDate.getDate() + 1);
   }
 

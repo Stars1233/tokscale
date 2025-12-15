@@ -118,15 +118,34 @@ export function StatsView(props: StatsViewProps) {
         <box onMouseDown={(e: { x: number; y: number }) => {
           const labelW = dayLabelWidth();
           const col = Math.floor((e.x - labelW) / cellWidth);
-          const row = e.y;
-          setDebugInfo(`x=${e.x} y=${e.y} labelW=${labelW} cellW=${cellWidth} col=${col} row=${row}`);
-          if (col >= 0 && row >= 0 && row < 7) {
-            const rowData = grid()[row];
-            if (rowData && col < rowData.length && rowData[col]?.date) {
-              setClickedCell(rowData[col].date);
-              setDebugInfo(`x=${e.x} y=${e.y} col=${col} row=${row} date=${rowData[col].date}`);
-            }
+          const row = e.y - 2;
+          const gridRows = grid().length;
+          
+          setDebugInfo(`y=${e.y} row=${row} (y-2) col=${col}`);
+          
+          if (row < 0 || row >= gridRows) {
+            setDebugInfo(`y=${e.y} row=${row} OUT_OF_BOUNDS (0-6)`);
+            return;
           }
+          if (col < 0) {
+            setDebugInfo(`x=${e.x} col=${col} OUT_OF_BOUNDS (label area)`);
+            return;
+          }
+          
+          const rowData = grid()[row];
+          if (!rowData || col >= rowData.length) {
+            setDebugInfo(`y=${e.y} row=${row} col=${col} NO_CELL`);
+            return;
+          }
+          
+          const cell = rowData[col];
+          if (!cell?.date) {
+            setDebugInfo(`y=${e.y} row=${row} col=${col} EMPTY_CELL`);
+            return;
+          }
+          
+          setClickedCell(cell.date);
+          setDebugInfo(`y=${e.y} row=${row} col=${col} → ${cell.date}`);
         }}>
           <For each={DAYS}>
             {(day, dayIndex) => (
