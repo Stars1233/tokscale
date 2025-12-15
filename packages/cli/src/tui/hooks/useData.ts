@@ -426,11 +426,14 @@ async function loadData(enabledSources: Set<SourceType>, dateFilters?: DateFilte
 }
 
 export function useData(enabledSources: Accessor<Set<SourceType>>, dateFilters?: DateFilters) {
-  const [data, setData] = createSignal<TUIData | null>(null);
-  const [loading, setLoading] = createSignal(true);
+  const initialSources = enabledSources();
+  const initialCachedData = loadCachedData(initialSources);
+  
+  const [data, setData] = createSignal<TUIData | null>(initialCachedData);
+  const [loading, setLoading] = createSignal(!initialCachedData);
   const [error, setError] = createSignal<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = createSignal(0);
-  const [loadingPhase, setLoadingPhase] = createSignal<LoadingPhase>("idle");
+  const [loadingPhase, setLoadingPhase] = createSignal<LoadingPhase>(initialCachedData ? "complete" : "idle");
   const [isRefreshing, setIsRefreshing] = createSignal(false);
 
   const refresh = () => {
