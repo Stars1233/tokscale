@@ -428,21 +428,23 @@ async function loadData(enabledSources: Set<SourceType>, dateFilters?: DateFilte
 export function useData(enabledSources: Accessor<Set<SourceType>>, dateFilters?: DateFilters) {
   const initialSources = enabledSources();
   const initialCachedData = loadCachedData(initialSources);
+  const initialCacheIsStale = initialCachedData ? isCacheStale(initialSources) : true;
   
   const [data, setData] = createSignal<TUIData | null>(initialCachedData);
   const [loading, setLoading] = createSignal(!initialCachedData);
   const [error, setError] = createSignal<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = createSignal(0);
-  const [loadingPhase, setLoadingPhase] = createSignal<LoadingPhase>(initialCachedData ? "complete" : "idle");
-  const [isRefreshing, setIsRefreshing] = createSignal(false);
+  const [loadingPhase, setLoadingPhase] = createSignal<LoadingPhase>(
+    initialCachedData ? (initialCacheIsStale ? "loading-pricing" : "complete") : "idle"
+  );
+  const [isRefreshing, setIsRefreshing] = createSignal(initialCachedData ? initialCacheIsStale : false);
 
   const refresh = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
-  createEffect(on(
-    () => [enabledSources(), refreshTrigger()] as const,
-    ([sources]) => {
+  const doLoad = (sources: Set<SourceType>, skipCacheCheck = false) => {
+    if (!skipCacheCheck) {
       const cachedData = loadCachedData(sources);
       const cacheIsStale = isCacheStale(sources);
       
@@ -450,6 +452,7 @@ export function useData(enabledSources: Accessor<Set<SourceType>>, dateFilters?:
         setData(cachedData);
         setLoading(false);
         setLoadingPhase("complete");
+        setIsRefreshing(false);
         return;
       }
       
@@ -462,20 +465,34 @@ export function useData(enabledSources: Accessor<Set<SourceType>>, dateFilters?:
         setLoading(true);
         setLoadingPhase("loading-pricing");
       }
-      
-      setError(null);
-      loadData(sources, dateFilters)
-        .then((freshData) => {
-          setData(freshData);
-          saveCachedData(freshData, sources);
-        })
-        .catch((e) => setError(e.message))
-        .finally(() => {
-          setLoading(false);
-          setIsRefreshing(false);
-          setLoadingPhase("complete");
-        });
     }
+    
+    setError(null);
+    loadData(sources, dateFilters)
+      .then((freshData) => {
+        setData(freshData);
+        saveCachedData(freshData, sources);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => {
+        setLoading(false);
+        setIsRefreshing(false);
+        setLoadingPhase("complete");
+      });
+  };
+
+  if (initialCachedData && initialCacheIsStale) {
+    doLoad(initialSources, true);
+  } else if (!initialCachedData) {
+    doLoad(initialSources, false);
+  }
+
+  createEffect(on(
+    () => [enabledSources(), refreshTrigger()] as const,
+    ([sources]) => {
+      doLoad(sources);
+    },
+    { defer: true }
   ));
 
   return { data, loading, error, refresh, loadingPhase, isRefreshing };
