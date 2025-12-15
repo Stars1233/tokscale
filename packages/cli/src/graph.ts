@@ -10,12 +10,12 @@
  */
 
 import { format } from "date-fns";
-import { readOpenCodeMessages } from "./opencode.js";
 import {
-  readClaudeCodeMessagesWithTimestamp,
-  readCodexMessagesWithTimestamp,
-} from "./claudecode.js";
-import { readGeminiMessagesWithTimestamp } from "./gemini.js";
+  parseOpenCodeMessages,
+  parseClaudeCodeMessages,
+  parseCodexMessages,
+  parseGeminiMessages,
+} from "./sessions/index.js";
 import { PricingFetcher } from "./pricing.js";
 import type {
   TokenContributionData,
@@ -126,19 +126,17 @@ function collectMessages(
 
   // OpenCode
   if (enabledSources.includes("opencode")) {
-    const openCodeMessages = readOpenCodeMessages();
+    const openCodeMessages = parseOpenCodeMessages();
     for (const msg of openCodeMessages) {
-      if (!msg.tokens || !msg.modelID) continue;
-
-      const pricing = fetcher.getModelPricing(msg.modelID);
+      const pricing = fetcher.getModelPricing(msg.modelId);
       const cost = pricing
         ? fetcher.calculateCost(
             {
               input: msg.tokens.input,
               output: msg.tokens.output,
               reasoning: msg.tokens.reasoning,
-              cacheRead: msg.tokens.cache.read,
-              cacheWrite: msg.tokens.cache.write,
+              cacheRead: msg.tokens.cacheRead,
+              cacheWrite: msg.tokens.cacheWrite,
             },
             pricing
           )
@@ -146,16 +144,10 @@ function collectMessages(
 
       messages.push({
         source: "opencode",
-        modelId: msg.modelID,
-        providerId: msg.providerID,
-        timestamp: msg.time.created,
-        tokens: {
-          input: msg.tokens.input,
-          output: msg.tokens.output,
-          cacheRead: msg.tokens.cache.read,
-          cacheWrite: msg.tokens.cache.write,
-          reasoning: msg.tokens.reasoning,
-        },
+        modelId: msg.modelId,
+        providerId: msg.providerId,
+        timestamp: msg.timestamp,
+        tokens: msg.tokens,
         cost,
       });
     }
@@ -163,9 +155,9 @@ function collectMessages(
 
   // Claude Code
   if (enabledSources.includes("claude")) {
-    const claudeMessages = readClaudeCodeMessagesWithTimestamp();
+    const claudeMessages = parseClaudeCodeMessages();
     for (const msg of claudeMessages) {
-      const pricing = fetcher.getModelPricing(msg.model);
+      const pricing = fetcher.getModelPricing(msg.modelId);
       const cost = pricing
         ? fetcher.calculateCost(
             {
@@ -180,16 +172,10 @@ function collectMessages(
 
       messages.push({
         source: "claude",
-        modelId: msg.model,
-        providerId: "anthropic",
+        modelId: msg.modelId,
+        providerId: msg.providerId,
         timestamp: msg.timestamp,
-        tokens: {
-          input: msg.tokens.input,
-          output: msg.tokens.output,
-          cacheRead: msg.tokens.cacheRead,
-          cacheWrite: msg.tokens.cacheWrite,
-          reasoning: 0,
-        },
+        tokens: msg.tokens,
         cost,
       });
     }
@@ -197,9 +183,9 @@ function collectMessages(
 
   // Codex
   if (enabledSources.includes("codex")) {
-    const codexMessages = readCodexMessagesWithTimestamp();
+    const codexMessages = parseCodexMessages();
     for (const msg of codexMessages) {
-      const pricing = fetcher.getModelPricing(msg.model);
+      const pricing = fetcher.getModelPricing(msg.modelId);
       const cost = pricing
         ? fetcher.calculateCost(
             {
@@ -214,16 +200,10 @@ function collectMessages(
 
       messages.push({
         source: "codex",
-        modelId: msg.model,
-        providerId: "openai",
+        modelId: msg.modelId,
+        providerId: msg.providerId,
         timestamp: msg.timestamp,
-        tokens: {
-          input: msg.tokens.input,
-          output: msg.tokens.output,
-          cacheRead: msg.tokens.cacheRead,
-          cacheWrite: msg.tokens.cacheWrite,
-          reasoning: 0,
-        },
+        tokens: msg.tokens,
         cost,
       });
     }
@@ -231,15 +211,15 @@ function collectMessages(
 
   // Gemini
   if (enabledSources.includes("gemini")) {
-    const geminiMessages = readGeminiMessagesWithTimestamp();
+    const geminiMessages = parseGeminiMessages();
     for (const msg of geminiMessages) {
-      const pricing = fetcher.getModelPricing(msg.model);
-      // Gemini: thoughts count as output for billing
+      const pricing = fetcher.getModelPricing(msg.modelId);
+      // Gemini: thoughts/reasoning count as output for billing
       const cost = pricing
         ? fetcher.calculateCost(
             {
               input: msg.tokens.input,
-              output: msg.tokens.output + msg.tokens.thoughts,
+              output: msg.tokens.output + msg.tokens.reasoning,
               cacheRead: 0, // Gemini cached tokens are free
               cacheWrite: 0,
             },
@@ -249,16 +229,10 @@ function collectMessages(
 
       messages.push({
         source: "gemini",
-        modelId: msg.model,
-        providerId: "google",
+        modelId: msg.modelId,
+        providerId: msg.providerId,
         timestamp: msg.timestamp,
-        tokens: {
-          input: msg.tokens.input,
-          output: msg.tokens.output,
-          cacheRead: msg.tokens.cached,
-          cacheWrite: 0,
-          reasoning: msg.tokens.thoughts,
-        },
+        tokens: msg.tokens,
         cost,
       });
     }
