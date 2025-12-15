@@ -1,5 +1,5 @@
 import { createSignal, Switch, Match, onCleanup } from "solid-js";
-import { useKeyboard, useTerminalDimensions } from "@opentui/solid";
+import { useKeyboard, useTerminalDimensions, useRenderer } from "@opentui/solid";
 import clipboardy from "clipboardy";
 import { Header } from "./components/Header.js";
 import { Footer } from "./components/Footer.js";
@@ -29,6 +29,7 @@ function cycleTabBackward(current: TabType): TabType {
 }
 
 export function App(props: AppProps) {
+  const renderer = useRenderer();
   const terminalDimensions = useTerminalDimensions();
   const columns = () => terminalDimensions().width;
   const rows = () => terminalDimensions().height;
@@ -99,7 +100,8 @@ export function App(props: AppProps) {
 
   useKeyboard((key) => {
     if (key.name === "q") {
-      process.exit(0);
+      renderer.destroy();
+      return;
     }
 
     if (key.name === "r") {

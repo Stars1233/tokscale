@@ -15,6 +15,7 @@ declare module "@opentui/core" {
     };
     start: () => void;
     stop: () => void;
+    destroy: () => void;
     console: {
       show: () => void;
     };
