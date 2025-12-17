@@ -95,15 +95,11 @@ export function StatsView(props: StatsViewProps) {
 
   const dayLabelWidth = () => isNarrowTerminal() ? 2 : 4;
 
-  const getCellStyle = (cellDate: string | null, level: number) => {
-    const isSelected = cellDate && (clickedCell() === cellDate || props.selectedDate === cellDate);
-    const baseColor = level === 0 ? "#666666" : getGradeColor(palette(), level as 0 | 1 | 2 | 3 | 4);
-    
-    if (isSelected) {
-      return { char: "▓▓", color: "#ffffff", bg: baseColor };
-    }
-    return { char: level === 0 ? "· " : "██", color: baseColor, bg: undefined };
-  };
+  const isSelected = (cellDate: string | null) => 
+    cellDate && (clickedCell() === cellDate || props.selectedDate === cellDate);
+  
+  const getCellColor = (level: number) => 
+    level === 0 ? "#666666" : getGradeColor(palette(), level as 0 | 1 | 2 | 3 | 4);
 
 
 
@@ -154,12 +150,14 @@ export function StatsView(props: StatsViewProps) {
               <box flexDirection="row">
                 <text dim>{isNarrowTerminal() ? "  " : day.padStart(3) + " "}</text>
                 <For each={grid()[dayIndex()] || []}>
-                  {(cell) => {
-                    const style = getCellStyle(cell.date, cell.level);
-                    return (
-                      <text fg={style.color} bg={style.bg}>{style.char}</text>
-                    );
-                  }}
+                  {(cell) => (
+                    <text 
+                      fg={isSelected(cell.date) ? "#ffffff" : getCellColor(cell.level)} 
+                      bg={isSelected(cell.date) ? getCellColor(cell.level) : undefined}
+                    >
+                      {isSelected(cell.date) ? "▓▓" : (cell.level === 0 ? "· " : "██")}
+                    </text>
+                  )}
                 </For>
               </box>
             )}
