@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { StarIcon } from "@primer/octicons-react";
 
 export function BlackholeHero() {
   const [copied, setCopied] = useState(false);
@@ -15,7 +14,15 @@ export function BlackholeHero() {
   };
 
   return (
-    <div className="relative w-full max-w-7xl mx-auto mb-10 overflow-hidden rounded-2xl h-[424px]">
+    <div 
+      className="relative w-full max-w-7xl mx-auto mb-10 overflow-hidden h-[424px]"
+      style={{
+        borderRadius: "0px 0px 20px 20px",
+        borderBottom: "1px solid rgba(105, 105, 105, 0.4)",
+        borderLeft: "1px solid rgba(105, 105, 105, 0.4)",
+        borderRight: "1px solid rgba(105, 105, 105, 0.4)",
+      }}
+    >
       <div className="absolute inset-0 z-0">
         <Image
           src="/assets/hero-bg.png"
@@ -26,8 +33,8 @@ export function BlackholeHero() {
         />
       </div>
 
-      <div className="relative z-10 w-full h-full flex flex-col items-center pt-[53px]">
-        <div className="relative w-[173px] h-[36px]">
+      <div className="relative z-10 w-full h-full flex flex-col items-center pt-[53px] gap-[39px]">
+        <div className="relative w-[173px] h-[36px] shrink-0">
           <Image
             src="/assets/hero-logo.svg"
             alt="Tokscale Logo"
@@ -37,10 +44,12 @@ export function BlackholeHero() {
         </div>
 
         <h1
-          className="text-[48px] font-bold text-white text-center leading-[1.1] mt-[39px]"
+          className="text-[48px] font-bold text-white text-center"
           style={{
             fontFamily: "Figtree, var(--font-geist-sans), sans-serif",
-            textShadow: "0px 4px 24px rgba(0, 0, 0, 0.4)",
+            lineHeight: "0.94em",
+            letterSpacing: "-0.05em",
+            textShadow: "0px 6px 12px 0px rgba(0, 30, 66, 0.35)",
           }}
         >
           The Kardashev Scale
@@ -49,17 +58,15 @@ export function BlackholeHero() {
         </h1>
 
         <div
-          className="mt-[39px] flex items-center gap-1.5 p-2 rounded-xl border backdrop-blur-sm"
+          className="flex items-center gap-[6px] p-[8px] rounded-xl border backdrop-blur-sm"
           style={{
-            width: "296px",
-            height: "56px",
             backgroundColor: "#141415",
             borderColor: "rgba(49, 56, 65, 0.4)",
           }}
         >
           <button
             onClick={handleCopy}
-            className="flex items-center justify-center rounded-lg transition-all hover:opacity-90 active:scale-95"
+            className="flex items-center justify-center rounded-lg transition-all hover:opacity-90 active:scale-95 shrink-0"
             style={{
               backgroundColor: "#0073FF",
               height: "36px",
@@ -71,7 +78,10 @@ export function BlackholeHero() {
             </span>
           </button>
           
-          <div className="flex-1 flex items-center justify-center relative overflow-hidden h-[36px] bg-[#1A1B1C] rounded-lg">
+          <div 
+            className="flex items-center justify-center relative overflow-hidden h-[36px] bg-[#1A1B1C] rounded-lg shrink-0"
+            style={{ width: "190px" }}
+          >
             <span className="text-base font-bold text-white leading-none tracking-tight font-mono z-10">
               npx tokscale
             </span>
@@ -79,11 +89,17 @@ export function BlackholeHero() {
           </div>
         </div>
 
-        <div className="mt-auto mb-[45px] flex flex-col items-center gap-1">
-          <div className="flex items-center gap-2">
-            <StarIcon size={20} fill="#FFFFFF" className="text-white" />
+        <div className="flex flex-col items-center gap-[4px]">
+          <div className="flex items-center gap-[6px]">
+            <Image 
+              src="/assets/github-icon.svg" 
+              alt="GitHub Star" 
+              width={24} 
+              height={24}
+              className="block"
+            />
             <span
-              className="text-lg font-bold text-white tracking-tight"
+              className="text-[18px] font-bold text-white"
               style={{ fontFamily: "Figtree, var(--font-geist-sans), sans-serif" }}
             >
               Star me on GitHub!
@@ -93,7 +109,7 @@ export function BlackholeHero() {
             href="https://github.com/junhoyeo/tokscale"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-base font-semibold tracking-tight transition-colors hover:text-white"
+            className="text-[16px] font-semibold transition-colors hover:text-white"
             style={{
               color: "#696969",
               fontFamily: "Figtree, var(--font-geist-sans), sans-serif"
