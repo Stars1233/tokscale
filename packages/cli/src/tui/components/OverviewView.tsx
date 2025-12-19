@@ -6,6 +6,8 @@ import type { TUIData, SortType } from "../hooks/useData.js";
 import { formatCost } from "../utils/format.js";
 import { isNarrow, isVeryNarrow } from "../utils/responsive.js";
 
+const CHART_MAX_DAYS = 90;
+
 interface OverviewViewProps {
   data: TUIData;
   sortBy: SortType;
@@ -24,6 +26,8 @@ export function OverviewView(props: OverviewViewProps) {
 
   const isNarrowTerminal = () => isNarrow(props.width);
   const isVeryNarrowTerminal = () => isVeryNarrow(props.width);
+
+  const recentChartData = createMemo(() => props.data.chartData.slice(-CHART_MAX_DAYS));
 
   const legendModelLimit = () => isVeryNarrowTerminal() ? 3 : 5;
   const topModelsForLegend = () => props.data.topModels.slice(0, legendModelLimit()).map(m => m.modelId);
@@ -62,7 +66,7 @@ export function OverviewView(props: OverviewViewProps) {
   return (
     <box flexDirection="column" gap={1}>
       <box flexDirection="column">
-        <BarChart data={props.data.chartData} width={props.width - 4} height={chartHeight()} />
+        <BarChart data={recentChartData()} width={props.width - 4} height={chartHeight()} />
         <Legend models={topModelsForLegend()} width={props.width} />
       </box>
 
