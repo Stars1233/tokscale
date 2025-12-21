@@ -304,7 +304,7 @@ async function main() {
     .option("--gemini", "Include only Gemini CLI data")
     .option("--cursor", "Include only Cursor IDE data")
     .option("--no-spinner", "Disable loading spinner (for scripting)")
-    .option("--raw-value", "Display total tokens as raw number (e.g., 7,140,000,000)")
+    .option("--short", "Display total tokens in abbreviated format (e.g., 7.14B)")
     .action(async (options) => {
       await handleWrappedCommand(options);
     });
@@ -925,7 +925,7 @@ interface WrappedCommandOptions extends FilterOptions {
   output?: string;
   year?: string;
   spinner?: boolean; // --no-spinner sets this to false
-  rawValue?: boolean;
+  short?: boolean;
 }
 
 async function handleWrappedCommand(options: WrappedCommandOptions) {
@@ -939,7 +939,7 @@ async function handleWrappedCommand(options: WrappedCommandOptions) {
       output: options.output,
       year: options.year || "2025",
       sources: enabledSources,
-      rawValue: options.rawValue,
+      short: options.short,
     });
 
     spinner?.stop();
