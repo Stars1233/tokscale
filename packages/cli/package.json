@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@tokscale/core": "1.0.12",
+    "@napi-rs/canvas": "^0.1.68",
     "@opentui/core": "0.1.60",
     "@opentui/react": "^0.1.60",
     "@opentui/solid": "^0.1.60",
