@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono, Figtree } from "next/font/google";
+import NextTopLoader from "nextjs-toploader";
 import { Providers } from "@/lib/providers";
 import "./globals.css";
 
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${figtree.variable} ${jetbrainsMono.variable}`}>
       <body className={`${figtree.className} antialiased`}>
+        <NextTopLoader color="#3B82F6" showSpinner={false} />
         <Providers>
           {children}
         </Providers>
