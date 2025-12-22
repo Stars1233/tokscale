@@ -107,27 +107,3 @@ export const getGradeColor = (palette: GraphColorPalette, intensity: 0 | 1 | 2 |
   const grades = [palette.grade0, palette.grade1, palette.grade2, palette.grade3, palette.grade4];
   return grades[intensity] || palette.grade0;
 };
-
-// Legacy exports
-export type ThemeName = ColorPaletteName;
-export type Theme = GraphColorPalette & { background: string; text: string; meta: string };
-export const DEFAULT_THEME = DEFAULT_PALETTE;
-export const getThemeNames = getPaletteNames;
-
-const CANVAS_DEFAULT = "var(--color-canvas-default)";
-const FG_DEFAULT = "var(--color-fg-default)";
-const FG_MUTED = "var(--color-fg-muted)";
-
-export const getTheme = (name: ThemeName): Theme => ({
-  ...getPalette(name),
-  background: CANVAS_DEFAULT,
-  text: FG_DEFAULT,
-  meta: FG_MUTED,
-});
-
-export const themes = Object.fromEntries(
-  Object.entries(colorPalettes).map(([key, palette]) => [
-    key,
-    { ...palette, background: CANVAS_DEFAULT, text: FG_DEFAULT, meta: FG_MUTED },
-  ])
-) as Record<ThemeName, Theme>;

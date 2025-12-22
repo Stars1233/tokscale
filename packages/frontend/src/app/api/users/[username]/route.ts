@@ -111,7 +111,6 @@ export async function GET(_request: Request, { params }: RouteParams) {
       messages: number;
     };
 
-    // Aggregate daily data (in case of overlapping submissions)
     const aggregatedDaily = new Map<
       string,
       {
@@ -134,9 +133,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
         existing.outputTokens += Number(day.outputTokens);
         if (day.sourceBreakdown) {
           for (const [source, data] of Object.entries(day.sourceBreakdown)) {
-            const breakdown = typeof data === "number"
-              ? { tokens: data, cost: 0, modelId: "", input: Math.floor(data / 2), output: Math.floor(data / 2), cacheRead: 0, cacheWrite: 0, messages: 0 }
-              : data as SourceBreakdown;
+            const breakdown = data as SourceBreakdown;
             if (existing.sources[source]) {
               existing.sources[source].tokens += breakdown.tokens;
               existing.sources[source].cost += breakdown.cost;
@@ -159,9 +156,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
         const sources: Record<string, SourceBreakdown> = {};
         if (day.sourceBreakdown) {
           for (const [source, data] of Object.entries(day.sourceBreakdown)) {
-            sources[source] = typeof data === "number"
-              ? { tokens: data, cost: 0, modelId: "", input: Math.floor(data / 2), output: Math.floor(data / 2), cacheRead: 0, cacheWrite: 0, messages: 0 }
-              : data as SourceBreakdown;
+            sources[source] = data as SourceBreakdown;
           }
         }
         aggregatedDaily.set(day.date, {
@@ -195,6 +190,13 @@ export async function GET(_request: Request, { params }: RouteParams) {
           ? 3
           : 4;
 
+      let dayCacheRead = 0;
+      let dayCacheWrite = 0;
+      for (const sourceData of Object.values(day.sources)) {
+        dayCacheRead += sourceData.cacheRead || 0;
+        dayCacheWrite += sourceData.cacheWrite || 0;
+      }
+
       return {
         date: day.date,
         totals: {
@@ -206,8 +208,8 @@ export async function GET(_request: Request, { params }: RouteParams) {
         tokenBreakdown: {
           input: day.inputTokens,
           output: day.outputTokens,
-          cacheRead: 0,
-          cacheWrite: 0,
+          cacheRead: dayCacheRead,
+          cacheWrite: dayCacheWrite,
           reasoning: 0,
         },
         sources: Object.entries(day.sources).map(([source, breakdown]) => ({
@@ -236,7 +238,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
         modelUsageMap.set(model, existing);
       }
       for (const source of Object.values(day.sources)) {
-        if (typeof source === 'object' && source.modelId && source.cost) {
+        if (source.modelId) {
           const existing = modelUsageMap.get(source.modelId) || { tokens: 0, cost: 0 };
           existing.cost += source.cost;
           modelUsageMap.set(source.modelId, existing);
@@ -270,7 +272,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
         inputTokens: Number(stats?.inputTokens) || 0,
         outputTokens: Number(stats?.outputTokens) || 0,
         cacheReadTokens: Number(stats?.cacheReadTokens) || 0,
-        cacheCreationTokens: Number(stats?.cacheCreationTokens) || 0,
+        cacheWriteTokens: Number(stats?.cacheCreationTokens) || 0,
         submissionCount: Number(stats?.submissionCount) || 0,
         activeDays,
       },

@@ -86,10 +86,6 @@ export interface GraphColorPalette {
   grade4: string;
 }
 
-// Legacy aliases
-export type ThemeName = ColorPaletteName;
-export type Theme = GraphColorPalette;
-
 export type ViewMode = "2d" | "3d";
 
 export interface TooltipPosition {

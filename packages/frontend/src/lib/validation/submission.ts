@@ -70,7 +70,7 @@ const ExportMetaSchema = z.object({
   }),
 });
 
-export const SubmissionDataSchema = z.object({
+const SubmissionDataSchema = z.object({
   meta: ExportMetaSchema,
   summary: DataSummarySchema,
   years: z.array(YearSummarySchema),
@@ -87,6 +87,7 @@ export interface ValidationResult {
   valid: boolean;
   errors: string[];
   warnings: string[];
+  data?: SubmissionData;
 }
 
 /**
@@ -228,60 +229,43 @@ export function validateSubmission(data: unknown): ValidationResult {
     valid: errors.length === 0,
     errors,
     warnings,
+    data: errors.length === 0 ? submission : undefined,
   };
 }
 
 /**
  * Generate a hash for the submission data (for deduplication)
+ * 
+ * CHANGED for source-level merge:
+ * - Hash is now based on sources + date range (not totals)
+ * - Totals change after merge, so they can't be in the hash
+ * - This hash identifies "what sources and dates are being submitted"
  */
 export function generateSubmissionHash(data: SubmissionData): string {
+  // Sort contributions by date to ensure deterministic hash
+  const sortedDates = data.contributions
+    .map(c => c.date)
+    .sort();
+
   const content = JSON.stringify({
+    // What sources are being submitted
+    sources: data.summary.sources.slice().sort(),
+    // Date range of this submission
     dateRange: data.meta.dateRange,
-    totalTokens: data.summary.totalTokens,
-    totalCost: data.summary.totalCost,
-    activeDays: data.summary.activeDays,
-    // Include first and last contribution dates for uniqueness
-    firstDay: data.contributions[0]?.date,
-    lastDay: data.contributions[data.contributions.length - 1]?.date,
+    // Number of days with data (for basic fingerprinting)
+    daysCount: data.contributions.length,
+    // First and last dates FROM SORTED LIST
+    firstDay: sortedDates[0],
+    lastDay: sortedDates[sortedDates.length - 1],
   });
 
-  // Simple hash - in production you might want crypto.subtle
-  let hash = 0;
+  // Simple synchronous hash (djb2 algorithm)
+  let hash = 5381;
   for (let i = 0; i < content.length; i++) {
     const char = content.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash;
+    hash = ((hash << 5) + hash) + char; // hash * 33 + char
+    hash = hash & hash; // Convert to 32-bit integer
   }
 
   return Math.abs(hash).toString(16).padStart(16, "0");
-}
-
-/**
- * Extract summary metrics from submission data
- */
-export function extractMetrics(data: SubmissionData) {
-  return {
-    totalTokens: data.summary.totalTokens,
-    totalCost: data.summary.totalCost,
-    inputTokens: data.contributions.reduce(
-      (sum, d) => sum + d.tokenBreakdown.input,
-      0
-    ),
-    outputTokens: data.contributions.reduce(
-      (sum, d) => sum + d.tokenBreakdown.output,
-      0
-    ),
-    cacheCreationTokens: data.contributions.reduce(
-      (sum, d) => sum + d.tokenBreakdown.cacheWrite,
-      0
-    ),
-    cacheReadTokens: data.contributions.reduce(
-      (sum, d) => sum + d.tokenBreakdown.cacheRead,
-      0
-    ),
-    dateStart: data.meta.dateRange.start,
-    dateEnd: data.meta.dateRange.end,
-    sourcesUsed: data.summary.sources,
-    modelsUsed: data.summary.models,
-  };
 }

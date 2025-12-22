@@ -1,16 +1,27 @@
 import { NextResponse } from "next/server";
 import { db, apiTokens, users, submissions, dailyBreakdown } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import {
   validateSubmission,
-  extractMetrics,
   generateSubmissionHash,
   type SubmissionData,
 } from "@/lib/validation/submission";
+import {
+  mergeSourceBreakdowns,
+  recalculateDayTotals,
+  buildModelBreakdown,
+  sourceContributionToBreakdownData,
+  type SourceBreakdownData,
+} from "@/lib/db/helpers";
 
 /**
  * POST /api/submit
  * Submit token usage data from CLI
+ * 
+ * IMPLEMENTS SOURCE-LEVEL MERGE:
+ * - Only updates sources present in submission
+ * - Preserves data for sources NOT in submission
+ * - Recalculates totals from dailyBreakdown
  *
  * Headers:
  *   Authorization: Bearer <api_token>
@@ -19,7 +30,9 @@ import {
  */
 export async function POST(request: Request) {
   try {
-    // Step 1: Authenticate via API token
+    // ========================================
+    // STEP 1: Authentication
+    // ========================================
     const authHeader = request.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return NextResponse.json(
@@ -30,7 +43,6 @@ export async function POST(request: Request) {
 
     const token = authHeader.slice(7);
 
-    // Find the API token and associated user
     const [tokenRecord] = await db
       .select({
         tokenId: apiTokens.id,
@@ -47,115 +59,263 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid API token" }, { status: 401 });
     }
 
-    // Check if token is expired
     if (tokenRecord.expiresAt && tokenRecord.expiresAt < new Date()) {
       return NextResponse.json({ error: "API token has expired" }, { status: 401 });
     }
 
-    // Update last used timestamp
-    await db
-      .update(apiTokens)
-      .set({ lastUsedAt: new Date() })
-      .where(eq(apiTokens.id, tokenRecord.tokenId));
-
-    // Step 2: Parse and validate submission data
-    let data: SubmissionData;
+    // ========================================
+    // STEP 2: Parse and Validate
+    // ========================================
+    let rawData: unknown;
     try {
-      data = await request.json();
+      rawData = await request.json();
     } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+
+    const validation = validateSubmission(rawData);
+    if (!validation.valid || !validation.data) {
       return NextResponse.json(
-        { error: "Invalid JSON body" },
+        { error: "Validation failed", details: validation.errors },
         { status: 400 }
       );
     }
 
-    const validation = validateSubmission(data);
+    // Use validated and parsed data
+    const data = validation.data;
 
-    if (!validation.valid) {
+    // Reject empty submissions
+    if (data.contributions.length === 0) {
       return NextResponse.json(
-        {
-          error: "Validation failed",
-          details: validation.errors,
+        { error: "No contribution data to submit" },
+        { status: 400 }
+      );
+    }
+
+    // Track which sources are in this submission
+    const submittedSources = new Set(data.summary.sources);
+
+    // ========================================
+    // STEP 3: DATABASE OPERATIONS IN TRANSACTION
+    // ========================================
+    const result = await db.transaction(async (tx) => {
+      // Update token last used timestamp
+      await tx
+        .update(apiTokens)
+        .set({ lastUsedAt: new Date() })
+        .where(eq(apiTokens.id, tokenRecord.tokenId));
+
+      // ------------------------------------------
+      // STEP 3a: Get or create user's submission
+      // NOTE: .for('update') locks the row to prevent race conditions
+      // ------------------------------------------
+      let [existingSubmission] = await tx
+        .select({
+          id: submissions.id,
+        })
+        .from(submissions)
+        .where(eq(submissions.userId, tokenRecord.userId))
+        .for('update')
+        .limit(1);
+
+      let submissionId: string;
+      let isNewSubmission = false;
+
+      if (existingSubmission) {
+        submissionId = existingSubmission.id;
+      } else {
+        // First submission - create placeholder (totals will be calculated later)
+        isNewSubmission = true;
+        const [newSubmission] = await tx
+          .insert(submissions)
+          .values({
+            userId: tokenRecord.userId,
+            totalTokens: 0,
+            totalCost: "0",
+            inputTokens: 0,
+            outputTokens: 0,
+            cacheCreationTokens: 0,
+            cacheReadTokens: 0,
+            dateStart: data.meta.dateRange.start,
+            dateEnd: data.meta.dateRange.end,
+            sourcesUsed: [],
+            modelsUsed: [],
+            status: "verified",
+            cliVersion: data.meta.version,
+            submissionHash: generateSubmissionHash(data),
+          })
+          .returning({ id: submissions.id });
+
+        submissionId = newSubmission.id;
+      }
+
+      // ------------------------------------------
+      // STEP 3b: Fetch existing daily breakdown for merge
+      // NOTE: .for('update') locks rows to prevent concurrent modification
+      // ------------------------------------------
+      const existingDays = await tx
+        .select({
+          id: dailyBreakdown.id,
+          date: dailyBreakdown.date,
+          sourceBreakdown: dailyBreakdown.sourceBreakdown,
+        })
+        .from(dailyBreakdown)
+        .where(eq(dailyBreakdown.submissionId, submissionId))
+        .for('update');
+
+      // Build lookup map: date -> existing record
+      const existingDaysMap = new Map(
+        existingDays.map((d) => [d.date, d])
+      );
+
+      // ------------------------------------------
+      // STEP 3c: Process each incoming day
+      // ------------------------------------------
+      for (const incomingDay of data.contributions) {
+        // Build incoming sourceBreakdown from CLI data
+        const incomingSourceBreakdown: Record<string, SourceBreakdownData> = {};
+        for (const source of incomingDay.sources) {
+          incomingSourceBreakdown[source.source] = sourceContributionToBreakdownData(source);
+        }
+
+        const existingDay = existingDaysMap.get(incomingDay.date);
+
+        if (existingDay) {
+          // ---- MERGE: Day exists, merge sources ----
+          const existingSourceBreakdown = (existingDay.sourceBreakdown || {}) as Record<string, SourceBreakdownData>;
+
+          const mergedSourceBreakdown = mergeSourceBreakdowns(
+            existingSourceBreakdown,
+            incomingSourceBreakdown,
+            submittedSources
+          );
+
+          // Recalculate day totals from merged data
+          const dayTotals = recalculateDayTotals(mergedSourceBreakdown);
+
+          // Build modelBreakdown from merged sources
+          const modelBreakdown = buildModelBreakdown(mergedSourceBreakdown);
+
+          // UPDATE existing daily breakdown
+          await tx
+            .update(dailyBreakdown)
+            .set({
+              tokens: dayTotals.tokens,
+              cost: dayTotals.cost.toFixed(4),
+              inputTokens: dayTotals.inputTokens,
+              outputTokens: dayTotals.outputTokens,
+              sourceBreakdown: mergedSourceBreakdown,
+              modelBreakdown: modelBreakdown,
+            })
+            .where(eq(dailyBreakdown.id, existingDay.id));
+        } else {
+          // ---- INSERT: New day ----
+          const dayTotals = recalculateDayTotals(incomingSourceBreakdown);
+          const modelBreakdown = buildModelBreakdown(incomingSourceBreakdown);
+
+          await tx.insert(dailyBreakdown).values({
+            submissionId: submissionId,
+            date: incomingDay.date,
+            tokens: dayTotals.tokens,
+            cost: dayTotals.cost.toFixed(4),
+            inputTokens: dayTotals.inputTokens,
+            outputTokens: dayTotals.outputTokens,
+            sourceBreakdown: incomingSourceBreakdown,
+            modelBreakdown: modelBreakdown,
+          });
+        }
+      }
+
+      // ------------------------------------------
+      // STEP 3d: Recalculate submission totals from ALL daily breakdown
+      // ------------------------------------------
+      const [aggregates] = await tx
+        .select({
+          totalTokens: sql<number>`COALESCE(SUM(${dailyBreakdown.tokens}), 0)::bigint`,
+          totalCost: sql<string>`COALESCE(SUM(CAST(${dailyBreakdown.cost} AS DECIMAL(12,4))), 0)::text`,
+          inputTokens: sql<number>`COALESCE(SUM(${dailyBreakdown.inputTokens}), 0)::bigint`,
+          outputTokens: sql<number>`COALESCE(SUM(${dailyBreakdown.outputTokens}), 0)::bigint`,
+          dateStart: sql<string>`MIN(${dailyBreakdown.date})`,
+          dateEnd: sql<string>`MAX(${dailyBreakdown.date})`,
+          activeDays: sql<number>`COUNT(CASE WHEN ${dailyBreakdown.tokens} > 0 THEN 1 END)::int`,
+        })
+        .from(dailyBreakdown)
+        .where(eq(dailyBreakdown.submissionId, submissionId));
+
+      // Collect all unique sources and models from ALL daily breakdown records
+      const allDays = await tx
+        .select({
+          sourceBreakdown: dailyBreakdown.sourceBreakdown,
+        })
+        .from(dailyBreakdown)
+        .where(eq(dailyBreakdown.submissionId, submissionId));
+
+      const allSources = new Set<string>();
+      const allModels = new Set<string>();
+      let totalCacheRead = 0;
+      let totalCacheCreation = 0;
+
+      for (const day of allDays) {
+        if (day.sourceBreakdown) {
+          for (const [sourceName, sourceData] of Object.entries(day.sourceBreakdown)) {
+            allSources.add(sourceName);
+            const sd = sourceData as SourceBreakdownData;
+            if (sd.modelId) {
+              allModels.add(sd.modelId);
+            }
+            totalCacheRead += sd.cacheRead || 0;
+            totalCacheCreation += sd.cacheWrite || 0;
+          }
+        }
+      }
+
+      // ------------------------------------------
+      // STEP 3e: Update submission record
+      // ------------------------------------------
+      await tx
+        .update(submissions)
+        .set({
+          totalTokens: aggregates.totalTokens,
+          totalCost: aggregates.totalCost,
+          inputTokens: aggregates.inputTokens,
+          outputTokens: aggregates.outputTokens,
+          cacheReadTokens: totalCacheRead,
+          cacheCreationTokens: totalCacheCreation,
+          dateStart: aggregates.dateStart,
+          dateEnd: aggregates.dateEnd,
+          sourcesUsed: Array.from(allSources),
+          modelsUsed: Array.from(allModels),
+          cliVersion: data.meta.version,
+          submissionHash: generateSubmissionHash(data),
+          updatedAt: new Date(),
+        })
+        .where(eq(submissions.id, submissionId));
+
+      return {
+        submissionId,
+        isNewSubmission,
+        metrics: {
+          totalTokens: aggregates.totalTokens,
+          totalCost: parseFloat(aggregates.totalCost),
+          dateRange: {
+            start: aggregates.dateStart,
+            end: aggregates.dateEnd,
+          },
+          activeDays: aggregates.activeDays,
+          sources: Array.from(allSources),
         },
-        { status: 400 }
-      );
-    }
+      };
+    });
 
-    // Step 3: Extract metrics and create submission
-    const metrics = extractMetrics(data);
-    const submissionHash = generateSubmissionHash(data);
-
-    // Delete all previous submissions for this user (replace mode)
-    await db.delete(submissions).where(eq(submissions.userId, tokenRecord.userId));
-
-    // Step 4: Insert submission
-    const [newSubmission] = await db
-      .insert(submissions)
-      .values({
-        userId: tokenRecord.userId,
-        totalTokens: metrics.totalTokens,
-        totalCost: metrics.totalCost.toFixed(4),
-        inputTokens: metrics.inputTokens,
-        outputTokens: metrics.outputTokens,
-        cacheCreationTokens: metrics.cacheCreationTokens,
-        cacheReadTokens: metrics.cacheReadTokens,
-        dateStart: metrics.dateStart,
-        dateEnd: metrics.dateEnd,
-        sourcesUsed: metrics.sourcesUsed,
-        modelsUsed: metrics.modelsUsed,
-        status: "verified",
-        cliVersion: data.meta.version,
-        submissionHash,
-      })
-      .returning({ id: submissions.id });
-
-    // Step 5: Insert daily breakdown (batch insert)
-    if (data.contributions.length > 0) {
-      const breakdownRecords = data.contributions.map((day) => ({
-        submissionId: newSubmission.id,
-        date: day.date,
-        tokens: day.totals.tokens,
-        cost: day.totals.cost.toFixed(4),
-        inputTokens: day.tokenBreakdown.input,
-        outputTokens: day.tokenBreakdown.output,
-        sourceBreakdown: Object.fromEntries(
-          day.sources.map((s) => [
-            s.source,
-            {
-              tokens: s.tokens.input + s.tokens.output,
-              cost: s.cost,
-              modelId: s.modelId,
-              input: s.tokens.input,
-              output: s.tokens.output,
-              cacheRead: s.tokens.cacheRead,
-              cacheWrite: s.tokens.cacheWrite,
-              messages: s.messages,
-            },
-          ])
-        ),
-        modelBreakdown: Object.fromEntries(
-          day.sources.map((s) => [s.modelId, s.tokens.input + s.tokens.output])
-        ),
-      }));
-
-      await db.insert(dailyBreakdown).values(breakdownRecords);
-    }
-
-    // Step 6: Return success response
+    // ========================================
+    // STEP 4: Return success response
+    // ========================================
     return NextResponse.json({
       success: true,
-      submissionId: newSubmission.id,
+      submissionId: result.submissionId,
       username: tokenRecord.username,
-      metrics: {
-        totalTokens: metrics.totalTokens,
-        totalCost: metrics.totalCost,
-        dateRange: {
-          start: metrics.dateStart,
-          end: metrics.dateEnd,
-        },
-        activeDays: data.summary.activeDays,
-        sources: metrics.sourcesUsed,
-      },
+      metrics: result.metrics,
+      mode: result.isNewSubmission ? "create" : "merge",
       warnings: validation.warnings.length > 0 ? validation.warnings : undefined,
     });
   } catch (error) {

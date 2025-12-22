@@ -37,7 +37,7 @@ interface ProfileData {
     inputTokens: number;
     outputTokens: number;
     cacheReadTokens: number;
-    cacheCreationTokens: number;
+    cacheWriteTokens: number;
     submissionCount: number;
     activeDays: number;
   };
@@ -153,7 +153,7 @@ export default function ProfilePageClient() {
       inputTokens: data.stats.inputTokens,
       outputTokens: data.stats.outputTokens,
       cacheReadTokens: data.stats.cacheReadTokens,
-      cacheWriteTokens: data.stats.cacheCreationTokens,
+      cacheWriteTokens: data.stats.cacheWriteTokens,
       activeDays: data.stats.activeDays,
       submissionCount: data.stats.submissionCount,
     };
