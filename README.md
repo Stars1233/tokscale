@@ -35,7 +35,7 @@
 |:---:|
 | <img alt="Frontend (3D Contributions Graph" src=".github/assets/frontend-contributions-graph.png" width="700px" /> |
 
-> **Run `bunx tokscale submit` to submit your usage data to the leaderboard and create your public profile!**
+> **Run [`bunx tokscale submit`](#social) to submit your usage data to the leaderboard and create your public profile!**
 
 ## Overview
 
@@ -126,10 +126,9 @@ The native Rust module provides ~10x faster processing through parallel file sca
 ```bash
 # Build the native core (run from repository root)
 bun run build:core
-
-# Verify installation
-bun run cli graph --benchmark
 ```
+
+Native modules are enabled on the `bunx tokscale` command by default. When the native module is not installed (e.g. on local development), the CLI automatically falls back to TypeScript implementations for full compatibility (with slower performance).
 
 ## Usage
 
@@ -223,37 +222,7 @@ tokscale monthly --month --benchmark
 
 > **Note**: Date filters use your local timezone. Both `--since` and `--until` are inclusive.
 
-### Graph Command Options
-
-```bash
-# Export graph data to file
-tokscale graph --output usage-data.json
-
-# Date filtering (all shortcuts work)
-tokscale graph --today
-tokscale graph --week
-tokscale graph --since 2024-01-01 --until 2024-12-31
-tokscale graph --year 2024
-
-# Filter by platform
-tokscale graph --opencode --claude
-
-# Show processing time benchmark
-tokscale graph --output data.json --benchmark
-```
-
-### Benchmark Flag
-
-Show processing time for performance analysis:
-
-```bash
-tokscale --benchmark           # Show processing time with default view
-tokscale models --benchmark    # Benchmark models report
-tokscale monthly --benchmark   # Benchmark monthly report
-tokscale graph --benchmark     # Benchmark graph generation
-```
-
-### Social Platform Commands
+### Social
 
 ```bash
 # Login to Tokscale (opens browser for GitHub auth)
@@ -518,7 +487,7 @@ rustc --version
 cargo --version
 ```
 
-### Advanced Development
+### How to Run
 
 After following the [Development Setup](#development-setup), you can:
 
@@ -532,6 +501,9 @@ cd packages/cli && bun src/cli.ts
 # Or use legacy CLI mode
 cd packages/cli && bun src/cli.ts --light
 ```
+
+<details>
+<summary>Advanced Development</summary>
 
 ### Project Scripts
 
@@ -573,6 +545,38 @@ bun run build
 # Run Rust benchmarks
 bun run bench
 ```
+
+### Graph Command Options
+
+```bash
+# Export graph data to file
+tokscale graph --output usage-data.json
+
+# Date filtering (all shortcuts work)
+tokscale graph --today
+tokscale graph --week
+tokscale graph --since 2024-01-01 --until 2024-12-31
+tokscale graph --year 2024
+
+# Filter by platform
+tokscale graph --opencode --claude
+
+# Show processing time benchmark
+tokscale graph --output data.json --benchmark
+```
+
+### Benchmark Flag
+
+Show processing time for performance analysis:
+
+```bash
+tokscale --benchmark           # Show processing time with default view
+tokscale models --benchmark    # Benchmark models report
+tokscale monthly --benchmark   # Benchmark monthly report
+tokscale graph --benchmark     # Benchmark graph generation
+```
+
+</details>
 
 ## Supported Platforms
 
