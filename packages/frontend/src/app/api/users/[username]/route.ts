@@ -52,6 +52,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
         .select({
           sourcesUsed: submissions.sourcesUsed,
           modelsUsed: submissions.modelsUsed,
+          updatedAt: submissions.updatedAt,
         })
         .from(submissions)
         .where(eq(submissions.userId, user.id))
@@ -332,6 +333,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
         start: stats?.earliestDate || null,
         end: stats?.latestDate || null,
       },
+      updatedAt: latestSubmission?.updatedAt?.toISOString() || null,
       sources: latestSubmission?.sourcesUsed || [],
       models: latestSubmission?.modelsUsed || [],
       modelUsage,

@@ -138,7 +138,7 @@ export function ProfileHeader({ user, stats, lastUpdated }: ProfileHeaderProps) 
             className="text-sm leading-[1.21]"
             style={{ color: "var(--color-fg-muted)" }}
           >
-            Last Updated: {lastUpdated}
+            Last Updated: {new Date(lastUpdated).toLocaleString()}
           </span>
         )}
 

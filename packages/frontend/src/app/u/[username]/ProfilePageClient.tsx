@@ -45,6 +45,7 @@ interface ProfileData {
     start: string | null;
     end: string | null;
   };
+  updatedAt: string | null;
   sources: string[];
   models: string[];
   modelUsage?: ModelUsage[];
@@ -222,7 +223,7 @@ export default function ProfilePageClient() {
           <ProfileHeader
             user={user}
             stats={stats}
-            lastUpdated={data.dateRange.end || undefined}
+            lastUpdated={data.updatedAt || undefined}
           />
 
           <ProfileTabBar activeTab={activeTab} onTabChange={setActiveTab} />
