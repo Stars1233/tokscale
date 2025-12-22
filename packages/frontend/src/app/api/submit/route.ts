@@ -182,6 +182,7 @@ export async function POST(request: Request) {
             existing.output += modelData.output;
             existing.cacheRead += modelData.cacheRead;
             existing.cacheWrite += modelData.cacheWrite;
+            existing.reasoning += modelData.reasoning;
             existing.messages += modelData.messages;
             const existingModel = existing.models[source.modelId];
             if (existingModel) {
@@ -191,6 +192,7 @@ export async function POST(request: Request) {
               existingModel.output += modelData.output;
               existingModel.cacheRead += modelData.cacheRead;
               existingModel.cacheWrite += modelData.cacheWrite;
+              existingModel.reasoning += modelData.reasoning;
               existingModel.messages += modelData.messages;
             } else {
               existing.models[source.modelId] = modelData;
@@ -280,6 +282,7 @@ export async function POST(request: Request) {
       const allModels = new Set<string>();
       let totalCacheRead = 0;
       let totalCacheCreation = 0;
+      let totalReasoning = 0;
 
       for (const day of allDays) {
         if (day.sourceBreakdown) {
@@ -295,6 +298,7 @@ export async function POST(request: Request) {
             }
             totalCacheRead += sd.cacheRead || 0;
             totalCacheCreation += sd.cacheWrite || 0;
+            totalReasoning += sd.reasoning || 0;
           }
         }
       }
@@ -311,6 +315,7 @@ export async function POST(request: Request) {
           outputTokens: aggregates.outputTokens,
           cacheReadTokens: totalCacheRead,
           cacheCreationTokens: totalCacheCreation,
+          reasoningTokens: totalReasoning,
           dateStart: aggregates.dateStart,
           dateEnd: aggregates.dateEnd,
           sourcesUsed: Array.from(allSources),

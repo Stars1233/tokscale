@@ -155,6 +155,9 @@ export const submissions = pgTable(
     cacheReadTokens: bigint("cache_read_tokens", { mode: "number" })
       .notNull()
       .default(0),
+    reasoningTokens: bigint("reasoning_tokens", { mode: "number" })
+      .notNull()
+      .default(0),
 
     dateStart: date("date_start").notNull(),
     dateEnd: date("date_end").notNull(),
@@ -224,6 +227,7 @@ export const dailyBreakdown = pgTable(
           output: number;
           cacheRead: number;
           cacheWrite: number;
+          reasoning: number;
           messages: number;
           models: Record<string, {
             tokens: number;
@@ -232,6 +236,7 @@ export const dailyBreakdown = pgTable(
             output: number;
             cacheRead: number;
             cacheWrite: number;
+            reasoning: number;
             messages: number;
           }>;
           modelId?: string;

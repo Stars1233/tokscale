@@ -107,14 +107,14 @@ function SourceSection({ sourceType, sources, totalCost, palette }: SourceSectio
       for (const [modelId, data] of Object.entries(source.models)) {
         modelEntries.push({
           modelId,
-          cost: data.cost,
-          messages: data.messages,
+          cost: data.cost || 0,
+          messages: data.messages || 0,
           tokens: {
-            input: data.input,
-            output: data.output,
-            cacheRead: data.cacheRead,
-            cacheWrite: data.cacheWrite,
-            reasoning: 0,
+            input: data.input || 0,
+            output: data.output || 0,
+            cacheRead: data.cacheRead || 0,
+            cacheWrite: data.cacheWrite || 0,
+            reasoning: data.reasoning || 0,
           },
         });
       }

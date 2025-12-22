@@ -130,13 +130,13 @@ function recalculateDayTotals(day: DailyContribution): DailyContribution {
   let totalMessages = 0;
 
   for (const source of day.sources) {
-    tokenBreakdown.input += source.tokens.input;
-    tokenBreakdown.output += source.tokens.output;
-    tokenBreakdown.cacheRead += source.tokens.cacheRead;
-    tokenBreakdown.cacheWrite += source.tokens.cacheWrite;
-    tokenBreakdown.reasoning += source.tokens.reasoning;
-    totalCost += source.cost;
-    totalMessages += source.messages;
+    tokenBreakdown.input += source.tokens.input || 0;
+    tokenBreakdown.output += source.tokens.output || 0;
+    tokenBreakdown.cacheRead += source.tokens.cacheRead || 0;
+    tokenBreakdown.cacheWrite += source.tokens.cacheWrite || 0;
+    tokenBreakdown.reasoning += source.tokens.reasoning || 0;
+    totalCost += source.cost || 0;
+    totalMessages += source.messages || 0;
   }
 
   const totalTokens =

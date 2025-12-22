@@ -9,6 +9,7 @@ export interface ModelBreakdownData {
   output: number;
   cacheRead: number;
   cacheWrite: number;
+  reasoning: number;
   messages: number;
 }
 
@@ -19,19 +20,21 @@ export interface SourceBreakdownData {
   output: number;
   cacheRead: number;
   cacheWrite: number;
+  reasoning: number;
   messages: number;
   models: Record<string, ModelBreakdownData>;
   /** @deprecated Legacy field for backward compat - use models instead */
   modelId?: string;
 }
 
-interface DayTotals {
+export interface DayTotals {
   tokens: number;
   cost: number;
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;
   cacheWriteTokens: number;
+  reasoningTokens: number;
 }
 
 export function recalculateDayTotals(
@@ -43,6 +46,7 @@ export function recalculateDayTotals(
   let outputTokens = 0;
   let cacheReadTokens = 0;
   let cacheWriteTokens = 0;
+  let reasoningTokens = 0;
 
   for (const source of Object.values(sourceBreakdown)) {
     tokens += source.tokens;
@@ -51,6 +55,7 @@ export function recalculateDayTotals(
     outputTokens += source.output;
     cacheReadTokens += source.cacheRead;
     cacheWriteTokens += source.cacheWrite;
+    reasoningTokens += source.reasoning || 0;
   }
 
   return {
@@ -60,6 +65,7 @@ export function recalculateDayTotals(
     outputTokens,
     cacheReadTokens,
     cacheWriteTokens,
+    reasoningTokens,
   };
 }
 
@@ -115,6 +121,7 @@ export function sourceContributionToBreakdownData(
     output,
     cacheRead,
     cacheWrite,
+    reasoning,
     messages: source.messages,
   };
 }

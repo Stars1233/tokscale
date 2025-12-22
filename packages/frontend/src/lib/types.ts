@@ -8,24 +8,37 @@ export interface TokenBreakdown {
   reasoning: number;
 }
 
-export interface ModelData {
+/**
+ * Model-level usage data (used in database storage format)
+ * When data comes from the database, sources are grouped with nested models
+ */
+export interface ModelBreakdownData {
   tokens: number;
   cost: number;
   input: number;
   output: number;
   cacheRead: number;
   cacheWrite: number;
+  reasoning: number;
   messages: number;
 }
 
+/**
+ * Per-source contribution
+ * 
+ * Two formats exist:
+ * 1. CLI format: Each source/model combo is a separate entry (modelId set, no models field)
+ * 2. Database format: Sources grouped with nested models (models field populated)
+ */
 export interface SourceContribution {
   source: SourceType;
   modelId: string;
   providerId?: string;
-  models?: Record<string, ModelData>;
   tokens: TokenBreakdown;
   cost: number;
   messages: number;
+  /** Present when data comes from database (grouped by source with nested models) */
+  models?: Record<string, ModelBreakdownData>;
 }
 
 export interface DailyContribution {
