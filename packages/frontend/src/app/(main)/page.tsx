@@ -50,7 +50,7 @@ export default function LeaderboardPage() {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    fetch(`/api/leaderboard?period=${period}&page=${page}&limit=25`)
+    fetch(`/api/leaderboard?period=${period}&page=${page}&limit=50`)
       .then((res) => res.json())
       .then((result) => {
         setData(result);
