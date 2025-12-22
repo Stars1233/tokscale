@@ -122,7 +122,7 @@ export default function SettingsClient() {
               )}
             </div>
           </div>
-          <Flash variant="default" className="mt-4">
+          <Flash variant="default" style={{ marginTop: 16 }}>
             Profile information is synced from GitHub and cannot be edited here.
           </Flash>
         </section>
