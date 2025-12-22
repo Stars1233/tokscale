@@ -2,11 +2,9 @@
  * Source-level merge helpers for submission API
  */
 
-// Type matching the JSONB structure in dailyBreakdown.sourceBreakdown
-export interface SourceBreakdownData {
+export interface ModelBreakdownData {
   tokens: number;
   cost: number;
-  modelId: string;
   input: number;
   output: number;
   cacheRead: number;
@@ -14,7 +12,19 @@ export interface SourceBreakdownData {
   messages: number;
 }
 
-// Type for recalculated day totals
+export interface SourceBreakdownData {
+  tokens: number;
+  cost: number;
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+  messages: number;
+  models: Record<string, ModelBreakdownData>;
+  /** @deprecated Legacy field for backward compat - use models instead */
+  modelId?: string;
+}
+
 interface DayTotals {
   tokens: number;
   cost: number;
@@ -74,21 +84,21 @@ export function mergeSourceBreakdowns(
 export function buildModelBreakdown(
   sourceBreakdown: Record<string, SourceBreakdownData>
 ): Record<string, number> {
-  const modelBreakdown: Record<string, number> = {};
+  const result: Record<string, number> = {};
 
   for (const source of Object.values(sourceBreakdown)) {
-    if (source.modelId) {
-      modelBreakdown[source.modelId] =
-        (modelBreakdown[source.modelId] || 0) + source.tokens;
+    if (source.models) {
+      for (const [modelId, modelData] of Object.entries(source.models)) {
+        result[modelId] = (result[modelId] || 0) + modelData.tokens;
+      }
+    } else if (source.modelId) {
+      result[source.modelId] = (result[source.modelId] || 0) + source.tokens;
     }
   }
 
-  return modelBreakdown;
+  return result;
 }
 
-/**
- * Convert SourceContribution from CLI format to SourceBreakdownData for DB
- */
 export function sourceContributionToBreakdownData(
   source: {
     tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; reasoning?: number };
@@ -96,12 +106,11 @@ export function sourceContributionToBreakdownData(
     modelId: string;
     messages: number;
   }
-): SourceBreakdownData {
+): ModelBreakdownData {
   const { input, output, cacheRead, cacheWrite, reasoning = 0 } = source.tokens;
   return {
     tokens: input + output + cacheRead + cacheWrite + reasoning,
     cost: source.cost,
-    modelId: source.modelId,
     input,
     output,
     cacheRead,

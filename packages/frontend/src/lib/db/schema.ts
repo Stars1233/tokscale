@@ -219,12 +219,21 @@ export const dailyBreakdown = pgTable(
         {
           tokens: number;
           cost: number;
-          modelId: string;
           input: number;
           output: number;
           cacheRead: number;
           cacheWrite: number;
           messages: number;
+          models: Record<string, {
+            tokens: number;
+            cost: number;
+            input: number;
+            output: number;
+            cacheRead: number;
+            cacheWrite: number;
+            messages: number;
+          }>;
+          modelId?: string;
         }
       >
     >(),

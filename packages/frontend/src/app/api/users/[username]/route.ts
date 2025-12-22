@@ -12,6 +12,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
   try {
     const { username } = await params;
 
+    // Find user
     const [user] = await db
       .select({
         id: users.id,
@@ -28,83 +29,96 @@ export async function GET(_request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // Get aggregate stats from all submissions
+    const [stats] = await db
+      .select({
+        totalTokens: sql<number>`COALESCE(SUM(${submissions.totalTokens}), 0)`,
+        totalCost: sql<number>`COALESCE(SUM(CAST(${submissions.totalCost} AS DECIMAL(12,4))), 0)`,
+        inputTokens: sql<number>`COALESCE(SUM(${submissions.inputTokens}), 0)`,
+        outputTokens: sql<number>`COALESCE(SUM(${submissions.outputTokens}), 0)`,
+        cacheReadTokens: sql<number>`COALESCE(SUM(${submissions.cacheReadTokens}), 0)`,
+        cacheCreationTokens: sql<number>`COALESCE(SUM(${submissions.cacheCreationTokens}), 0)`,
+        submissionCount: sql<number>`COUNT(${submissions.id})`,
+        earliestDate: sql<string>`MIN(${submissions.dateStart})`,
+        latestDate: sql<string>`MAX(${submissions.dateEnd})`,
+      })
+      .from(submissions)
+      .where(eq(submissions.userId, user.id));
+
+    // Get latest submission for sources/models info
+    const [latestSubmission] = await db
+      .select({
+        sourcesUsed: submissions.sourcesUsed,
+        modelsUsed: submissions.modelsUsed,
+      })
+      .from(submissions)
+      .where(eq(submissions.userId, user.id))
+      .orderBy(desc(submissions.createdAt))
+      .limit(1);
+
+    // Get user rank
+    const rankResult = await db.execute<{ rank: number }>(sql`
+      WITH user_totals AS (
+        SELECT 
+          user_id,
+          SUM(total_tokens) as total_tokens
+        FROM submissions
+        GROUP BY user_id
+      ),
+      ranked AS (
+        SELECT 
+          user_id,
+          RANK() OVER (ORDER BY total_tokens DESC) as rank
+        FROM user_totals
+      )
+      SELECT rank FROM ranked WHERE user_id = ${user.id}
+    `);
+    const rank = (rankResult as unknown as { rank: number }[])[0]?.rank || null;
+
+    // Get daily breakdown data for graph (last 365 days)
     const oneYearAgo = new Date();
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
-    const [statsResult, latestSubmissionResult, rankResult, dailyData] = await Promise.all([
-      db
-        .select({
-          totalTokens: sql<number>`COALESCE(SUM(${submissions.totalTokens}), 0)`,
-          totalCost: sql<number>`COALESCE(SUM(CAST(${submissions.totalCost} AS DECIMAL(12,4))), 0)`,
-          inputTokens: sql<number>`COALESCE(SUM(${submissions.inputTokens}), 0)`,
-          outputTokens: sql<number>`COALESCE(SUM(${submissions.outputTokens}), 0)`,
-          cacheReadTokens: sql<number>`COALESCE(SUM(${submissions.cacheReadTokens}), 0)`,
-          cacheCreationTokens: sql<number>`COALESCE(SUM(${submissions.cacheCreationTokens}), 0)`,
-          submissionCount: sql<number>`COUNT(${submissions.id})`,
-          earliestDate: sql<string>`MIN(${submissions.dateStart})`,
-          latestDate: sql<string>`MAX(${submissions.dateEnd})`,
-        })
-        .from(submissions)
-        .where(eq(submissions.userId, user.id)),
-
-      db
-        .select({
-          sourcesUsed: submissions.sourcesUsed,
-          modelsUsed: submissions.modelsUsed,
-        })
-        .from(submissions)
-        .where(eq(submissions.userId, user.id))
-        .orderBy(desc(submissions.createdAt))
-        .limit(1),
-
-      db.execute<{ rank: number }>(sql`
-        WITH user_totals AS (
-          SELECT user_id, SUM(total_tokens) as total_tokens
-          FROM submissions
-          GROUP BY user_id
-        ),
-        ranked AS (
-          SELECT user_id, RANK() OVER (ORDER BY total_tokens DESC) as rank
-          FROM user_totals
+    const dailyData = await db
+      .select({
+        date: dailyBreakdown.date,
+        tokens: dailyBreakdown.tokens,
+        cost: dailyBreakdown.cost,
+        inputTokens: dailyBreakdown.inputTokens,
+        outputTokens: dailyBreakdown.outputTokens,
+        sourceBreakdown: dailyBreakdown.sourceBreakdown,
+        modelBreakdown: dailyBreakdown.modelBreakdown,
+      })
+      .from(dailyBreakdown)
+      .innerJoin(submissions, eq(dailyBreakdown.submissionId, submissions.id))
+      .where(
+        and(
+          eq(submissions.userId, user.id),
+          gte(dailyBreakdown.date, oneYearAgo.toISOString().split("T")[0])
         )
-        SELECT rank FROM ranked WHERE user_id = ${user.id}
-      `),
+      )
+      .orderBy(dailyBreakdown.date);
 
-      db
-        .select({
-          date: dailyBreakdown.date,
-          tokens: dailyBreakdown.tokens,
-          cost: dailyBreakdown.cost,
-          inputTokens: dailyBreakdown.inputTokens,
-          outputTokens: dailyBreakdown.outputTokens,
-          sourceBreakdown: dailyBreakdown.sourceBreakdown,
-          modelBreakdown: dailyBreakdown.modelBreakdown,
-        })
-        .from(dailyBreakdown)
-        .innerJoin(submissions, eq(dailyBreakdown.submissionId, submissions.id))
-        .where(
-          and(
-            eq(submissions.userId, user.id),
-            gte(dailyBreakdown.date, oneYearAgo.toISOString().split("T")[0])
-          )
-        )
-        .orderBy(dailyBreakdown.date),
-    ]);
-
-    const stats = statsResult[0];
-    const latestSubmission = latestSubmissionResult[0];
-    const rank = (rankResult as unknown as { rank: number }[])[0]?.rank || null;
-
-    // Source breakdown type
-    type SourceBreakdown = {
+    type ModelData = {
       tokens: number;
       cost: number;
-      modelId: string;
       input: number;
       output: number;
       cacheRead: number;
       cacheWrite: number;
       messages: number;
+    };
+
+    type SourceBreakdown = {
+      tokens: number;
+      cost: number;
+      input: number;
+      output: number;
+      cacheRead: number;
+      cacheWrite: number;
+      messages: number;
+      models?: Record<string, ModelData>;
+      modelId?: string;
     };
 
     const aggregatedDaily = new Map<
@@ -116,7 +130,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
         inputTokens: number;
         outputTokens: number;
         sources: Record<string, SourceBreakdown>;
-        models: Record<string, number>;
+        models: Record<string, { tokens: number; cost: number }>;
       }
     >();
 
@@ -138,21 +152,67 @@ export async function GET(_request: Request, { params }: RouteParams) {
               existing.sources[source].cacheRead += breakdown.cacheRead;
               existing.sources[source].cacheWrite += breakdown.cacheWrite;
               existing.sources[source].messages += breakdown.messages;
+              if (breakdown.models) {
+                existing.sources[source].models = existing.sources[source].models || {};
+                for (const [modelId, modelData] of Object.entries(breakdown.models)) {
+                  const existingModel = existing.sources[source].models![modelId];
+                  if (existingModel) {
+                    existingModel.tokens += modelData.tokens;
+                    existingModel.cost += modelData.cost;
+                    existingModel.input += modelData.input;
+                    existingModel.output += modelData.output;
+                    existingModel.cacheRead += modelData.cacheRead;
+                    existingModel.cacheWrite += modelData.cacheWrite;
+                    existingModel.messages += modelData.messages;
+                  } else {
+                    existing.sources[source].models![modelId] = { ...modelData };
+                  }
+                }
+              }
             } else {
               existing.sources[source] = { ...breakdown };
             }
-          }
-        }
-        if (day.modelBreakdown) {
-          for (const [model, tokens] of Object.entries(day.modelBreakdown)) {
-            existing.models[model] = (existing.models[model] || 0) + (tokens as number);
+            if (breakdown.models) {
+              for (const [modelId, modelData] of Object.entries(breakdown.models)) {
+                const existingModel = existing.models[modelId];
+                if (existingModel) {
+                  existingModel.tokens += modelData.tokens;
+                  existingModel.cost += modelData.cost;
+                } else {
+                  existing.models[modelId] = { tokens: modelData.tokens, cost: modelData.cost };
+                }
+              }
+            } else if (breakdown.modelId) {
+              const existingModel = existing.models[breakdown.modelId];
+              if (existingModel) {
+                existingModel.tokens += breakdown.tokens;
+                existingModel.cost += breakdown.cost;
+              } else {
+                existing.models[breakdown.modelId] = { tokens: breakdown.tokens, cost: breakdown.cost };
+              }
+            }
           }
         }
       } else {
         const sources: Record<string, SourceBreakdown> = {};
+        const models: Record<string, { tokens: number; cost: number }> = {};
         if (day.sourceBreakdown) {
           for (const [source, data] of Object.entries(day.sourceBreakdown)) {
-            sources[source] = data as SourceBreakdown;
+            const breakdown = data as SourceBreakdown;
+            sources[source] = { ...breakdown };
+            if (breakdown.models) {
+              for (const [modelId, modelData] of Object.entries(breakdown.models)) {
+                const existingModel = models[modelId];
+                if (existingModel) {
+                  existingModel.tokens += modelData.tokens;
+                  existingModel.cost += modelData.cost;
+                } else {
+                  models[modelId] = { tokens: modelData.tokens, cost: modelData.cost };
+                }
+              }
+            } else if (breakdown.modelId) {
+              models[breakdown.modelId] = { tokens: breakdown.tokens, cost: breakdown.cost };
+            }
           }
         }
         aggregatedDaily.set(day.date, {
@@ -162,7 +222,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
           inputTokens: Number(day.inputTokens),
           outputTokens: Number(day.outputTokens),
           sources,
-          models: day.modelBreakdown ? { ...(day.modelBreakdown as Record<string, number>) } : {},
+          models,
         });
       }
     }
@@ -228,17 +288,11 @@ export async function GET(_request: Request, { params }: RouteParams) {
 
     const modelUsageMap = new Map<string, { tokens: number; cost: number }>();
     for (const day of contributions) {
-      for (const [model, tokens] of Object.entries(day.models)) {
+      for (const [model, data] of Object.entries(day.models)) {
         const existing = modelUsageMap.get(model) || { tokens: 0, cost: 0 };
-        existing.tokens += tokens;
+        existing.tokens += data.tokens;
+        existing.cost += data.cost;
         modelUsageMap.set(model, existing);
-      }
-      for (const source of Object.values(day.sources)) {
-        if (source.modelId) {
-          const existing = modelUsageMap.get(source.modelId) || { tokens: 0, cost: 0 };
-          existing.cost += source.cost;
-          modelUsageMap.set(source.modelId, existing);
-        }
       }
     }
 

@@ -171,25 +171,35 @@ export async function POST(request: Request) {
       // STEP 3c: Process each incoming day
       // ------------------------------------------
       for (const incomingDay of data.contributions) {
-        // Build incoming sourceBreakdown from CLI data
-        // IMPORTANT: CLI sends multiple entries per source (one per model)
-        // We must AGGREGATE them, not overwrite
         const incomingSourceBreakdown: Record<string, SourceBreakdownData> = {};
         for (const source of incomingDay.sources) {
-          const converted = sourceContributionToBreakdownData(source);
+          const modelData = sourceContributionToBreakdownData(source);
           const existing = incomingSourceBreakdown[source.source];
           if (existing) {
-            // Aggregate with existing entry for same source
-            existing.tokens += converted.tokens;
-            existing.cost += converted.cost;
-            existing.input += converted.input;
-            existing.output += converted.output;
-            existing.cacheRead += converted.cacheRead;
-            existing.cacheWrite += converted.cacheWrite;
-            existing.messages += converted.messages;
-            // Keep first modelId (or could concatenate, but not critical)
+            existing.tokens += modelData.tokens;
+            existing.cost += modelData.cost;
+            existing.input += modelData.input;
+            existing.output += modelData.output;
+            existing.cacheRead += modelData.cacheRead;
+            existing.cacheWrite += modelData.cacheWrite;
+            existing.messages += modelData.messages;
+            const existingModel = existing.models[source.modelId];
+            if (existingModel) {
+              existingModel.tokens += modelData.tokens;
+              existingModel.cost += modelData.cost;
+              existingModel.input += modelData.input;
+              existingModel.output += modelData.output;
+              existingModel.cacheRead += modelData.cacheRead;
+              existingModel.cacheWrite += modelData.cacheWrite;
+              existingModel.messages += modelData.messages;
+            } else {
+              existing.models[source.modelId] = modelData;
+            }
           } else {
-            incomingSourceBreakdown[source.source] = converted;
+            incomingSourceBreakdown[source.source] = {
+              ...modelData,
+              models: { [source.modelId]: modelData },
+            };
           }
         }
 

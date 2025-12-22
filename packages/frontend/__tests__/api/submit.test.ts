@@ -274,6 +274,97 @@ describe('POST /api/submit - Source-Level Merge', () => {
 
   });
 
+  describe('Multi-Model Per Source', () => {
+    it('should aggregate multiple models per source correctly', () => {
+      const daySourceEntries = [
+        { source: 'claude', modelId: 'claude-sonnet-4', cost: 10, tokens: { input: 500, output: 300, cacheRead: 100, cacheWrite: 50 }, messages: 5 },
+        { source: 'claude', modelId: 'claude-opus-4', cost: 20, tokens: { input: 800, output: 500, cacheRead: 200, cacheWrite: 100 }, messages: 8 },
+        { source: 'cursor', modelId: 'gpt-4o', cost: 5, tokens: { input: 200, output: 100, cacheRead: 50, cacheWrite: 25 }, messages: 3 },
+      ];
+
+      type ModelData = { tokens: number; cost: number; input: number; output: number; cacheRead: number; cacheWrite: number; messages: number };
+      type SourceData = ModelData & { models: Record<string, ModelData> };
+      const result: Record<string, SourceData> = {};
+
+      for (const entry of daySourceEntries) {
+        const modelData: ModelData = {
+          tokens: entry.tokens.input + entry.tokens.output + entry.tokens.cacheRead + entry.tokens.cacheWrite,
+          cost: entry.cost,
+          input: entry.tokens.input,
+          output: entry.tokens.output,
+          cacheRead: entry.tokens.cacheRead,
+          cacheWrite: entry.tokens.cacheWrite,
+          messages: entry.messages,
+        };
+
+        const existing = result[entry.source];
+        if (existing) {
+          existing.tokens += modelData.tokens;
+          existing.cost += modelData.cost;
+          existing.input += modelData.input;
+          existing.output += modelData.output;
+          existing.cacheRead += modelData.cacheRead;
+          existing.cacheWrite += modelData.cacheWrite;
+          existing.messages += modelData.messages;
+          existing.models[entry.modelId] = modelData;
+        } else {
+          result[entry.source] = { ...modelData, models: { [entry.modelId]: modelData } };
+        }
+      }
+
+      expect(result.claude.tokens).toBe(950 + 1600);
+      expect(result.claude.cost).toBe(30);
+      expect(Object.keys(result.claude.models)).toContain('claude-sonnet-4');
+      expect(Object.keys(result.claude.models)).toContain('claude-opus-4');
+      expect(result.claude.models['claude-sonnet-4'].tokens).toBe(950);
+      expect(result.claude.models['claude-opus-4'].tokens).toBe(1600);
+
+      expect(result.cursor.tokens).toBe(375);
+      expect(Object.keys(result.cursor.models)).toEqual(['gpt-4o']);
+    });
+
+    it('should build modelBreakdown from sources with multiple models', () => {
+      const sourceBreakdown = {
+        claude: {
+          tokens: 2550,
+          cost: 30,
+          input: 1300,
+          output: 800,
+          cacheRead: 300,
+          cacheWrite: 150,
+          messages: 13,
+          models: {
+            'claude-sonnet-4': { tokens: 950, cost: 10, input: 500, output: 300, cacheRead: 100, cacheWrite: 50, messages: 5 },
+            'claude-opus-4': { tokens: 1600, cost: 20, input: 800, output: 500, cacheRead: 200, cacheWrite: 100, messages: 8 },
+          },
+        },
+        cursor: {
+          tokens: 375,
+          cost: 5,
+          input: 200,
+          output: 100,
+          cacheRead: 50,
+          cacheWrite: 25,
+          messages: 3,
+          models: {
+            'gpt-4o': { tokens: 375, cost: 5, input: 200, output: 100, cacheRead: 50, cacheWrite: 25, messages: 3 },
+          },
+        },
+      };
+
+      const modelBreakdown: Record<string, number> = {};
+      for (const source of Object.values(sourceBreakdown)) {
+        for (const [modelId, modelData] of Object.entries(source.models)) {
+          modelBreakdown[modelId] = (modelBreakdown[modelId] || 0) + modelData.tokens;
+        }
+      }
+
+      expect(modelBreakdown['claude-sonnet-4']).toBe(950);
+      expect(modelBreakdown['claude-opus-4']).toBe(1600);
+      expect(modelBreakdown['gpt-4o']).toBe(375);
+    });
+  });
+
   describe('Response Format', () => {
     it('should return mode: "create" for first submission', () => {
       const isNewSubmission = true;
