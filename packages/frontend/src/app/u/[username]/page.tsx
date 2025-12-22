@@ -1,5 +1,24 @@
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import ProfilePageClient from './ProfilePageClient';
+
+export const revalidate = 60;
+
+async function getProfileData(username: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL}` 
+    : 'http://localhost:3000';
+  
+  const res = await fetch(`${baseUrl}/api/users/${username}`, {
+    next: { revalidate: 60 },
+  });
+  
+  if (!res.ok) {
+    return null;
+  }
+  
+  return res.json();
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
   const { username } = await params;
@@ -29,6 +48,13 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
   };
 }
 
-export default function ProfilePage() {
-  return <ProfilePageClient />;
+export default async function ProfilePage({ params }: { params: Promise<{ username: string }> }) {
+  const { username } = await params;
+  const data = await getProfileData(username);
+  
+  if (!data) {
+    notFound();
+  }
+  
+  return <ProfilePageClient initialData={data} username={username} />;
 }

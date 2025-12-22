@@ -1,11 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { useParams } from "next/navigation";
-import Link from "next/link";
+import { useState, useMemo } from "react";
 import { Navigation } from "@/components/layout/Navigation";
 import { Footer } from "@/components/layout/Footer";
-import { ProfileSkeleton } from "@/components/Skeleton";
 import {
   ProfileHeader,
   ProfileTabBar,
@@ -52,29 +49,14 @@ interface ProfileData {
   contributions: DailyContribution[];
 }
 
-export default function ProfilePageClient() {
-  const params = useParams();
-  const username = params.username as string;
-  const [data, setData] = useState<ProfileData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<ProfileTab>("activity");
+interface ProfilePageClientProps {
+  initialData: ProfileData;
+  username: string;
+}
 
-  useEffect(() => {
-    fetch(`/api/users/${username}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("User not found");
-        return res.json();
-      })
-      .then((result) => {
-        setData(result);
-        setIsLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setIsLoading(false);
-      });
-  }, [username]);
+export default function ProfilePageClient({ initialData, username }: ProfilePageClientProps) {
+  const [activeTab, setActiveTab] = useState<ProfileTab>("activity");
+  const data = initialData;
 
   const graphData: TokenContributionData | null = useMemo(() => {
     if (!data || data.contributions.length === 0) return null;
@@ -136,69 +118,25 @@ export default function ProfilePageClient() {
     };
   }, [data]);
 
-  const user: ProfileUser | null = useMemo(() => {
-    if (!data) return null;
-    return {
-      username: data.user.username,
-      displayName: data.user.displayName,
-      avatarUrl: data.user.avatarUrl,
-      rank: data.user.rank,
-    };
-  }, [data]);
+  const user: ProfileUser = useMemo(() => ({
+    username: data.user.username,
+    displayName: data.user.displayName,
+    avatarUrl: data.user.avatarUrl,
+    rank: data.user.rank,
+  }), [data]);
 
-  const stats: ProfileStatsData | null = useMemo(() => {
-    if (!data) return null;
-    return {
-      totalTokens: data.stats.totalTokens,
-      totalCost: data.stats.totalCost,
-      inputTokens: data.stats.inputTokens,
-      outputTokens: data.stats.outputTokens,
-      cacheReadTokens: data.stats.cacheReadTokens,
-      cacheWriteTokens: data.stats.cacheWriteTokens,
-      activeDays: data.stats.activeDays,
-      submissionCount: data.stats.submissionCount,
-    };
-  }, [data]);
+  const stats: ProfileStatsData = useMemo(() => ({
+    totalTokens: data.stats.totalTokens,
+    totalCost: data.stats.totalCost,
+    inputTokens: data.stats.inputTokens,
+    outputTokens: data.stats.outputTokens,
+    cacheReadTokens: data.stats.cacheReadTokens,
+    cacheWriteTokens: data.stats.cacheWriteTokens,
+    activeDays: data.stats.activeDays,
+    submissionCount: data.stats.submissionCount,
+  }), [data]);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#10121C" }}>
-        <Navigation />
-        <main className="flex-1 max-w-[800px] mx-auto px-4 sm:px-6 py-6 sm:py-10 w-full">
-          <ProfileSkeleton />
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  if (error || !data || !user || !stats) {
-    return (
-      <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#10121C" }}>
-        <Navigation />
-        <main className="flex-1 max-w-[800px] mx-auto px-6 py-10 w-full">
-          <div className="text-center py-20">
-            <h1 className="text-2xl font-bold text-white mb-2">
-              User Not Found
-            </h1>
-            <p className="mb-6" style={{ color: "#696969" }}>
-              The user @{username} doesn&apos;t exist or hasn&apos;t submitted any data yet.
-            </p>
-            <Link
-              href="/"
-              className="inline-flex items-center px-4 py-2 text-white font-medium rounded-lg transition-colors hover:opacity-90"
-              style={{ backgroundColor: "#53d1f3" }}
-            >
-              Back to Leaderboard
-            </Link>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  const EARLY_ADOPTERS = ["code-yeongyu", "gtg7784", "qodot"];
+const EARLY_ADOPTERS = ["code-yeongyu", "gtg7784", "qodot"];
   const showResubmitBanner = EARLY_ADOPTERS.includes(data.user.username) && data.stats.submissionCount === 1;
 
   return (
