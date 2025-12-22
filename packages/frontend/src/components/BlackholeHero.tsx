@@ -16,7 +16,7 @@ export function BlackholeHero() {
 
   return (
     <div 
-      className="relative w-full max-w-7xl mx-auto mb-10 overflow-hidden h-[424px]"
+      className="relative w-full max-w-7xl mx-auto mb-10 overflow-hidden h-[424px] z-0"
       style={{
         borderRadius: "0px 0px 20px 20px",
         borderBottom: "1px solid rgba(105, 105, 105, 0.4)",
