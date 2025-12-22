@@ -317,6 +317,7 @@ export async function POST(request: Request) {
           modelsUsed: Array.from(allModels),
           cliVersion: data.meta.version,
           submissionHash: generateSubmissionHash(data),
+          submitCount: sql`COALESCE(submit_count, 0) + 1`,
           updatedAt: new Date(),
         })
         .where(eq(submissions.id, submissionId));

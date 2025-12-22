@@ -44,7 +44,7 @@ export async function GET(request: Request) {
         avatarUrl: users.avatarUrl,
         totalTokens: sql<number>`SUM(${submissions.totalTokens})`.as("total_tokens"),
         totalCost: sql<number>`SUM(CAST(${submissions.totalCost} AS DECIMAL(12,4)))`.as("total_cost"),
-        submissionCount: sql<number>`COUNT(${submissions.id})`.as("submission_count"),
+        submissionCount: sql<number>`COALESCE(SUM(${submissions.submitCount}), 0)`.as("submission_count"),
         lastSubmission: sql<string>`MAX(${submissions.createdAt})`.as("last_submission"),
       })
       .from(submissions)

@@ -202,6 +202,12 @@ export default function LeaderboardPage() {
                         >
                           Tokens
                         </th>
+                        <th
+                          className="px-3 sm:px-6 py-3 text-right text-xs font-medium uppercase tracking-wider hidden md:table-cell w-24"
+                          style={{ color: "var(--color-fg-muted)" }}
+                        >
+                          Submits
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -273,6 +279,9 @@ export default function LeaderboardPage() {
                             >
                               {user.totalTokens.toLocaleString()}
                             </span>
+                          </td>
+                          <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right hidden md:table-cell w-24">
+                            <span style={{ color: "var(--color-fg-muted)" }}>{user.submissionCount}</span>
                           </td>
                         </tr>
                       ))}

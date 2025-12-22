@@ -166,6 +166,7 @@ export const submissions = pgTable(
 
     cliVersion: varchar("cli_version", { length: 20 }),
     submissionHash: varchar("submission_hash", { length: 64 }),
+    submitCount: integer("submit_count").notNull().default(1),
 
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

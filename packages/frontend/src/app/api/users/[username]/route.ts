@@ -41,7 +41,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
           outputTokens: sql<number>`COALESCE(SUM(${submissions.outputTokens}), 0)`,
           cacheReadTokens: sql<number>`COALESCE(SUM(${submissions.cacheReadTokens}), 0)`,
           cacheCreationTokens: sql<number>`COALESCE(SUM(${submissions.cacheCreationTokens}), 0)`,
-          submissionCount: sql<number>`COUNT(${submissions.id})`,
+          submissionCount: sql<number>`COALESCE(MAX(${submissions.submitCount}), 0)`,
           earliestDate: sql<string>`MIN(${submissions.dateStart})`,
           latestDate: sql<string>`MAX(${submissions.dateEnd})`,
         })

@@ -331,6 +331,7 @@ export function ProfileStats({ stats, currentStreak = 0, longestStreak = 0, favo
     { label: "Active Days", value: stats.activeDays.toString(), color: "var(--color-primary)" },
     { label: "Current Streak", value: `${currentStreak} days`, color: "var(--color-primary)" },
     { label: "Longest Streak", value: `${longestStreak} days`, color: "var(--color-primary)" },
+    { label: "Submits", value: (stats.submissionCount ?? 0).toString(), color: "var(--color-primary)" },
   ];
 
   return (
