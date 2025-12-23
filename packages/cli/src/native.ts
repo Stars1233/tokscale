@@ -183,6 +183,7 @@ interface NativeParsedMessage {
   cacheWrite: number;
   reasoning: number;
   sessionId: string;
+  agent?: string;
 }
 
 interface NativeParsedMessages {
@@ -435,6 +436,7 @@ export interface ParsedMessages {
     cacheWrite: number;
     reasoning: number;
     sessionId: string;
+    agent?: string;
   }>;
   opencodeCount: number;
   claudeCount: number;
@@ -448,6 +450,8 @@ export interface LocalParseOptions {
   since?: string;
   until?: string;
   year?: string;
+  /** Force TypeScript fallback even when native module is available (needed for agent field) */
+  forceTypescript?: boolean;
 }
 
 export interface FinalizeOptions {
@@ -637,8 +641,8 @@ async function runInSubprocess<T>(method: string, args: unknown[]): Promise<T> {
 }
 
 export async function parseLocalSourcesAsync(options: LocalParseOptions): Promise<ParsedMessages> {
-  // Use TypeScript fallback when native module is not available
-  if (!isNativeAvailable()) {
+  // Use TypeScript fallback when native module is not available or when explicitly requested
+  if (!isNativeAvailable() || options.forceTypescript) {
     const result = parseLocalSourcesTS({
       sources: options.sources,
       since: options.since,
@@ -646,7 +650,6 @@ export async function parseLocalSourcesAsync(options: LocalParseOptions): Promis
       year: options.year,
     });
 
-    // Convert TypeScript ParsedMessages to native format
     return {
       messages: result.messages.map((msg) => ({
         source: msg.source,
@@ -660,6 +663,7 @@ export async function parseLocalSourcesAsync(options: LocalParseOptions): Promis
         cacheWrite: msg.tokens.cacheWrite,
         reasoning: msg.tokens.reasoning,
         sessionId: msg.sessionId,
+        agent: msg.agent,
       })),
       opencodeCount: result.opencodeCount,
       claudeCount: result.claudeCount,
@@ -696,6 +700,7 @@ function buildMessagesForFallback(options: FinalizeOptions): UnifiedMessage[] {
       reasoning: msg.reasoning,
     },
     cost: 0,
+    agent: msg.agent,
   }));
 
   if (options.includeCursor) {

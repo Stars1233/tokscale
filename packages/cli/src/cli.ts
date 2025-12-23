@@ -305,6 +305,8 @@ async function main() {
     .option("--cursor", "Include only Cursor IDE data")
     .option("--no-spinner", "Disable loading spinner (for scripting)")
     .option("--short", "Display total tokens in abbreviated format (e.g., 7.14B)")
+    .option("--agents", "Show Top OpenCode Agents instead of Top Clients")
+    .option("--pin-sisyphus", "Pin Sisyphus and Planner-Sisyphus at top of agents list")
     .action(async (options) => {
       await handleWrappedCommand(options);
     });
@@ -924,8 +926,10 @@ async function handleGraphCommand(options: GraphCommandOptions) {
 interface WrappedCommandOptions extends FilterOptions {
   output?: string;
   year?: string;
-  spinner?: boolean; // --no-spinner sets this to false
+  spinner?: boolean;
   short?: boolean;
+  agents?: boolean;
+  pinSisyphus?: boolean;
 }
 
 async function handleWrappedCommand(options: WrappedCommandOptions) {
@@ -940,6 +944,8 @@ async function handleWrappedCommand(options: WrappedCommandOptions) {
       year: options.year || "2025",
       sources: enabledSources,
       short: options.short,
+      includeAgents: options.agents,
+      pinSisyphus: options.pinSisyphus,
     });
 
     spinner?.stop();

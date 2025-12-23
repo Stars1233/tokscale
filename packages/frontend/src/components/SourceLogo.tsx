@@ -27,15 +27,15 @@ export function SourceLogo({ sourceId, height = 14, className = "" }: SourceLogo
   const getLogoSrc = (id: string) => {
     switch (id) {
       case "opencode":
-        return "/assets/client-opencode.png";
+        return "/assets/logos/opencode.png";
       case "claude":
-        return "/assets/client-claude.jpg";
+        return "/assets/logos/claude.jpg";
       case "codex":
-        return "/assets/client-openai.jpg";
+        return "/assets/logos/openai.jpg";
       case "gemini":
-        return "/assets/client-gemini.png";
+        return "/assets/logos/gemini.png";
       case "cursor":
-        return "/assets/client-cursor.jpg";
+        return "/assets/logos/cursor.jpg";
       default:
         return null;
     }

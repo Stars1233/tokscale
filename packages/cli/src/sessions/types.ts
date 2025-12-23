@@ -15,10 +15,11 @@ export interface UnifiedMessage {
   modelId: string;
   providerId: string;
   sessionId: string;
-  timestamp: number; // Unix milliseconds
-  date: string; // YYYY-MM-DD
+  timestamp: number;
+  date: string;
   tokens: TokenBreakdown;
   cost: number;
+  agent?: string;
 }
 
 export type SourceType = "opencode" | "claude" | "codex" | "gemini" | "cursor";
@@ -34,9 +35,6 @@ export function timestampToDate(timestampMs: number): string {
   return `${year}-${month}-${day}`;
 }
 
-/**
- * Create a unified message
- */
 export function createUnifiedMessage(
   source: string,
   modelId: string,
@@ -44,7 +42,8 @@ export function createUnifiedMessage(
   sessionId: string,
   timestamp: number,
   tokens: TokenBreakdown,
-  cost: number = 0
+  cost: number = 0,
+  agent?: string
 ): UnifiedMessage {
   return {
     source,
@@ -55,5 +54,6 @@ export function createUnifiedMessage(
     date: timestampToDate(timestamp),
     tokens,
     cost,
+    agent,
   };
 }

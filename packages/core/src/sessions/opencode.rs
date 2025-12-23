@@ -2,7 +2,7 @@
 //!
 //! Parses individual JSON files from ~/.local/share/opencode/storage/message/
 
-use super::UnifiedMessage;
+use super::{normalize_agent_name, UnifiedMessage};
 use crate::TokenBreakdown;
 use serde::Deserialize;
 use std::path::Path;
@@ -22,6 +22,8 @@ pub struct OpenCodeMessage {
     pub cost: Option<f64>,
     pub tokens: Option<OpenCodeTokens>,
     pub time: OpenCodeTime,
+    pub agent: Option<String>,
+    pub mode: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -45,22 +47,22 @@ pub struct OpenCodeTime {
     pub completed: Option<f64>,
 }
 
-/// Parse an OpenCode message file
 pub fn parse_opencode_file(path: &Path) -> Option<UnifiedMessage> {
     let data = std::fs::read(path).ok()?;
     let mut bytes = data;
 
     let msg: OpenCodeMessage = simd_json::from_slice(&mut bytes).ok()?;
 
-    // Only process assistant messages with tokens
     if msg.role != "assistant" {
         return None;
     }
 
     let tokens = msg.tokens?;
     let model_id = msg.model_id?;
+    let agent_or_mode = msg.mode.or(msg.agent);
+    let agent = agent_or_mode.map(|a| normalize_agent_name(&a));
 
-    Some(UnifiedMessage::new(
+    Some(UnifiedMessage::new_with_agent(
         "opencode",
         model_id,
         msg.provider_id.unwrap_or_else(|| "unknown".to_string()),
@@ -74,6 +76,7 @@ pub fn parse_opencode_file(path: &Path) -> Option<UnifiedMessage> {
             reasoning: tokens.reasoning.unwrap_or(0),
         },
         msg.cost.unwrap_or(0.0),
+        agent,
     ))
 }
 
@@ -104,5 +107,31 @@ mod tests {
 
         assert_eq!(msg.model_id, Some("claude-sonnet-4".to_string()));
         assert_eq!(msg.tokens.unwrap().input, 1000);
+        assert_eq!(msg.agent, None);
+    }
+
+    #[test]
+    fn test_parse_opencode_with_agent() {
+        let json = r#"{
+            "id": "msg_123",
+            "sessionID": "ses_456",
+            "role": "assistant",
+            "modelID": "claude-sonnet-4",
+            "providerID": "anthropic",
+            "agent": "OmO",
+            "cost": 0.05,
+            "tokens": {
+                "input": 1000,
+                "output": 500,
+                "reasoning": 100,
+                "cache": { "read": 200, "write": 50 }
+            },
+            "time": { "created": 1700000000000.0 }
+        }"#;
+
+        let mut bytes = json.as_bytes().to_vec();
+        let msg: OpenCodeMessage = simd_json::from_slice(&mut bytes).unwrap();
+
+        assert_eq!(msg.agent, Some("OmO".to_string()));
     }
 }

@@ -10,21 +10,37 @@ pub mod opencode;
 
 use crate::TokenBreakdown;
 
-/// Unified message format across all sources
 #[derive(Debug, Clone)]
 pub struct UnifiedMessage {
     pub source: String,
     pub model_id: String,
     pub provider_id: String,
     pub session_id: String,
-    pub timestamp: i64, // Unix milliseconds
-    pub date: String,   // YYYY-MM-DD
+    pub timestamp: i64,
+    pub date: String,
     pub tokens: TokenBreakdown,
     pub cost: f64,
+    pub agent: Option<String>,
+}
+
+pub fn normalize_agent_name(agent: &str) -> String {
+    let agent_lower = agent.to_lowercase();
+
+    if agent_lower.contains("plan") {
+        if agent_lower.contains("omo") || agent_lower.contains("sisyphus") {
+            return "Planner-Sisyphus".to_string();
+        }
+        return agent.to_string();
+    }
+
+    if agent_lower == "omo" || agent_lower == "sisyphus" {
+        return "Sisyphus".to_string();
+    }
+
+    agent.to_string()
 }
 
 impl UnifiedMessage {
-    /// Create a new unified message
     pub fn new(
         source: impl Into<String>,
         model_id: impl Into<String>,
@@ -33,6 +49,19 @@ impl UnifiedMessage {
         timestamp: i64,
         tokens: TokenBreakdown,
         cost: f64,
+    ) -> Self {
+        Self::new_with_agent(source, model_id, provider_id, session_id, timestamp, tokens, cost, None)
+    }
+
+    pub fn new_with_agent(
+        source: impl Into<String>,
+        model_id: impl Into<String>,
+        provider_id: impl Into<String>,
+        session_id: impl Into<String>,
+        timestamp: i64,
+        tokens: TokenBreakdown,
+        cost: f64,
+        agent: Option<String>,
     ) -> Self {
         let date = timestamp_to_date(timestamp);
         Self {
@@ -44,6 +73,7 @@ impl UnifiedMessage {
             date,
             tokens,
             cost,
+            agent,
         }
     }
 }
@@ -112,5 +142,21 @@ mod tests {
         assert_eq!(msg.session_id, "test-session-id");
         assert_eq!(msg.date, "2024-12-01");
         assert_eq!(msg.cost, 0.05);
+        assert_eq!(msg.agent, None);
+    }
+
+    #[test]
+    fn test_normalize_agent_name() {
+        assert_eq!(normalize_agent_name("OmO"), "Sisyphus");
+        assert_eq!(normalize_agent_name("Sisyphus"), "Sisyphus");
+        assert_eq!(normalize_agent_name("omo"), "Sisyphus");
+        assert_eq!(normalize_agent_name("sisyphus"), "Sisyphus");
+
+        assert_eq!(normalize_agent_name("OmO-Plan"), "Planner-Sisyphus");
+        assert_eq!(normalize_agent_name("Planner-Sisyphus"), "Planner-Sisyphus");
+        assert_eq!(normalize_agent_name("omo-plan"), "Planner-Sisyphus");
+
+        assert_eq!(normalize_agent_name("explore"), "explore");
+        assert_eq!(normalize_agent_name("CustomAgent"), "CustomAgent");
     }
 }

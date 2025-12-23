@@ -63,7 +63,6 @@ pub struct TokenBreakdown {
 // Two-Phase Processing Types (for parallel execution optimization)
 // =============================================================================
 
-/// Parsed message without cost (pricing applied in finalize step)
 #[napi(object)]
 #[derive(Debug, Clone)]
 pub struct ParsedMessage {
@@ -78,6 +77,7 @@ pub struct ParsedMessage {
     pub cache_read: i64,
     pub cache_write: i64,
     pub reasoning: i64,
+    pub agent: Option<String>,
 }
 
 /// Result of parsing local sources (excludes Cursor - it's network-synced)
@@ -942,7 +942,6 @@ pub fn parse_local_sources(options: LocalParseOptions) -> napi::Result<ParsedMes
     })
 }
 
-/// Convert UnifiedMessage to ParsedMessage (drops cost)
 fn unified_to_parsed(msg: &UnifiedMessage) -> ParsedMessage {
     ParsedMessage {
         source: msg.source.clone(),
@@ -956,6 +955,7 @@ fn unified_to_parsed(msg: &UnifiedMessage) -> ParsedMessage {
         cache_read: msg.tokens.cache_read,
         cache_write: msg.tokens.cache_write,
         reasoning: msg.tokens.reasoning,
+        agent: msg.agent.clone(),
     }
 }
 
@@ -982,7 +982,6 @@ fn filter_parsed_messages(
     filtered
 }
 
-/// Convert ParsedMessage back to UnifiedMessage with cost
 fn parsed_to_unified(msg: &ParsedMessage, cost: f64) -> UnifiedMessage {
     UnifiedMessage {
         source: msg.source.clone(),
@@ -999,6 +998,7 @@ fn parsed_to_unified(msg: &ParsedMessage, cost: f64) -> UnifiedMessage {
             reasoning: msg.reasoning,
         },
         cost,
+        agent: msg.agent.clone(),
     }
 }
 

@@ -188,7 +188,6 @@ export interface MonthlyUsage {
   cost: number
 }
 
-/** Parsed message without cost (pricing applied in finalize step) */
 export interface ParsedMessage {
   source: string
   modelId: string
@@ -201,6 +200,7 @@ export interface ParsedMessage {
   cacheRead: number
   cacheWrite: number
   reasoning: number
+  agent?: string
 }
 
 /** Result of parsing local sources (excludes Cursor - it's network-synced) */
