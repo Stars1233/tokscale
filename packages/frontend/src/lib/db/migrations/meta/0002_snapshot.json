@@ -1,6 +1,6 @@
 {
-  "id": "80cd8cd8-e9d4-42e5-91e1-a0b03aa68c9b",
-  "prevId": "4e09a3b0-fb6c-441c-b09a-843966658657",
+  "id": "4342d7b5-5562-431f-afd1-0dd773563dff",
+  "prevId": "80cd8cd8-e9d4-42e5-91e1-a0b03aa68c9b",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -558,6 +558,13 @@
         },
         "cache_read_tokens": {
           "name": "cache_read_tokens",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "reasoning_tokens": {
+          "name": "reasoning_tokens",
           "type": "bigint",
           "primaryKey": false,
           "notNull": true,

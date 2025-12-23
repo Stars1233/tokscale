@@ -15,6 +15,13 @@
       "when": 1766393285170,
       "tag": "0001_youthful_snowbird",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1766443511550,
+      "tag": "0002_square_lyja",
+      "breakpoints": true
     }
   ]
 }
