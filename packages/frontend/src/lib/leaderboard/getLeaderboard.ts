@@ -143,7 +143,7 @@ export function getLeaderboardData(
     [`leaderboard:${period}:${page}:${limit}`],
     {
       tags: ["leaderboard", `leaderboard:${period}`],
-      revalidate: 3600,
+      revalidate: 60,
     }
   )();
 }

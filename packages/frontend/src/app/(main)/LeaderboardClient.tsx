@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import styled from "styled-components";
 import { Pagination, Avatar } from "@primer/react";
@@ -367,10 +367,13 @@ export default function LeaderboardClient({ initialData }: LeaderboardClientProp
   const [period, setPeriod] = useState<Period>(initialData.period);
   const [page, setPage] = useState(initialData.pagination.page);
 
-  const isInitialRender = period === initialData.period && page === initialData.pagination.page;
+  const isFirstMount = useRef(true);
 
   useEffect(() => {
-    if (isInitialRender) return;
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
 
     setIsLoading(true);
     fetch(`/api/leaderboard?period=${period}&page=${page}&limit=50`)
@@ -382,7 +385,7 @@ export default function LeaderboardClient({ initialData }: LeaderboardClientProp
       .catch(() => {
         setIsLoading(false);
       });
-  }, [period, page, isInitialRender]);
+  }, [period, page]);
 
   return (
     <>
@@ -413,7 +416,7 @@ export default function LeaderboardClient({ initialData }: LeaderboardClientProp
             </StatLabel>
             <StatValue
               style={{ color: "var(--color-primary)", textDecoration: "none" }}
-              title={data.stats.totalTokens.toLocaleString()}
+              title={data.stats.totalTokens.toLocaleString('en-US')}
             >
               {formatNumber(data.stats.totalTokens)}
             </StatValue>
@@ -565,7 +568,7 @@ export default function LeaderboardClient({ initialData }: LeaderboardClientProp
                             style={{ color: "var(--color-primary)", textDecoration: "none" }}
                             title={user.totalTokens.toString()}
                           >
-                            {user.totalTokens.toLocaleString()}
+                            {user.totalTokens.toLocaleString('en-US')}
                           </StatSpan>
                         </TableCell>
                         <TableCell className="text-right hidden-mobile w-24">

@@ -344,8 +344,12 @@ export async function POST(request: Request) {
       };
     });
 
-    revalidateTag("leaderboard", "max");
-    revalidateTag(`user:${tokenRecord.username}`, "max");
+    try {
+      revalidateTag("leaderboard", "max");
+      revalidateTag(`user:${tokenRecord.username}`, "max");
+    } catch (e) {
+      console.error("Cache invalidation failed:", e);
+    }
 
     return NextResponse.json({
       success: true,
