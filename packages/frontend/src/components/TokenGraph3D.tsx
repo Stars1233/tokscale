@@ -1,11 +1,119 @@
 "use client";
 
 import { useRef, useEffect, useCallback, useState } from "react";
+import styled, { keyframes } from "styled-components";
 import type { DailyContribution, GraphColorPalette, TooltipPosition } from "@/lib/types";
 import { getGradeColor } from "@/lib/themes";
 import { useSystemDarkMode } from "@/lib/useMediaQuery";
 import { groupByWeek, hexToNumber, formatCurrency, formatDate, formatTokenCount } from "@/lib/utils";
 import { CUBE_SIZE, MAX_CUBE_HEIGHT, MIN_CUBE_HEIGHT, ISO_CANVAS_WIDTH, ISO_CANVAS_HEIGHT } from "@/lib/constants";
+
+const pulse = keyframes`
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+`;
+
+const LoadingContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+`;
+
+const LoadingText = styled.div`
+  animation: ${pulse} 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+`;
+
+const Container = styled.div.attrs({ className: "ic-contributions-wrapper" })`
+  position: relative;
+  width: 100%;
+`;
+
+const StyledCanvas = styled.canvas`
+  cursor: pointer;
+  width: 100%;
+  height: auto;
+`;
+
+const TopRightStats = styled.div`
+  position: absolute;
+  top: 12px;
+  right: 20px;
+`;
+
+const BottomLeftStats = styled.div`
+  position: absolute;
+  bottom: 24px;
+  left: 20px;
+`;
+
+const StatsTitle = styled.h5`
+  margin-bottom: 4px;
+  font-size: 14px;
+  font-weight: 600;
+`;
+
+const StatsBox = styled.div`
+  display: flex;
+  justify-content: space-between;
+  border-radius: 6px;
+  border-width: 1px;
+  border-style: solid;
+  padding-left: 4px;
+  padding-right: 4px;
+  
+  @media (min-width: 768px) {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+`;
+
+const StatItem = styled.div`
+  padding: 8px;
+`;
+
+const HiddenStatItem = styled(StatItem)`
+  display: none;
+  @media (min-width: 1280px) {
+    display: block;
+  }
+`;
+
+const StatValue = styled.span`
+  display: block;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.25;
+`;
+
+const StatLabel = styled.span`
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+`;
+
+const StatSubtext = styled.span`
+  display: none;
+  font-size: 12px;
+  
+  @media (min-width: 640px) {
+    display: block;
+  }
+`;
+
+const StatsFooter = styled.p`
+  margin-top: 4px;
+  text-align: right;
+  font-size: 12px;
+`;
+
+const SpanBase = styled.span`
+  font-size: 16px;
+`;
+
+const SpanBold = styled.span`
+  font-weight: 700;
+`;
 
 interface TokenGraph3DProps {
   contributions: DailyContribution[];
@@ -162,72 +270,68 @@ export function TokenGraph3D({
 
   if (!obeliskLoaded) {
     return (
-      <div
+      <LoadingContainer
         ref={containerRef}
-        className="flex items-center justify-center w-full"
         style={{ aspectRatio: `${ISO_CANVAS_WIDTH} / ${ISO_CANVAS_HEIGHT}`, backgroundColor: isDark ? "#10121C" : "#FFFFFF" }}
       >
-        <div className="animate-pulse" style={{ color: isDark ? "#696969" : "#656D76" }}>Loading 3D view...</div>
-      </div>
+        <LoadingText style={{ color: isDark ? "#696969" : "#656D76" }}>Loading 3D view...</LoadingText>
+      </LoadingContainer>
     );
   }
 
   return (
-    <div ref={containerRef} className="ic-contributions-wrapper relative w-full">
-      <canvas
+    <Container ref={containerRef}>
+      <StyledCanvas
         ref={canvasRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => onDayHover(null, null)}
         onClick={handleClick}
-        className="cursor-pointer w-full h-auto"
         style={{ aspectRatio: `${ISO_CANVAS_WIDTH} / ${ISO_CANVAS_HEIGHT}` }}
       />
 
-      <div className="absolute top-3 right-5">
-        <h5 className="mb-1 text-sm font-semibold" style={{ color: isDark ? "#FFFFFF" : "#1F2328" }}>Token Usage</h5>
-        <div
-          className="flex justify-between rounded-md border px-1 md:px-2"
+      <TopRightStats>
+        <StatsTitle style={{ color: isDark ? "#FFFFFF" : "#1F2328" }}>Token Usage</StatsTitle>
+        <StatsBox
           style={{ borderColor: isDark ? "#262627" : "#D0D7DE", backgroundColor: isDark ? "#1F1F20" : "#FFFFFF" }}
         >
-          <div className="p-2">
-            <span className="block text-2xl font-bold leading-tight" style={{ color: palette.grade1 }}>{formatCurrency(totalCost)}</span>
-            <span className="block text-xs font-bold" style={{ color: isDark ? "#FFFFFF" : "#1F2328" }}>Total</span>
-            <span className="hidden sm:block text-xs" style={{ color: isDark ? "#696969" : "#656D76" }}>{dateRange.start} → {dateRange.end}</span>
-          </div>
-          <div className="p-2 hidden xl:block">
-            <span className="block text-2xl font-bold leading-tight" style={{ color: palette.grade1 }}>{formatTokenCount(totalTokens)}</span>
-            <span className="block text-xs font-bold" style={{ color: isDark ? "#FFFFFF" : "#1F2328" }}>Tokens</span>
-            <span className="hidden sm:block text-xs" style={{ color: isDark ? "#696969" : "#656D76" }}>{activeDays} active days</span>
-          </div>
+          <StatItem>
+            <StatValue style={{ color: palette.grade1 }}>{formatCurrency(totalCost)}</StatValue>
+            <StatLabel style={{ color: isDark ? "#FFFFFF" : "#1F2328" }}>Total</StatLabel>
+            <StatSubtext style={{ color: isDark ? "#696969" : "#656D76" }}>{dateRange.start} → {dateRange.end}</StatSubtext>
+          </StatItem>
+          <HiddenStatItem>
+            <StatValue style={{ color: palette.grade1 }}>{formatTokenCount(totalTokens)}</StatValue>
+            <StatLabel style={{ color: isDark ? "#FFFFFF" : "#1F2328" }}>Tokens</StatLabel>
+            <StatSubtext style={{ color: isDark ? "#696969" : "#656D76" }}>{activeDays} active days</StatSubtext>
+          </HiddenStatItem>
           {bestDay && (
-            <div className="p-2">
-              <span className="block text-2xl font-bold leading-tight" style={{ color: palette.grade1 }}>{formatCurrency(bestDay.totals.cost)}</span>
-              <span className="block text-xs font-bold" style={{ color: isDark ? "#FFFFFF" : "#1F2328" }}>Best day</span>
-              <span className="hidden sm:block text-xs" style={{ color: isDark ? "#696969" : "#656D76" }}>{formatDate(bestDay.date).split(",")[0]}</span>
-            </div>
+            <StatItem>
+              <StatValue style={{ color: palette.grade1 }}>{formatCurrency(bestDay.totals.cost)}</StatValue>
+              <StatLabel style={{ color: isDark ? "#FFFFFF" : "#1F2328" }}>Best day</StatLabel>
+              <StatSubtext style={{ color: isDark ? "#696969" : "#656D76" }}>{formatDate(bestDay.date).split(",")[0]}</StatSubtext>
+            </StatItem>
           )}
-        </div>
-        <p className="mt-1 text-right text-xs" style={{ color: isDark ? "#696969" : "#656D76" }}>
-          Average: <span className="font-bold" style={{ color: palette.grade1 }}>{formatCurrency(activeDays > 0 ? totalCost / activeDays : 0)}</span> / day
-        </p>
-      </div>
+        </StatsBox>
+        <StatsFooter style={{ color: isDark ? "#696969" : "#656D76" }}>
+          Average: <SpanBold style={{ color: palette.grade1 }}>{formatCurrency(activeDays > 0 ? totalCost / activeDays : 0)}</SpanBold> / day
+        </StatsFooter>
+      </TopRightStats>
 
-      <div className="absolute bottom-6 left-5">
-        <h5 className="mb-1 text-sm font-semibold" style={{ color: isDark ? "#FFFFFF" : "#1F2328" }}>Streaks</h5>
-        <div
-          className="flex justify-between rounded-md border px-1 md:px-2"
+      <BottomLeftStats>
+        <StatsTitle style={{ color: isDark ? "#FFFFFF" : "#1F2328" }}>Streaks</StatsTitle>
+        <StatsBox
           style={{ borderColor: isDark ? "#262627" : "#D0D7DE", backgroundColor: isDark ? "#1F1F20" : "#FFFFFF" }}
         >
-          <div className="p-2">
-            <span className="block text-2xl font-bold leading-tight" style={{ color: palette.grade1 }}>{longestStreak} <span className="text-base">days</span></span>
-            <span className="block text-xs font-bold" style={{ color: isDark ? "#FFFFFF" : "#1F2328" }}>Longest</span>
-          </div>
-          <div className="p-2">
-            <span className="block text-2xl font-bold leading-tight" style={{ color: palette.grade1 }}>{currentStreak} <span className="text-base">days</span></span>
-            <span className="block text-xs font-bold" style={{ color: isDark ? "#FFFFFF" : "#1F2328" }}>Current</span>
-          </div>
-        </div>
-      </div>
-    </div>
+          <StatItem>
+            <StatValue style={{ color: palette.grade1 }}>{longestStreak} <SpanBase>days</SpanBase></StatValue>
+            <StatLabel style={{ color: isDark ? "#FFFFFF" : "#1F2328" }}>Longest</StatLabel>
+          </StatItem>
+          <StatItem>
+            <StatValue style={{ color: palette.grade1 }}>{currentStreak} <SpanBase>days</SpanBase></StatValue>
+            <StatLabel style={{ color: isDark ? "#FFFFFF" : "#1F2328" }}>Current</StatLabel>
+          </StatItem>
+        </StatsBox>
+      </BottomLeftStats>
+    </Container>
   );
 }

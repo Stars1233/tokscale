@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import styled from "styled-components";
 import type { TokenContributionData, DailyContribution, ViewMode, SourceType, TooltipPosition } from "@/lib/types";
 import { getPalette } from "@/lib/themes";
 import { useSettings } from "@/lib/useSettings";
@@ -11,6 +12,38 @@ import { GraphControls } from "./GraphControls";
 import { Tooltip } from "./Tooltip";
 import { BreakdownPanel } from "./BreakdownPanel";
 import { StatsPanel } from "./StatsPanel";
+
+const Container = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+`;
+
+const GraphCard = styled.div`
+  border-radius: 16px;
+  border: 1px solid var(--color-border-default);
+  padding-top: 16px;
+  padding-bottom: 16px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  transition: box-shadow 200ms;
+  background-color: var(--color-graph-canvas);
+
+  &:hover {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  }
+`;
+
+const ControlsWrapper = styled.div`
+  padding-left: 20px;
+  padding-right: 20px;
+`;
+
+const GraphWrapper = styled.div`
+  padding-left: 20px;
+  padding-right: 20px;
+  padding-bottom: 12px;
+`;
 
 interface GraphContainerProps {
   data: TokenContributionData;
@@ -82,12 +115,9 @@ export function GraphContainer({ data }: GraphContainerProps) {
   }, []);
 
   return (
-    <div className="space-y-6">
-      <div
-        className="rounded-2xl border py-4 overflow-hidden shadow-sm transition-shadow hover:shadow-md"
-        style={{ backgroundColor: "var(--color-graph-canvas)", borderColor: "var(--color-border-default)" }}
-      >
-        <div className="px-5">
+    <Container>
+      <GraphCard>
+        <ControlsWrapper>
           <GraphControls
             view={view}
             onViewChange={setView}
@@ -102,9 +132,9 @@ export function GraphContainer({ data }: GraphContainerProps) {
             palette={palette}
             totalTokens={totalTokens}
           />
-        </div>
+        </ControlsWrapper>
 
-        <div className="px-5 pb-3">
+        <GraphWrapper>
           {view === "2d" ? (
             <TokenGraph2D
               contributions={yearContributions}
@@ -130,12 +160,12 @@ export function GraphContainer({ data }: GraphContainerProps) {
               onDayClick={handleDayClick}
             />
           )}
-        </div>
-      </div>
+        </GraphWrapper>
+      </GraphCard>
 
       {selectedDay && <BreakdownPanel day={selectedDay} onClose={() => setSelectedDay(null)} palette={palette} />}
       {view === "2d" && <StatsPanel data={filteredBySource} palette={palette} />}
       <Tooltip day={hoveredDay} position={tooltipPosition} visible={hoveredDay !== null} palette={palette} />
-    </div>
+    </Container>
   );
 }

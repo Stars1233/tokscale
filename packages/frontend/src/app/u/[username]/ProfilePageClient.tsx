@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import styled from "styled-components";
 import { Navigation } from "@/components/layout/Navigation";
 import { Footer } from "@/components/layout/Footer";
 import {
@@ -140,24 +141,24 @@ const EARLY_ADOPTERS = ["code-yeongyu", "gtg7784", "qodot"];
   const showResubmitBanner = EARLY_ADOPTERS.includes(data.user.username) && data.stats.submissionCount === 1;
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#10121C" }}>
+    <PageContainer style={{ backgroundColor: "#10121C" }}>
       <Navigation />
 
       {showResubmitBanner && (
-        <div className="bg-amber-500/10 border-b border-amber-500/20">
-          <div className="max-w-[800px] mx-auto px-4 sm:px-6 py-3">
-            <p className="text-sm text-amber-200">
-              <span className="font-semibold">Update available:</span>{" "}
-              If you&apos;re <span className="font-semibold">@{data.user.username}</span>, please re-submit your data with{" "}
-              <code className="px-1.5 py-0.5 rounded bg-amber-500/20 font-mono text-xs">bunx tokscale submit</code>{" "}
+        <BannerWrapper>
+          <BannerContent>
+            <BannerText>
+              <BannerBold>Update available:</BannerBold>{" "}
+              If you&apos;re <BannerBold>@{data.user.username}</BannerBold>, please re-submit your data with{" "}
+              <BannerCode>bunx tokscale submit</BannerCode>{" "}
               to see detailed model breakdowns per day.
-            </p>
-          </div>
-        </div>
+            </BannerText>
+          </BannerContent>
+        </BannerWrapper>
       )}
 
-      <main className="flex-1 max-w-[800px] mx-auto px-4 sm:px-6 py-6 sm:py-10 w-full">
-        <div className="flex flex-col gap-8">
+      <MainContent>
+        <ContentWrapper>
           <ProfileHeader
             user={user}
             stats={stats}
@@ -168,7 +169,7 @@ const EARLY_ADOPTERS = ["code-yeongyu", "gtg7784", "qodot"];
 
           {activeTab === "activity" && (
             graphData ? (
-              <div className="flex flex-col gap-6">
+              <ActivitySection>
                 <ProfileActivity data={graphData} />
                 <ProfileStats
                   stats={stats}
@@ -176,15 +177,92 @@ const EARLY_ADOPTERS = ["code-yeongyu", "gtg7784", "qodot"];
                   longestStreak={calculateLongestStreak(graphData.contributions)}
                   favoriteModel={data.models.filter(m => m !== "<synthetic>")[0]}
                 />
-              </div>
+              </ActivitySection>
             ) : <ProfileEmptyActivity />
           )}
           {activeTab === "breakdown" && <TokenBreakdown stats={stats} />}
           {activeTab === "models" && <ProfileModels models={data.models} modelUsage={data.modelUsage} />}
-        </div>
-      </main>
+        </ContentWrapper>
+      </MainContent>
 
       <Footer />
-    </div>
+    </PageContainer>
   );
 }
+
+const PageContainer = styled.div`
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+`;
+
+const BannerWrapper = styled.div`
+  background-color: rgba(245, 158, 11, 0.1);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+`;
+
+const BannerContent = styled.div`
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+
+  @media (min-width: 640px) {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+`;
+
+const BannerText = styled.p`
+  font-size: 14px;
+  color: #fde68a;
+`;
+
+const BannerBold = styled.span`
+  font-weight: 600;
+`;
+
+const BannerCode = styled.code`
+  padding-left: 6px;
+  padding-right: 6px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  border-radius: 4px;
+  background-color: rgba(245, 158, 11, 0.2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+`;
+
+const MainContent = styled.main`
+  flex: 1;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 24px;
+  padding-bottom: 24px;
+  width: 100%;
+
+  @media (min-width: 640px) {
+    padding-left: 24px;
+    padding-right: 24px;
+    padding-top: 40px;
+    padding-bottom: 40px;
+  }
+`;
+
+const ContentWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+`;
+
+const ActivitySection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+`;

@@ -46,7 +46,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${figtree.variable} ${jetbrainsMono.variable}`}>
-      <body className={`${figtree.className} antialiased`}>
+      <body className={figtree.className}>
         <NextTopLoader color="#3B82F6" showSpinner={false} />
         <Providers>
           {children}

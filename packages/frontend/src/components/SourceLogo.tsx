@@ -1,5 +1,7 @@
 "use client";
 
+import styled from "styled-components";
+
 /* eslint-disable @next/next/no-img-element */
 
 interface SourceLogoProps {
@@ -7,6 +9,17 @@ interface SourceLogoProps {
   height?: number;
   className?: string;
 }
+
+const StyledImg = styled.img<{ $height: number }>`
+  border-radius: 2px;
+  object-fit: contain;
+  height: ${props => props.$height}px;
+  width: auto;
+  min-width: ${props => props.$height}px;
+  max-width: ${props => props.$height}px;
+  min-height: ${props => props.$height}px;
+  max-height: ${props => props.$height}px;
+`;
 
 export function SourceLogo({ sourceId, height = 14, className = "" }: SourceLogoProps) {
   const normalizedId = sourceId.toLowerCase();
@@ -35,19 +48,11 @@ export function SourceLogo({ sourceId, height = 14, className = "" }: SourceLogo
   }
 
   return (
-    <img
+    <StyledImg
       src={src}
       alt={sourceId}
-      height={height}
-      className={`rounded-sm object-contain ${className}`}
-      style={{
-        height: height,
-        width: "auto",
-        minWidth: height,
-        maxWidth: height,
-        minHeight: height,
-        maxHeight: height,
-      }}
+      $height={height}
+      className={className}
     />
   );
 }

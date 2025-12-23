@@ -1,12 +1,21 @@
 "use client";
 
 import { useRef, useEffect, useCallback } from "react";
+import styled from "styled-components";
 import type { DailyContribution, GraphColorPalette, TooltipPosition } from "@/lib/types";
 import { getGradeColor } from "@/lib/themes";
 import { groupByWeek } from "@/lib/utils";
 import { useSystemDarkMode } from "@/lib/useMediaQuery";
 import { BOX_WIDTH, CELL_SIZE, CANVAS_MARGIN, HEADER_HEIGHT, TEXT_HEIGHT, FONT_SIZE, FONT_FAMILY, DAY_LABELS_SHORT, MONTH_LABELS_SHORT } from "@/lib/constants";
 import { parseISO, getMonth } from "date-fns";
+
+const Container = styled.div`
+  overflow-x: auto;
+`;
+
+const GraphCanvas = styled.canvas`
+  cursor: pointer;
+`;
 
 interface TokenGraph2DProps {
   contributions: DailyContribution[];
@@ -138,16 +147,15 @@ export function TokenGraph2D({ contributions, palette, year, onDayHover, onDayCl
   );
 
   return (
-    <div className="overflow-x-auto">
-      <canvas
+    <Container>
+      <GraphCanvas
         ref={canvasRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => onDayHover(null, null)}
         onClick={handleClick}
-        className="cursor-pointer"
         style={{ minWidth: canvasWidth }}
       />
-    </div>
+    </Container>
   );
 }
 

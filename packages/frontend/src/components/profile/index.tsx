@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import styled, { css } from "styled-components";
 import { GraphContainer } from "@/components/GraphContainer";
 import type { TokenContributionData } from "@/lib/types";
 import { formatNumber, formatCurrency } from "@/lib/utils";
@@ -29,76 +30,265 @@ export interface ProfileHeaderProps {
   lastUpdated?: string;
 }
 
+const HeaderContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-radius: 1rem;
+  border-width: 1px;
+  border-style: solid;
+  padding: 1rem;
+  padding-bottom: 18px;
+`;
+
+const HeaderContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+
+  @media (min-width: 1024px) {
+    flex-direction: row;
+    gap: 2.5rem;
+  }
+`;
+
+const UserInfoCard = styled.div`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 19px;
+  border-radius: 20px;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  padding-left: 0.75rem;
+  padding-right: 2rem;
+  flex: 1;
+`;
+
+const AvatarContainer = styled.div`
+  position: relative;
+  width: 100px;
+  height: 100px;
+  border-radius: 7px;
+  overflow: hidden;
+  border-width: 2px;
+  border-style: solid;
+  flex-shrink: 0;
+`;
+
+const StyledAvatarImage = styled(Image)`
+  object-fit: cover;
+`;
+
+const UserDetails = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-end;
+  gap: 6px;
+  padding-top: 0;
+  padding-bottom: 0.25rem;
+  height: 100px;
+`;
+
+const RankBadge = styled.div`
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const RankText = styled.span`
+  font-size: 1rem;
+  font-weight: 500;
+`;
+
+const NameContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  justify-content: flex-end;
+  min-width: 0;
+`;
+
+const NameHeading = styled.h1`
+  font-size: 1.5rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+`;
+
+const HandleText = styled.p`
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1;
+`;
+
+const StatsRow = styled.div`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1.75rem;
+  height: 124px;
+  flex: 1;
+`;
+
+const StatItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 120px;
+`;
+
+const StatLabel = styled.span`
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1;
+`;
+
+const StatValue = styled.span`
+  font-size: 27px;
+  font-weight: 700;
+  line-height: 1;
+`;
+
+const Divider = styled.div`
+  width: 100%;
+  height: 1px;
+`;
+
+const FooterRow = styled.div`
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+
+  @media (min-width: 640px) {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+`;
+
+const LastUpdatedText = styled.span`
+  font-size: 0.875rem;
+  line-height: 1.21;
+`;
+
+const ActionButtons = styled.div`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+`;
+
+const actionButtonStyles = css`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 9999px;
+  border-width: 1px;
+  border-style: solid;
+  padding-top: 9px;
+  padding-bottom: 9px;
+  padding-left: 10px;
+  padding-right: 11px;
+  transition: opacity 150ms ease-in-out;
+  cursor: pointer;
+
+  &:hover {
+    opacity: 0.8;
+  }
+  
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-bg-default), 0 0 0 4px #3b82f6;
+  }
+`;
+
+const ActionButton = styled.button`
+  ${actionButtonStyles}
+`;
+
+const ActionLink = styled.a`
+  ${actionButtonStyles}
+  text-decoration: none;
+`;
+
+const ActionText = styled.span`
+  font-size: 0.875rem;
+  line-height: 1;
+`;
+
 export function ProfileHeader({ user, stats, lastUpdated }: ProfileHeaderProps) {
   const avatarUrl = user.avatarUrl || `https://github.com/${user.username}.png`;
 
   return (
-    <div
-      className="flex flex-col gap-2 rounded-2xl border p-4 pb-[18px]"
+    <HeaderContainer
       style={{ backgroundColor: "var(--color-bg-default)", borderColor: "var(--color-border-default)" }}
     >
-      <div className="flex flex-col lg:flex-row gap-6 lg:gap-10">
-        <div
-          className="flex flex-row items-center gap-[19px] rounded-[20px] py-3 pl-3 pr-8 flex-1"
+      <HeaderContent>
+        <UserInfoCard
           style={{ backgroundColor: "var(--color-bg-darkest)" }}
         >
-          <div
-            className="relative w-[100px] h-[100px] rounded-[7px] overflow-hidden border-2 flex-shrink-0"
+          <AvatarContainer
             style={{ borderColor: "var(--color-border-default)" }}
           >
-            <Image
+            <StyledAvatarImage
               src={avatarUrl}
               alt={user.username}
               fill
-              className="object-cover"
             />
-          </div>
+          </AvatarContainer>
 
-          <div className="flex flex-col flex-1 min-w-0 justify-end gap-[6px] py-0 pb-1 h-[100px]">
+          <UserDetails>
             {user.rank && (
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center"
+              <RankBadge
                 style={{
                   background: "linear-gradient(135deg, var(--color-bg-darkest) 0%, color-mix(in srgb, var(--color-accent-blue) 20%, var(--color-bg-darkest)) 50%, color-mix(in srgb, var(--color-accent-blue) 35%, var(--color-bg-darkest)) 100%)",
                   border: "1px solid var(--color-border-default)",
                 }}
               >
-                <span
-                  className="text-base font-medium"
+                <RankText
                   style={{ color: "var(--color-accent-blue)" }}
                 >
                   #{user.rank}
-                </span>
-              </div>
+                </RankText>
+              </RankBadge>
             )}
 
-            <div className="flex flex-col gap-[6px] flex-1 justify-end min-w-0">
-              <h1
-                className="text-2xl font-bold truncate leading-[1.2]"
+            <NameContainer>
+              <NameHeading
                 style={{ color: "var(--color-fg-default)" }}
               >
                 {user.displayName || user.username}
-              </h1>
-              <p
-                className="text-sm font-bold leading-none"
+              </NameHeading>
+              <HandleText
                 style={{ color: "var(--color-fg-muted)" }}
               >
                 @{user.username}
-              </p>
-            </div>
-          </div>
-        </div>
+              </HandleText>
+            </NameContainer>
+          </UserDetails>
+        </UserInfoCard>
 
-        <div className="flex flex-row items-center gap-7 h-[124px] flex-1">
-          <div className="flex flex-col gap-[8px] flex-1 min-w-[120px]">
-            <span
-              className="text-base font-semibold leading-none"
+        <StatsRow>
+          <StatItem>
+            <StatLabel
               style={{ color: "var(--color-accent-blue)" }}
             >
               Total Tokens
-            </span>
-            <span
-              className="text-[27px] font-bold leading-none"
+            </StatLabel>
+            <StatValue
               style={{
                 background: "linear-gradient(117deg, #169AFF 0%, #9FD4FB 26%, #B9DFF8 52%)",
                 WebkitBackgroundClip: "text",
@@ -109,73 +299,66 @@ export function ProfileHeader({ user, stats, lastUpdated }: ProfileHeaderProps) 
               title={stats.totalTokens.toLocaleString()}
             >
               {formatNumber(stats.totalTokens)}
-            </span>
-          </div>
+            </StatValue>
+          </StatItem>
 
-          <div className="flex flex-col gap-[8px] flex-1 min-w-[120px]">
-            <span
-              className="text-base font-semibold leading-none"
+          <StatItem>
+            <StatLabel
               style={{ color: "var(--color-fg-default)" }}
             >
               Total Cost
-            </span>
-            <span
-              className="text-[27px] font-bold leading-none"
+            </StatLabel>
+            <StatValue
               style={{ color: "var(--color-fg-default)", textDecoration: "none" }}
               title={stats.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
             >
               {formatCurrency(stats.totalCost)}
-            </span>
-          </div>
-        </div>
-      </div>
+            </StatValue>
+          </StatItem>
+        </StatsRow>
+      </HeaderContent>
 
-      <div className="w-full h-px" style={{ backgroundColor: "var(--color-border-default)" }} />
+      <Divider style={{ backgroundColor: "var(--color-border-default)" }} />
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-3">
+      <FooterRow>
         {lastUpdated && (
-          <span
-            className="text-sm leading-[1.21]"
+          <LastUpdatedText
             style={{ color: "var(--color-fg-muted)" }}
           >
             Last Updated: {new Date(lastUpdated).toLocaleString()}
-          </span>
+          </LastUpdatedText>
         )}
 
-        <div className="flex flex-row items-center gap-[6px]">
-          <button
+        <ActionButtons>
+          <ActionButton
             aria-label={`Share ${user.displayName || user.username}'s profile`}
-            className="flex flex-row items-center justify-center gap-[6px] rounded-full border py-[9px] pl-[10px] pr-[11px] transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             style={{ backgroundColor: "var(--color-btn-bg)", borderColor: "var(--color-border-default)" }}
           >
             <Image src="/icons/icon-share.svg" alt="" width={20} height={20} aria-hidden="true" />
-            <span
-              className="text-sm leading-none"
+            <ActionText
               style={{ color: "var(--color-fg-default)" }}
             >
               Share
-            </span>
-          </button>
+            </ActionText>
+          </ActionButton>
 
-          <a
+          <ActionLink
             href={`https://github.com/${user.username}`}
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`View ${user.username}'s GitHub profile (opens in new tab)`}
-            className="flex flex-row items-center justify-center gap-[6px] rounded-full border py-[9px] pl-[10px] pr-[11px] transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             style={{ backgroundColor: "var(--color-btn-bg)", borderColor: "var(--color-border-default)" }}
           >
             <Image src="/icons/icon-github.svg" alt="" width={20} height={20} aria-hidden="true" />
-            <span
-              className="text-sm leading-none"
+            <ActionText
               style={{ color: "var(--color-fg-default)" }}
             >
               GitHub
-            </span>
-          </a>
-        </div>
-      </div>
-    </div>
+            </ActionText>
+          </ActionLink>
+        </ActionButtons>
+      </FooterRow>
+    </HeaderContainer>
   );
 }
 
@@ -185,6 +368,43 @@ export interface ProfileTabBarProps {
   activeTab: ProfileTab;
   onTabChange: (tab: ProfileTab) => void;
 }
+
+const TabBarContainer = styled.div`
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  border-radius: 25px;
+  border-width: 1px;
+  border-style: solid;
+  padding: 6px;
+  width: fit-content;
+`;
+
+const TabButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 25px;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  transition: background-color 150ms;
+  cursor: pointer;
+  border: none;
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-bg-elevated), 0 0 0 4px #3b82f6;
+  }
+`;
+
+const TabText = styled.span`
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+`;
 
 export function ProfileTabBar({ activeTab, onTabChange }: ProfileTabBarProps) {
   const tabs: { id: ProfileTab; label: string }[] = [
@@ -212,12 +432,10 @@ export function ProfileTabBar({ activeTab, onTabChange }: ProfileTabBarProps) {
   };
 
   return (
-    <div
+    <TabBarContainer
       role="tablist"
       aria-label="Profile tabs"
-      className="inline-flex flex-row items-center rounded-[25px] border p-[6px]"
       style={{
-        width: "fit-content",
         backgroundColor: "var(--color-bg-elevated)",
         borderColor: "var(--color-border-default)",
       }}
@@ -225,7 +443,7 @@ export function ProfileTabBar({ activeTab, onTabChange }: ProfileTabBarProps) {
       {tabs.map((tab, index) => {
         const isActive = activeTab === tab.id;
         return (
-          <button
+          <TabButton
             key={tab.id}
             role="tab"
             aria-selected={isActive}
@@ -233,29 +451,99 @@ export function ProfileTabBar({ activeTab, onTabChange }: ProfileTabBarProps) {
             tabIndex={isActive ? 0 : -1}
             onClick={() => onTabChange(tab.id)}
             onKeyDown={(e) => handleKeyDown(e, index)}
-            className="flex items-center justify-center rounded-[25px] px-5 py-[10px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             style={{
               backgroundColor: isActive ? "var(--color-bg-active)" : "transparent",
             }}
           >
-            <span
-              className="text-lg font-semibold leading-none whitespace-nowrap"
+            <TabText
               style={{
                 color: isActive ? "var(--color-fg-default)" : "color-mix(in srgb, var(--color-fg-default) 50%, transparent)",
               }}
             >
               {tab.label}
-            </span>
-          </button>
+            </TabText>
+          </TabButton>
         );
       })}
-    </div>
+    </TabBarContainer>
   );
 }
 
 export interface TokenBreakdownProps {
   stats: ProfileStatsData;
 }
+
+const BreakdownContainer = styled.div`
+  border-radius: 1rem;
+  border-width: 1px;
+  border-style: solid;
+  padding: 1rem;
+
+  @media (min-width: 640px) {
+    padding: 1.5rem;
+  }
+`;
+
+const ProgressBarWrapper = styled.div`
+  margin-bottom: 1.5rem;
+`;
+
+const ProgressBar = styled.div`
+  height: 0.75rem;
+  border-radius: 9999px;
+  overflow: hidden;
+  display: flex;
+`;
+
+const LegendGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+`;
+
+const LegendItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+`;
+
+const LegendDot = styled.div`
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 9999px;
+  flex-shrink: 0;
+`;
+
+const LegendInfo = styled.div`
+  min-width: 0;
+`;
+
+const LegendHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const LegendLabel = styled.p`
+  font-size: 0.75rem;
+`;
+
+const LegendPercentage = styled.span`
+  font-size: 0.75rem;
+`;
+
+const LegendValue = styled.p`
+  font-size: 1rem;
+  font-weight: 600;
+
+  @media (min-width: 640px) {
+    font-size: 1.125rem;
+  }
+`;
 
 export function TokenBreakdown({ stats }: TokenBreakdownProps) {
   const { totalTokens, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens } = stats;
@@ -268,14 +556,12 @@ export function TokenBreakdown({ stats }: TokenBreakdownProps) {
   ];
 
   return (
-    <div
-      className="rounded-2xl border p-4 sm:p-6"
+    <BreakdownContainer
       style={{ backgroundColor: "var(--color-bg-default)", borderColor: "var(--color-border-default)" }}
     >
       {totalTokens > 0 && (
-        <div className="mb-6">
-          <div
-            className="h-3 rounded-full overflow-hidden flex"
+        <ProgressBarWrapper>
+          <ProgressBar
             style={{ backgroundColor: "var(--color-bg-subtle)" }}
           >
             {tokenTypes.map((type) => (
@@ -288,34 +574,33 @@ export function TokenBreakdown({ stats }: TokenBreakdownProps) {
                 title={`${type.label}: ${formatNumber(type.value)}`}
               />
             ))}
-          </div>
-        </div>
+          </ProgressBar>
+        </ProgressBarWrapper>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <LegendGrid>
         {tokenTypes.map((type) => (
-          <div key={type.label} className="flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: type.color }} />
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="text-xs" style={{ color: "var(--color-fg-muted)" }}>{type.label}</p>
+          <LegendItem key={type.label}>
+            <LegendDot style={{ backgroundColor: type.color }} />
+            <LegendInfo>
+              <LegendHeader>
+                <LegendLabel style={{ color: "var(--color-fg-muted)" }}>{type.label}</LegendLabel>
                 {type.percentage > 0 && (
-                  <span className="text-xs" style={{ color: "var(--color-fg-subtle)" }}>
+                  <LegendPercentage style={{ color: "var(--color-fg-subtle)" }}>
                     {type.percentage.toFixed(1)}%
-                  </span>
+                  </LegendPercentage>
                 )}
-              </div>
-              <p
-                className="text-base sm:text-lg font-semibold"
+              </LegendHeader>
+              <LegendValue
                 style={{ color: "var(--color-fg-default)" }}
               >
                 {formatNumber(type.value)}
-              </p>
-            </div>
-          </div>
+              </LegendValue>
+            </LegendInfo>
+          </LegendItem>
         ))}
-      </div>
-    </div>
+      </LegendGrid>
+    </BreakdownContainer>
   );
 }
 
@@ -326,6 +611,72 @@ export interface ProfileStatsProps {
   favoriteModel?: string;
 }
 
+const StatsContainer = styled(BreakdownContainer)``;
+
+const StatsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+
+  @media (min-width: 640px) {
+    gap: 1.5rem;
+  }
+  
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+`;
+
+const StatsItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+`;
+
+const StatsLabel = styled.p`
+  font-size: 0.75rem;
+  
+  @media (min-width: 640px) {
+    font-size: 0.875rem;
+  }
+`;
+
+const StatsValue = styled.p`
+  font-size: 1.125rem;
+  font-weight: 700;
+
+  @media (min-width: 640px) {
+    font-size: 1.25rem;
+  }
+`;
+
+const FavoriteModelContainer = styled.div`
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top-width: 1px;
+  border-top-style: solid;
+`;
+
+const FavoriteModelInner = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const FavoriteModelLabel = styled.span`
+  font-size: 0.875rem;
+`;
+
+const FavoriteModelBadge = styled.span`
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+`;
+
 export function ProfileStats({ stats, currentStreak = 0, longestStreak = 0, favoriteModel }: ProfileStatsProps) {
   const statItems = [
     { label: "Active Days", value: stats.activeDays.toString(), color: "var(--color-primary)" },
@@ -335,38 +686,35 @@ export function ProfileStats({ stats, currentStreak = 0, longestStreak = 0, favo
   ];
 
   return (
-    <div
-      className="rounded-2xl border p-4 sm:p-6"
+    <StatsContainer
       style={{ backgroundColor: "var(--color-bg-default)", borderColor: "var(--color-border-default)" }}
     >
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+      <StatsGrid>
         {statItems.map((item) => (
-          <div key={item.label} className="flex flex-col gap-1">
-            <p className="text-xs sm:text-sm" style={{ color: "var(--color-fg-muted)" }}>{item.label}</p>
-            <p
-              className="text-lg sm:text-xl font-bold"
+          <StatsItem key={item.label}>
+            <StatsLabel style={{ color: "var(--color-fg-muted)" }}>{item.label}</StatsLabel>
+            <StatsValue
               style={{ color: item.color }}
             >
               {item.value}
-            </p>
-          </div>
+            </StatsValue>
+          </StatsItem>
         ))}
-      </div>
+      </StatsGrid>
 
       {favoriteModel && (
-        <div className="mt-4 pt-4 border-t" style={{ borderColor: "var(--color-border-default)" }}>
-          <div className="flex items-center gap-2">
-            <span className="text-sm" style={{ color: "var(--color-fg-muted)" }}>Favorite Model:</span>
-            <span
-              className="px-2 py-1 rounded-md text-sm font-medium"
+        <FavoriteModelContainer style={{ borderColor: "var(--color-border-default)" }}>
+          <FavoriteModelInner>
+            <FavoriteModelLabel style={{ color: "var(--color-fg-muted)" }}>Favorite Model:</FavoriteModelLabel>
+            <FavoriteModelBadge
               style={{ backgroundColor: "var(--color-bg-subtle)", color: "var(--color-fg-default)" }}
             >
               {favoriteModel}
-            </span>
-          </div>
-        </div>
+            </FavoriteModelBadge>
+          </FavoriteModelInner>
+        </FavoriteModelContainer>
       )}
-    </div>
+    </StatsContainer>
   );
 }
 
@@ -403,6 +751,111 @@ export interface ProfileModelsProps {
   modelUsage?: ModelUsage[];
 }
 
+const ModelsListContainer = styled.div`
+  border-radius: 1rem;
+  border-width: 1px;
+  border-style: solid;
+  overflow: hidden;
+`;
+
+const ModelsListHeader = styled.div`
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 1rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+
+  @media (min-width: 640px) {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+`;
+
+const ModelsListRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 1rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  align-items: center;
+
+  @media (min-width: 640px) {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+`;
+
+const ModelNameCell = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+`;
+
+const ModelColorDot = styled.div`
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  flex-shrink: 0;
+`;
+
+const ModelNameText = styled.span`
+  font-size: 0.875rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const ModelMetricCell = styled.div<{ $width: string; $smWidth: string }>`
+  text-align: right;
+  width: ${props => props.$width};
+
+  @media (min-width: 640px) {
+    width: ${props => props.$smWidth};
+  }
+`;
+
+const MetricText = styled.span`
+  font-size: 0.875rem;
+`;
+
+const CostText = styled.span`
+  font-size: 0.875rem;
+  font-weight: 500;
+`;
+
+const ModelsTagsContainer = styled(BreakdownContainer)``;
+
+const ModelsTagsWrapper = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+`;
+
+const ModelTag = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+`;
+
 export function ProfileModels({ models, modelUsage }: ProfileModelsProps) {
   const filteredModels = models.filter((m) => m !== "<synthetic>");
 
@@ -412,85 +865,71 @@ export function ProfileModels({ models, modelUsage }: ProfileModelsProps) {
     const sortedUsage = [...modelUsage].sort((a, b) => b.cost - a.cost);
 
     return (
-      <div
-        className="rounded-2xl border overflow-hidden"
+      <ModelsListContainer
         style={{ backgroundColor: "var(--color-bg-default)", borderColor: "var(--color-border-default)" }}
       >
-        <div
-          className="grid grid-cols-[1fr_auto_auto_auto] gap-4 px-4 sm:px-6 py-3 text-xs font-medium uppercase tracking-wider border-b"
+        <ModelsListHeader
           style={{ backgroundColor: "var(--color-bg-elevated)", borderColor: "var(--color-border-default)", color: "var(--color-fg-muted)" }}
         >
           <div>Model</div>
-          <div className="text-right w-20 sm:w-24">Tokens</div>
-          <div className="text-right w-16 sm:w-20">Cost</div>
-          <div className="text-right w-12 sm:w-16">%</div>
-        </div>
+          <ModelMetricCell $width="5rem" $smWidth="6rem">Tokens</ModelMetricCell>
+          <ModelMetricCell $width="4rem" $smWidth="5rem">Cost</ModelMetricCell>
+          <ModelMetricCell $width="3rem" $smWidth="4rem">%</ModelMetricCell>
+        </ModelsListHeader>
 
         <div>
           {sortedUsage.map((usage, index) => (
-            <div
+            <ModelsListRow
               key={usage.model}
-              className="grid grid-cols-[1fr_auto_auto_auto] gap-4 px-4 sm:px-6 py-3 items-center"
               style={{
                 backgroundColor: index % 2 === 1 ? "var(--color-bg-elevated)" : "transparent",
                 borderTop: index > 0 ? "1px solid var(--color-border-default)" : undefined,
               }}
             >
-              <div className="flex items-center gap-2 min-w-0">
-                <div
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: getModelColor(usage.model) }}
-                />
-                <span
-                  className="text-sm font-medium truncate"
-                  style={{ color: "var(--color-fg-default)" }}
-                >
+              <ModelNameCell>
+                <ModelColorDot style={{ backgroundColor: getModelColor(usage.model) }} />
+                <ModelNameText style={{ color: "var(--color-fg-default)" }}>
                   {usage.model}
-                </span>
-              </div>
-              <div className="text-right w-20 sm:w-24">
-                <span className="text-sm" style={{ color: "var(--color-fg-default)" }}>
+                </ModelNameText>
+              </ModelNameCell>
+              <ModelMetricCell $width="5rem" $smWidth="6rem">
+                <MetricText style={{ color: "var(--color-fg-default)" }}>
                   {formatNumber(usage.tokens)}
-                </span>
-              </div>
-              <div className="text-right w-16 sm:w-20">
-                <span className="text-sm font-medium" style={{ color: "var(--color-primary)" }}>
+                </MetricText>
+              </ModelMetricCell>
+              <ModelMetricCell $width="4rem" $smWidth="5rem">
+                <CostText style={{ color: "var(--color-primary)" }}>
                   {formatCurrency(usage.cost)}
-                </span>
-              </div>
-              <div className="text-right w-12 sm:w-16">
-                <span className="text-sm" style={{ color: "var(--color-fg-muted)" }}>
+                </CostText>
+              </ModelMetricCell>
+              <ModelMetricCell $width="3rem" $smWidth="4rem">
+                <MetricText style={{ color: "var(--color-fg-muted)" }}>
                   {usage.percentage.toFixed(1)}%
-                </span>
-              </div>
-            </div>
+                </MetricText>
+              </ModelMetricCell>
+            </ModelsListRow>
           ))}
         </div>
-      </div>
+      </ModelsListContainer>
     );
   }
 
   return (
-    <div
-      className="rounded-2xl border p-4 sm:p-6"
+    <ModelsTagsContainer
       style={{ backgroundColor: "var(--color-bg-default)", borderColor: "var(--color-border-default)" }}
     >
-      <div className="flex flex-wrap gap-2">
+      <ModelsTagsWrapper>
         {filteredModels.map((model) => (
-          <span
+          <ModelTag
             key={model}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium"
             style={{ backgroundColor: "var(--color-bg-subtle)", color: "var(--color-fg-default)" }}
           >
-            <span
-              className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: getModelColor(model) }}
-            />
+            <ModelColorDot style={{ backgroundColor: getModelColor(model) }} />
             {model}
-          </span>
+          </ModelTag>
         ))}
-      </div>
-    </div>
+      </ModelsTagsWrapper>
+    </ModelsTagsContainer>
   );
 }
 
@@ -498,27 +937,67 @@ export interface ProfileActivityProps {
   data: TokenContributionData;
 }
 
+const ActivityContainer = styled.div`
+  overflow-x: auto;
+  margin-left: -1rem;
+  margin-right: -1rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+
+  @media (min-width: 640px) {
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+`;
+
+const ActivityInner = styled.div`
+  min-width: 600px;
+  
+  @media (min-width: 640px) {
+    min-width: 0;
+  }
+`;
+
 export function ProfileActivity({ data }: ProfileActivityProps) {
   return (
-    <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-      <div className="min-w-[600px] sm:min-w-0">
+    <ActivityContainer>
+      <ActivityInner>
         <GraphContainer data={data} />
-      </div>
-    </div>
+      </ActivityInner>
+    </ActivityContainer>
   );
 }
+
+const EmptyActivityContainer = styled.div`
+  border-radius: 1rem;
+  border-width: 1px;
+  border-style: solid;
+  padding: 1.5rem;
+  text-align: center;
+
+  @media (min-width: 640px) {
+    padding: 2rem;
+  }
+`;
+
+const EmptyActivityText = styled.p`
+  font-size: 0.875rem;
+
+  @media (min-width: 640px) {
+    font-size: 1rem;
+  }
+`;
 
 export function ProfileEmptyActivity() {
   return (
-    <div
-      className="rounded-2xl border p-6 sm:p-8 text-center"
+    <EmptyActivityContainer
       style={{ backgroundColor: "var(--color-bg-default)", borderColor: "var(--color-border-default)" }}
     >
-      <p className="text-sm sm:text-base" style={{ color: "var(--color-fg-muted)" }}>
+      <EmptyActivityText style={{ color: "var(--color-fg-muted)" }}>
         No contribution data available yet.
-      </p>
-    </div>
+      </EmptyActivityText>
+    </EmptyActivityContainer>
   );
 }
-
-

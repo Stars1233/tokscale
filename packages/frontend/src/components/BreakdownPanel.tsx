@@ -1,5 +1,6 @@
 "use client";
 
+import styled from "styled-components";
 import type { DailyContribution, GraphColorPalette, SourceType } from "@/lib/types";
 import { formatDateFull, formatCurrency, formatTokenCount, groupSourcesByType, sortSourcesByCost } from "@/lib/utils";
 import { SOURCE_DISPLAY_NAMES, SOURCE_COLORS } from "@/lib/constants";
@@ -11,6 +12,89 @@ interface BreakdownPanelProps {
   palette: GraphColorPalette;
 }
 
+const PanelContainer = styled.div`
+  margin-top: 2rem;
+  border-radius: 1rem;
+  border: 1px solid;
+  overflow: hidden;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  transition: box-shadow 150ms;
+
+  &:hover {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  }
+`;
+
+const PanelHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid;
+`;
+
+const PanelTitle = styled.h3`
+  font-weight: 700;
+  font-size: 1.125rem;
+`;
+
+const CloseButton = styled.button`
+  padding: 0.5rem;
+  border-radius: 9999px;
+  transition: all 200ms;
+
+  &:hover {
+    background-color: var(--color-btn-hover-bg);
+    transform: scale(1.1);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-bg-default, #fff), 0 0 0 4px #3b82f6;
+  }
+`;
+
+const PanelContent = styled.div`
+  padding: 1.5rem;
+`;
+
+const EmptyState = styled.p`
+  text-align: center;
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+`;
+
+const SourceList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+`;
+
+const SummaryFooter = styled.div`
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  font-size: 0.875rem;
+`;
+
+const SummaryItem = styled.div`
+  font-weight: 500;
+`;
+
+const SummaryValue = styled.span`
+  font-weight: 600;
+`;
+
+const SummaryTotalValue = styled(SummaryValue)`
+  font-weight: 700;
+  font-size: 1rem;
+`;
+
 export function BreakdownPanel({ day, onClose, palette }: BreakdownPanelProps) {
   if (!day) return null;
 
@@ -18,36 +102,34 @@ export function BreakdownPanel({ day, onClose, palette }: BreakdownPanelProps) {
   const sortedSourceTypes = Array.from(groupedSources.keys()).sort();
 
   return (
-    <div
+    <PanelContainer
       role="region"
       aria-label="Day breakdown"
-      className="mt-8 rounded-2xl border overflow-hidden shadow-sm transition-shadow hover:shadow-md"
       style={{ backgroundColor: "var(--color-card-bg)", borderColor: "var(--color-border-default)" }}
     >
-      <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "var(--color-border-default)" }}>
-        <h3 className="font-bold text-lg" style={{ color: "var(--color-fg-default)" }}>
+      <PanelHeader style={{ borderColor: "var(--color-border-default)" }}>
+        <PanelTitle style={{ color: "var(--color-fg-default)" }}>
           {formatDateFull(day.date)} - Detailed Breakdown
-        </h3>
-        <button
+        </PanelTitle>
+        <CloseButton
           onClick={onClose}
           aria-label="Close breakdown panel"
-          className="p-2 rounded-full hover:bg-[var(--color-btn-hover-bg)] transition-all duration-200 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           style={{ color: "var(--color-fg-muted)" }}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
-        </button>
-      </div>
+        </CloseButton>
+      </PanelHeader>
 
-      <div className="p-6">
+      <PanelContent>
         {day.sources.length === 0 ? (
-          <p className="text-center py-8 text-sm font-medium" style={{ color: "var(--color-fg-muted)" }}>
+          <EmptyState style={{ color: "var(--color-fg-muted)" }}>
             No activity on this day
-          </p>
+          </EmptyState>
         ) : (
-          <div className="space-y-6">
+          <SourceList>
             {sortedSourceTypes.map((sourceType) => {
               const sources = sortSourcesByCost(groupedSources.get(sourceType) || []);
               const sourceTotalCost = sources.reduce((sum, s) => sum + s.cost, 0);
@@ -55,19 +137,19 @@ export function BreakdownPanel({ day, onClose, palette }: BreakdownPanelProps) {
                 <SourceSection key={sourceType} sourceType={sourceType} sources={sources} totalCost={sourceTotalCost} palette={palette} />
               );
             })}
-          </div>
+          </SourceList>
         )}
 
         {day.sources.length > 0 && (
-          <div className="mt-6 pt-6 border-t flex flex-wrap gap-6 text-sm" style={{ borderColor: "var(--color-border-default)" }}>
-            <div className="font-medium" style={{ color: "var(--color-fg-muted)" }}>
-              Total: <span className="font-bold text-base" style={{ color: "var(--color-fg-default)" }}>{formatCurrency(day.totals.cost)}</span>
-            </div>
-            <div className="font-medium" style={{ color: "var(--color-fg-muted)" }}>
-              across <span className="font-semibold" style={{ color: "var(--color-fg-default)" }}>{sortedSourceTypes.length} source{sortedSourceTypes.length !== 1 ? "s" : ""}</span>
-            </div>
-            <div className="font-medium" style={{ color: "var(--color-fg-muted)" }}>
-              <span className="font-semibold" style={{ color: "var(--color-fg-default)" }}>
+          <SummaryFooter style={{ borderColor: "var(--color-border-default)" }}>
+            <SummaryItem style={{ color: "var(--color-fg-muted)" }}>
+              Total: <SummaryTotalValue style={{ color: "var(--color-fg-default)" }}>{formatCurrency(day.totals.cost)}</SummaryTotalValue>
+            </SummaryItem>
+            <SummaryItem style={{ color: "var(--color-fg-muted)" }}>
+              across <SummaryValue style={{ color: "var(--color-fg-default)" }}>{sortedSourceTypes.length} source{sortedSourceTypes.length !== 1 ? "s" : ""}</SummaryValue>
+            </SummaryItem>
+            <SummaryItem style={{ color: "var(--color-fg-muted)" }}>
+              <SummaryValue style={{ color: "var(--color-fg-default)" }}>
                 {(() => {
                   const allModels = new Set<string>();
                   for (const s of day.sources) {
@@ -82,12 +164,12 @@ export function BreakdownPanel({ day, onClose, palette }: BreakdownPanelProps) {
                   const count = allModels.size;
                   return `${count} model${count !== 1 ? "s" : ""}`;
                 })()}
-              </span>
-            </div>
-          </div>
+              </SummaryValue>
+            </SummaryItem>
+          </SummaryFooter>
         )}
-      </div>
-    </div>
+      </PanelContent>
+    </PanelContainer>
   );
 }
 
@@ -97,6 +179,40 @@ interface SourceSectionProps {
   totalCost: number;
   palette: GraphColorPalette;
 }
+
+const SectionHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+`;
+
+const SourceBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: transform 150ms;
+
+  &:hover {
+    transform: scale(1.05);
+  }
+`;
+
+const SectionTotal = styled.span`
+  font-size: 0.875rem;
+  font-weight: 700;
+`;
+
+const ModelsList = styled.div`
+  margin-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+`;
 
 function SourceSection({ sourceType, sources, totalCost, palette }: SourceSectionProps) {
   const sourceColor = SOURCE_COLORS[sourceType] || palette.grade3;
@@ -132,22 +248,21 @@ function SourceSection({ sourceType, sources, totalCost, palette }: SourceSectio
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-3">
-        <span
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-transform hover:scale-105"
+      <SectionHeader>
+        <SourceBadge
           style={{ backgroundColor: `${sourceColor}20`, color: sourceColor }}
         >
           <SourceLogo sourceId={sourceType} height={14} />
           {SOURCE_DISPLAY_NAMES[sourceType] || sourceType}
-        </span>
-        <span className="text-sm font-bold" style={{ color: "var(--color-fg-default)" }}>{formatCurrency(totalCost)}</span>
-      </div>
+        </SourceBadge>
+        <SectionTotal style={{ color: "var(--color-fg-default)" }}>{formatCurrency(totalCost)}</SectionTotal>
+      </SectionHeader>
 
-      <div className="ml-5 space-y-3">
+      <ModelsList>
         {sortedModels.map((model, index) => (
           <ModelRow key={`${model.modelId}-${index}`} model={model} isLast={index === sortedModels.length - 1} palette={palette} />
         ))}
-      </div>
+      </ModelsList>
     </div>
   );
 }
@@ -163,43 +278,131 @@ interface ModelRowProps {
   palette: GraphColorPalette;
 }
 
+const ModelRowContainer = styled.div`
+  position: relative;
+`;
+
+const TreeLineContainer = styled.div`
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1rem;
+  height: 100%;
+`;
+
+const TreeLineBranch = styled.span`
+  position: absolute;
+  left: 0;
+  top: 0.75rem;
+  width: 0.75rem;
+  border-top: 1px solid;
+`;
+
+const TreeLineVertical = styled.span`
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-left: 1px solid;
+`;
+
+const ModelContent = styled.div`
+  margin-left: 1.5rem;
+`;
+
+const ModelHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+`;
+
+const ModelName = styled.span`
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 600;
+`;
+
+const ModelCost = styled.span`
+  font-weight: 700;
+  font-size: 0.875rem;
+`;
+
+const TokenBadgesGrid = styled.div`
+  margin-top: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  column-gap: 1rem;
+  row-gap: 0.5rem;
+  font-size: 0.75rem;
+
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(5, 1fr);
+  }
+`;
+
+const MessageCount = styled.div`
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+`;
+
 function ModelRow({ model, isLast, palette }: ModelRowProps) {
   const { modelId, tokens, cost, messages } = model;
 
   return (
-    <div className="relative">
-      <div className="absolute left-0 top-0 w-4 h-full" style={{ color: "var(--color-fg-muted)" }}>
-        <span className="absolute left-0 top-3 w-3 border-t" style={{ borderColor: "var(--color-border-default)" }} />
-        {!isLast && <span className="absolute left-0 top-0 h-full border-l" style={{ borderColor: "var(--color-border-default)" }} />}
-      </div>
+    <ModelRowContainer>
+      <TreeLineContainer style={{ color: "var(--color-fg-muted)" }}>
+        <TreeLineBranch style={{ borderColor: "var(--color-border-default)" }} />
+        {!isLast && <TreeLineVertical style={{ borderColor: "var(--color-border-default)" }} />}
+      </TreeLineContainer>
 
-      <div className="ml-6">
-        <div className="flex items-center gap-3 flex-wrap">
-          <span className="font-mono text-sm font-semibold" style={{ color: "var(--color-fg-default)" }}>{modelId}</span>
-          <span className="font-bold text-sm" style={{ color: palette.grade1 }}>{formatCurrency(cost)}</span>
-        </div>
+      <ModelContent>
+        <ModelHeader>
+          <ModelName style={{ color: "var(--color-fg-default)" }}>{modelId}</ModelName>
+          <ModelCost style={{ color: palette.grade1 }}>{formatCurrency(cost)}</ModelCost>
+        </ModelHeader>
 
-        <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-4 gap-y-2 text-xs">
+        <TokenBadgesGrid>
           {tokens.input > 0 && <TokenBadge label="Input" value={tokens.input} />}
           {tokens.output > 0 && <TokenBadge label="Output" value={tokens.output} />}
           {tokens.cacheRead > 0 && <TokenBadge label="Cache Read" value={tokens.cacheRead} />}
           {tokens.cacheWrite > 0 && <TokenBadge label="Cache Write" value={tokens.cacheWrite} />}
           {tokens.reasoning > 0 && <TokenBadge label="Reasoning" value={tokens.reasoning} />}
-        </div>
+        </TokenBadgesGrid>
 
-        <div className="mt-2 text-xs font-medium" style={{ color: "var(--color-fg-muted)" }}>
+        <MessageCount style={{ color: "var(--color-fg-muted)" }}>
           {messages.toLocaleString()} message{messages !== 1 ? "s" : ""}
-        </div>
-      </div>
-    </div>
+        </MessageCount>
+      </ModelContent>
+    </ModelRowContainer>
   );
 }
 
+const BadgeContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+`;
+
+const BadgeLabel = styled.span`
+  font-weight: 500;
+`;
+
+const BadgeValue = styled.span`
+  font-family: var(--font-mono);
+  font-weight: 600;
+`;
+
 function TokenBadge({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex items-center gap-1.5">
-      <span className="font-medium" style={{ color: "var(--color-fg-muted)" }}>{label}:</span>
-      <span className="font-mono font-semibold" style={{ color: "var(--color-fg-default)" }}>{formatTokenCount(value)}</span>
-    </div>
+    <BadgeContainer>
+      <BadgeLabel style={{ color: "var(--color-fg-muted)" }}>{label}:</BadgeLabel>
+      <BadgeValue style={{ color: "var(--color-fg-default)" }}>{formatTokenCount(value)}</BadgeValue>
+    </BadgeContainer>
   );
 }

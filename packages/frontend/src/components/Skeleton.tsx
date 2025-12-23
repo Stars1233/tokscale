@@ -1,161 +1,279 @@
 "use client";
 
-interface SkeletonProps {
-  className?: string;
+import styled, { keyframes } from "styled-components";
+
+const pulse = keyframes`
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+`;
+
+interface SizedSkeletonProps {
+  $w?: string;
+  $h?: string;
+  $rounded?: string;
+  $mb?: string;
+  $ml?: string;
 }
 
-export function Skeleton({ className = "" }: SkeletonProps) {
-  return (
-    <div
-      className={`animate-pulse rounded ${className}`}
-      style={{ backgroundColor: "var(--color-border-default)" }}
-    />
-  );
-}
+export const Skeleton = styled.div<SizedSkeletonProps>`
+  animation: ${pulse} 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  border-radius: ${props => props.$rounded || '0.25rem'};
+  background-color: var(--color-border-default);
+  
+  width: ${props => props.$w};
+  height: ${props => props.$h};
+  margin-bottom: ${props => props.$mb};
+  margin-left: ${props => props.$ml === 'auto' ? 'auto' : props.$ml};
+`;
+
+const LeaderboardContainer = styled.div`
+  & > * + * {
+    margin-top: 1rem;
+  }
+`;
+
+const StatsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 2.5rem;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+`;
+
+const StatCard = styled.div`
+  border-radius: 0.75rem;
+  border: 1px solid;
+  padding: 1rem;
+`;
+
+const TableContainer = styled.div`
+  border-radius: 1rem;
+  border: 1px solid;
+  overflow: hidden;
+`;
+
+const TableHeader = styled.div`
+  border-bottom: 1px solid;
+  padding: 0.75rem 1.5rem;
+`;
+
+const HeaderContent = styled.div`
+  display: flex;
+  gap: 1.5rem;
+`;
+
+const TableRow = styled.div`
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+`;
+
+const RowContent = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+`;
+
+const UserCell = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+`;
 
 export function LeaderboardSkeleton() {
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+    <LeaderboardContainer>
+      <StatsGrid>
         {[...Array(4)].map((_, i) => (
-          <div
+          <StatCard
             key={i}
-            className="rounded-xl border p-4"
             style={{ backgroundColor: "var(--color-bg-default)", borderColor: "var(--color-border-default)" }}
           >
-            <Skeleton className="h-4 w-20 mb-2" />
-            <Skeleton className="h-8 w-24" />
-          </div>
+            <Skeleton $h="1rem" $w="5rem" $mb="0.5rem" />
+            <Skeleton $h="2rem" $w="6rem" />
+          </StatCard>
         ))}
-      </div>
+      </StatsGrid>
 
-      <div
-        className="rounded-2xl border overflow-hidden"
+      <TableContainer
         style={{ backgroundColor: "#10121C", borderColor: "#262627" }}
       >
-        <div
-          className="border-b px-6 py-3"
+        <TableHeader
           style={{ backgroundColor: "var(--color-bg-elevated)", borderColor: "var(--color-border-default)" }}
         >
-          <div className="flex gap-6">
-            <Skeleton className="h-4 w-12" />
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-4 w-16 ml-auto" />
-            <Skeleton className="h-4 w-16" />
-          </div>
-        </div>
+          <HeaderContent>
+            <Skeleton $h="1rem" $w="3rem" />
+            <Skeleton $h="1rem" $w="6rem" />
+            <Skeleton $h="1rem" $w="4rem" $ml="auto" />
+            <Skeleton $h="1rem" $w="4rem" />
+          </HeaderContent>
+        </TableHeader>
         {[...Array(10)].map((_, i) => (
-          <div
+          <TableRow
             key={i}
-            className="px-6 py-4 border-b last:border-0"
             style={{ borderColor: "var(--color-border-default)" }}
           >
-            <div className="flex items-center gap-6">
-              <Skeleton className="h-6 w-8" />
-              <div className="flex items-center gap-3">
-                <Skeleton className="h-10 w-10 rounded-full" />
+            <RowContent>
+              <Skeleton $h="1.5rem" $w="2rem" />
+              <UserCell>
+                <Skeleton $h="2.5rem" $w="2.5rem" $rounded="9999px" />
                 <div>
-                  <Skeleton className="h-4 w-32 mb-1" />
-                  <Skeleton className="h-3 w-20" />
+                  <Skeleton $h="1rem" $w="8rem" $mb="0.25rem" />
+                  <Skeleton $h="0.75rem" $w="5rem" />
                 </div>
-              </div>
-              <Skeleton className="h-5 w-16 ml-auto" />
-              <Skeleton className="h-5 w-14" />
-            </div>
-          </div>
+              </UserCell>
+              <Skeleton $h="1.25rem" $w="4rem" $ml="auto" />
+              <Skeleton $h="1.25rem" $w="3.5rem" />
+            </RowContent>
+          </TableRow>
         ))}
-      </div>
-    </div>
+      </TableContainer>
+    </LeaderboardContainer>
   );
 }
 
+const ProfileContainer = styled.div`
+  & > * + * {
+    margin-top: 2rem;
+  }
+`;
+
+const ProfileHeader = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+`;
+
+const ProfileInfo = styled.div`
+  flex: 1 1 0%;
+`;
+
+const NameRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+`;
+
+const TagsRow = styled.div`
+  display: flex;
+  gap: 0.5rem;
+`;
+
+const ProfileStatsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+`;
+
+const ContentCard = styled.div`
+  border-radius: 1rem;
+  border: 1px solid;
+  padding: 1.5rem;
+`;
+
 export function ProfileSkeleton() {
   return (
-    <div className="space-y-8">
-      <div className="flex items-start gap-6 mb-8">
-        <Skeleton className="w-24 h-24 rounded-2xl" />
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-6 w-12 rounded-lg" />
-          </div>
-          <Skeleton className="h-4 w-24 mb-3" />
-          <div className="flex gap-2">
-            <Skeleton className="h-6 w-16 rounded-lg" />
-            <Skeleton className="h-6 w-20 rounded-lg" />
-          </div>
-        </div>
-      </div>
+    <ProfileContainer>
+      <ProfileHeader>
+        <Skeleton $w="6rem" $h="6rem" $rounded="1rem" />
+        <ProfileInfo>
+          <NameRow>
+            <Skeleton $h="2rem" $w="12rem" />
+            <Skeleton $h="1.5rem" $w="3rem" $rounded="0.5rem" />
+          </NameRow>
+          <Skeleton $h="1rem" $w="6rem" $mb="0.75rem" />
+          <TagsRow>
+            <Skeleton $h="1.5rem" $w="4rem" $rounded="0.5rem" />
+            <Skeleton $h="1.5rem" $w="5rem" $rounded="0.5rem" />
+          </TagsRow>
+        </ProfileInfo>
+      </ProfileHeader>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <ProfileStatsGrid>
         {[...Array(4)].map((_, i) => (
-          <div
+          <StatCard
             key={i}
-            className="rounded-xl border p-4"
             style={{ backgroundColor: "var(--color-bg-default)", borderColor: "var(--color-border-default)" }}
           >
-            <Skeleton className="h-4 w-20 mb-2" />
-            <Skeleton className="h-8 w-24" />
-          </div>
+            <Skeleton $h="1rem" $w="5rem" $mb="0.5rem" />
+            <Skeleton $h="2rem" $w="6rem" />
+          </StatCard>
         ))}
-      </div>
+      </ProfileStatsGrid>
 
-      <div
-        className="rounded-2xl border p-6"
+      <ContentCard
         style={{ backgroundColor: "#10121C", borderColor: "#262627" }}
       >
-        <Skeleton className="h-6 w-36 mb-4" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Skeleton $h="1.5rem" $w="9rem" $mb="1rem" />
+        <ProfileStatsGrid>
           {[...Array(4)].map((_, i) => (
             <div key={i}>
-              <Skeleton className="h-4 w-16 mb-1" />
-              <Skeleton className="h-6 w-20" />
+              <Skeleton $h="1rem" $w="4rem" $mb="0.25rem" />
+              <Skeleton $h="1.5rem" $w="5rem" />
             </div>
           ))}
-        </div>
-      </div>
+        </ProfileStatsGrid>
+      </ContentCard>
 
-      <div
-        className="rounded-2xl border p-6"
+      <ContentCard
         style={{ backgroundColor: "#10121C", borderColor: "#262627" }}
       >
-        <Skeleton className="h-6 w-24 mb-4" />
-        <Skeleton className="h-40 w-full rounded-lg" />
-      </div>
-    </div>
+        <Skeleton $h="1.5rem" $w="6rem" $mb="1rem" />
+        <Skeleton $h="10rem" $w="100%" $rounded="0.5rem" />
+      </ContentCard>
+    </ProfileContainer>
   );
 }
 
 export function StatCardSkeleton() {
   return (
-    <div
-      className="rounded-xl border p-4"
+    <StatCard
       style={{ backgroundColor: "#10121C", borderColor: "#262627" }}
     >
-      <Skeleton className="h-4 w-20 mb-2" />
-      <Skeleton className="h-8 w-24" />
-    </div>
+      <Skeleton $h="1rem" $w="5rem" $mb="0.5rem" />
+      <Skeleton $h="2rem" $w="6rem" />
+    </StatCard>
   );
 }
 
+const SimpleTableRow = styled.div`
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid;
+`;
+
 export function TableRowSkeleton() {
   return (
-    <div
-      className="px-6 py-4 border-b"
+    <SimpleTableRow
       style={{ borderColor: "#262627" }}
     >
-      <div className="flex items-center gap-6">
-        <Skeleton className="h-6 w-8" />
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-10 w-10 rounded-full" />
+      <RowContent>
+        <Skeleton $h="1.5rem" $w="2rem" />
+        <UserCell>
+          <Skeleton $h="2.5rem" $w="2.5rem" $rounded="9999px" />
           <div>
-            <Skeleton className="h-4 w-32 mb-1" />
-            <Skeleton className="h-3 w-20" />
+            <Skeleton $h="1rem" $w="8rem" $mb="0.25rem" />
+            <Skeleton $h="0.75rem" $w="5rem" />
           </div>
-        </div>
-        <Skeleton className="h-5 w-16 ml-auto" />
-        <Skeleton className="h-5 w-14" />
-      </div>
-    </div>
+        </UserCell>
+        <Skeleton $h="1.25rem" $w="4rem" $ml="auto" />
+        <Skeleton $h="1.25rem" $w="3.5rem" />
+      </RowContent>
+    </SimpleTableRow>
   );
 }

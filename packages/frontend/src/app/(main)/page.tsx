@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import styled from "styled-components";
 import { Pagination, Avatar } from "@primer/react";
 import { TabBar } from "@/components/TabBar";
 import { Navigation } from "@/components/layout/Navigation";
@@ -9,6 +10,318 @@ import { Footer } from "@/components/layout/Footer";
 import { LeaderboardSkeleton } from "@/components/Skeleton";
 import { BlackholeHero } from "@/components/BlackholeHero";
 import { formatCurrency, formatNumber } from "@/lib/utils";
+
+const PageContainer = styled.div`
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+`;
+
+const Main = styled.main`
+  flex: 1;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 24px;
+  padding-right: 24px;
+  padding-bottom: 40px;
+  width: 100%;
+`;
+
+const Section = styled.div`
+  margin-bottom: 40px;
+`;
+
+const Title = styled.h1`
+  font-size: 30px;
+  font-weight: bold;
+  margin-bottom: 8px;
+`;
+
+const Description = styled.p`
+  margin-bottom: 24px;
+`;
+
+const StatsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  
+  @media (min-width: 768px) {
+    display: flex;
+  }
+`;
+
+const StatCard = styled.div`
+  flex: 1;
+  border-radius: 12px;
+  border: 1px solid;
+  padding: 12px;
+  
+  @media (min-width: 640px) {
+    padding: 16px;
+  }
+`;
+
+const StatLabel = styled.p`
+  font-size: 12px;
+  
+  @media (min-width: 640px) {
+    font-size: 14px;
+  }
+`;
+
+const StatValue = styled.p`
+  font-size: 20px;
+  font-weight: bold;
+  
+  @media (min-width: 640px) {
+    font-size: 24px;
+  }
+`;
+
+const TabSection = styled.div`
+  margin-bottom: 24px;
+`;
+
+const TableContainer = styled.div`
+  border-radius: 16px;
+  border: 1px solid;
+  overflow: hidden;
+`;
+
+const EmptyState = styled.div`
+  padding: 32px;
+  text-align: center;
+`;
+
+const EmptyMessage = styled.p`
+  margin-bottom: 16px;
+`;
+
+const EmptyHint = styled.p`
+  font-size: 14px;
+`;
+
+const CodeSnippet = styled.code`
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  border-radius: 4px;
+`;
+
+const TableWrapper = styled.div`
+  overflow-x: auto;
+`;
+
+const Table = styled.table`
+  width: 100%;
+  min-width: 500px;
+`;
+
+const TableHead = styled.thead`
+  border-bottom: 1px solid;
+`;
+
+const TableHeaderCell = styled.th`
+  padding-left: 12px;
+  padding-right: 12px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  
+  @media (min-width: 640px) {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+  
+  &.text-right {
+    text-align: right;
+  }
+  
+  &.hidden-mobile {
+    display: none;
+    
+    @media (min-width: 768px) {
+      display: table-cell;
+    }
+  }
+  
+  &.w-24 {
+    width: 96px;
+  }
+`;
+
+const TableBody = styled.tbody``;
+
+const TableRow = styled.tr`
+  transition: opacity 0.2s;
+  
+  &:hover {
+    opacity: 0.8;
+  }
+`;
+
+const TableCell = styled.td`
+  padding-left: 12px;
+  padding-right: 12px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  white-space: nowrap;
+  
+  @media (min-width: 640px) {
+    padding-left: 24px;
+    padding-right: 24px;
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+  
+  &.text-right {
+    text-align: right;
+  }
+  
+  &.hidden-mobile {
+    display: none;
+    
+    @media (min-width: 768px) {
+      display: table-cell;
+    }
+  }
+  
+  &.w-24 {
+    width: 96px;
+  }
+`;
+
+const RankBadge = styled.span`
+  font-size: 16px;
+  font-weight: bold;
+  
+  @media (min-width: 640px) {
+    font-size: 18px;
+  }
+`;
+
+const UserLink = styled(Link)`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  @media (min-width: 640px) {
+    gap: 12px;
+  }
+`;
+
+const UserInfo = styled.div`
+  min-width: 0;
+`;
+
+const UserDisplayName = styled.p`
+  font-weight: 500;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+  transition: opacity 0.2s;
+  
+  @media (min-width: 640px) {
+    font-size: 16px;
+    max-width: none;
+  }
+  
+  ${UserLink}:hover & {
+    opacity: 0.8;
+  }
+`;
+
+const Username = styled.p`
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+  
+  @media (min-width: 640px) {
+    font-size: 14px;
+    max-width: none;
+  }
+`;
+
+const StatSpan = styled.span`
+  font-weight: 500;
+  font-size: 14px;
+  
+  @media (min-width: 640px) {
+    font-size: 16px;
+  }
+`;
+
+const PaginationContainer = styled.div`
+  padding-left: 12px;
+  padding-right: 12px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  border-top: 1px solid;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  
+  @media (min-width: 640px) {
+    padding-left: 24px;
+    padding-right: 24px;
+    padding-top: 16px;
+    padding-bottom: 16px;
+    flex-direction: row;
+  }
+`;
+
+const PaginationText = styled.p`
+  font-size: 12px;
+  text-align: center;
+  
+  @media (min-width: 640px) {
+    font-size: 14px;
+    text-align: left;
+  }
+`;
+
+const CTASection = styled.div`
+  margin-top: 32px;
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px solid;
+`;
+
+const CTATitle = styled.h2`
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+`;
+
+const CTADescription = styled.p`
+  margin-bottom: 16px;
+`;
+
+const CodeBlock = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: monospace;
+  font-size: 14px;
+`;
+
+const CodeLine = styled.div`
+  padding: 12px;
+  border-radius: 8px;
+`;
+
+const Prompt = styled.span``;
 
 type Period = "all" | "month" | "week";
 
@@ -62,77 +375,71 @@ export default function LeaderboardPage() {
   }, [period, page]);
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--color-bg-default)" }}>
+    <PageContainer style={{ backgroundColor: "var(--color-bg-default)" }}>
       <Navigation />
 
-      <main className="flex-1 max-w-7xl mx-auto px-6 pb-10 w-full">
+      <Main>
         <BlackholeHero />
 
-        <div className="mb-10">
-          <h1 className="text-3xl font-bold mb-2" style={{ color: "var(--color-fg-default)" }}>
+        <Section>
+          <Title style={{ color: "var(--color-fg-default)" }}>
             Leaderboard
-          </h1>
-          <p className="mb-6" style={{ color: "var(--color-fg-muted)" }}>
+          </Title>
+          <Description style={{ color: "var(--color-fg-muted)" }}>
             See who&apos;s using the most AI tokens
-          </p>
+          </Description>
 
-          <div className="grid grid-cols-2 md:flex gap-3">
-          <div
-              className="flex-1 rounded-xl border p-3 sm:p-4"
+          <StatsGrid>
+            <StatCard
               style={{ backgroundColor: "var(--color-bg-default)", borderColor: "var(--color-border-default)" }}
             >
-              <p className="text-xs sm:text-sm" style={{ color: "var(--color-fg-muted)" }}>
+              <StatLabel style={{ color: "var(--color-fg-muted)" }}>
                 Users
-              </p>
-              <p className="text-xl sm:text-2xl font-bold" style={{ color: "var(--color-fg-default)" }}>
+              </StatLabel>
+              <StatValue style={{ color: "var(--color-fg-default)" }}>
                 {data ? data.stats.uniqueUsers : "-"}
-              </p>
-            </div>
-            <div
-              className="flex-1 rounded-xl border p-3 sm:p-4"
+              </StatValue>
+            </StatCard>
+            <StatCard
               style={{ backgroundColor: "var(--color-bg-default)", borderColor: "var(--color-border-default)" }}
             >
-              <p className="text-xs sm:text-sm" style={{ color: "var(--color-fg-muted)" }}>
+              <StatLabel style={{ color: "var(--color-fg-muted)" }}>
                 Total Tokens
-              </p>
-              <p
-                className="text-xl sm:text-2xl font-bold"
+              </StatLabel>
+              <StatValue
                 style={{ color: "var(--color-primary)", textDecoration: "none" }}
                 title={data ? data.stats.totalTokens.toLocaleString() : undefined}
               >
                 {data ? formatNumber(data.stats.totalTokens) : "-"}
-              </p>
-            </div>
-            <div
-              className="flex-1 rounded-xl border p-3 sm:p-4"
+              </StatValue>
+            </StatCard>
+            <StatCard
               style={{ backgroundColor: "var(--color-bg-default)", borderColor: "var(--color-border-default)" }}
             >
-              <p className="text-xs sm:text-sm" style={{ color: "var(--color-fg-muted)" }}>
+              <StatLabel style={{ color: "var(--color-fg-muted)" }}>
                 Total Cost
-              </p>
-              <p
-                className="text-xl sm:text-2xl font-bold"
+              </StatLabel>
+              <StatValue
                 style={{ color: "var(--color-fg-default)", textDecoration: "none" }}
                 title={data ? data.stats.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }) : undefined}
               >
                 {data ? formatCurrency(data.stats.totalCost) : "-"}
-              </p>
-            </div>
-            {/* <div
-              className="flex-1 rounded-xl border p-3 sm:p-4"
+              </StatValue>
+            </StatCard>
+            {/* <StatCard
               style={{ backgroundColor: "var(--color-bg-default)", borderColor: "var(--color-border-default)" }}
             >
-              <p className="text-xs sm:text-sm" style={{ color: "var(--color-fg-muted)" }}>
+              <StatLabel style={{ color: "var(--color-fg-muted)" }}>
                 Submissions
-              </p>
-              <p className="text-xl sm:text-2xl font-bold" style={{ color: "var(--color-fg-default)" }}>
+              </StatLabel>
+              <StatValue style={{ color: "var(--color-fg-default)" }}>
                 {data ? data.stats.totalSubmissions : "-"}
-              </p>
-            </div> */}
-          </div>
-        </div>
+              </StatValue>
+            </StatCard> */}
+          </StatsGrid>
+        </Section>
 
-        <div className="mb-6">
+        <TabSection>
           <TabBar
             tabs={[
               { id: "all" as Period, label: "All Time" },
@@ -145,83 +452,76 @@ export default function LeaderboardPage() {
               setPage(1);
             }}
           />
-        </div>
+        </TabSection>
 
         {isLoading ? (
           <LeaderboardSkeleton />
         ) : (
-          <div
-            className="rounded-2xl border overflow-hidden"
+          <TableContainer
             style={{ backgroundColor: "var(--color-bg-default)", borderColor: "var(--color-border-default)" }}
           >
             {!data || data.users.length === 0 ? (
-              <div className="p-8 text-center">
-                <p className="mb-4" style={{ color: "var(--color-fg-muted)" }}>
+              <EmptyState>
+                <EmptyMessage style={{ color: "var(--color-fg-muted)" }}>
                   No submissions yet. Be the first!
-                </p>
-                <p className="text-sm" style={{ color: "var(--color-fg-subtle)" }}>
+                </EmptyMessage>
+                <EmptyHint style={{ color: "var(--color-fg-subtle)" }}>
                   Run{" "}
-                  <code
-                    className="px-2 py-1 rounded"
+                  <CodeSnippet
                     style={{ backgroundColor: "var(--color-bg-subtle)" }}
                   >
                     tokscale login && tokscale submit
-                  </code>
-                </p>
-              </div>
+                  </CodeSnippet>
+                </EmptyHint>
+              </EmptyState>
             ) : (
               <>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[500px]">
-                    <thead
-                      className="border-b"
+                <TableWrapper>
+                  <Table>
+                    <TableHead
                       style={{ backgroundColor: "var(--color-bg-elevated)", borderColor: "var(--color-border-default)" }}
                     >
                       <tr>
-                        <th
-                          className="px-3 sm:px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                        <TableHeaderCell
                           style={{ color: "var(--color-fg-muted)" }}
                         >
                           Rank
-                        </th>
-                        <th
-                          className="px-3 sm:px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                        </TableHeaderCell>
+                        <TableHeaderCell
                           style={{ color: "var(--color-fg-muted)" }}
                         >
                           User
-                        </th>
-                        <th
-                          className="px-3 sm:px-6 py-3 text-right text-xs font-medium uppercase tracking-wider"
+                        </TableHeaderCell>
+                        <TableHeaderCell
+                          className="text-right"
                           style={{ color: "var(--color-fg-muted)" }}
                         >
                           Cost
-                        </th>
-                        <th
-                          className="px-3 sm:px-6 py-3 text-right text-xs font-medium uppercase tracking-wider"
+                        </TableHeaderCell>
+                        <TableHeaderCell
+                          className="text-right"
                           style={{ color: "var(--color-fg-muted)" }}
                         >
                           Tokens
-                        </th>
-                        <th
-                          className="px-3 sm:px-6 py-3 text-right text-xs font-medium uppercase tracking-wider hidden md:table-cell w-24"
+                        </TableHeaderCell>
+                        <TableHeaderCell
+                          className="text-right hidden-mobile w-24"
                           style={{ color: "var(--color-fg-muted)" }}
                         >
                           Submits
-                        </th>
+                        </TableHeaderCell>
                       </tr>
-                    </thead>
-                    <tbody>
+                    </TableHead>
+                    <TableBody>
                       {data.users.map((user, index) => (
-                        <tr
+                        <TableRow
                           key={user.userId}
-                          className="transition-colors hover:opacity-80"
                           style={{
                             borderBottom: index < data.users.length - 1 ? "1px solid var(--color-border-default)" : "none",
                           }}
                         >
-                          <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                            <span
-                              className="text-base sm:text-lg font-bold"
+                          <TableCell>
+                            <RankBadge
                               style={{
                                 color:
                                   user.rank === 1
@@ -234,106 +534,97 @@ export default function LeaderboardPage() {
                               }}
                             >
                               #{user.rank}
-                            </span>
-                          </td>
-                          <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                            <Link
-                              href={`/u/${user.username}`}
-                              className="flex items-center gap-2 sm:gap-3 group"
-                            >
+                            </RankBadge>
+                          </TableCell>
+                          <TableCell>
+                            <UserLink href={`/u/${user.username}`}>
                               <Avatar
                                 src={user.avatarUrl || `https://github.com/${user.username}.png`}
                                 alt={user.username}
                                 size={40}
                               />
-                              <div className="min-w-0">
-                                <p
-                                  className="font-medium text-sm sm:text-base truncate max-w-[120px] sm:max-w-none group-hover:opacity-80 transition-opacity"
+                              <UserInfo>
+                                <UserDisplayName
                                   style={{ color: "var(--color-fg-default)" }}
                                 >
                                   {user.displayName || user.username}
-                                </p>
-                                <p
-                                  className="text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none"
+                                </UserDisplayName>
+                                <Username
                                   style={{ color: "var(--color-fg-muted)" }}
                                 >
                                   @{user.username}
-                                </p>
-                              </div>
-                            </Link>
-                          </td>
-                          <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right">
-                            <span
-                              className="font-medium text-sm sm:text-base"
+                                </Username>
+                              </UserInfo>
+                            </UserLink>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <StatSpan
                               style={{ color: "var(--color-fg-default)", textDecoration: "none" }}
                               title={user.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 })}
                             >
                               {formatCurrency(user.totalCost)}
-                            </span>
-                          </td>
-                          <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right">
-                            <span
-                              className="font-medium text-sm sm:text-base"
+                            </StatSpan>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <StatSpan
                               style={{ color: "var(--color-primary)", textDecoration: "none" }}
                               title={user.totalTokens.toString()}
                             >
                               {user.totalTokens.toLocaleString()}
-                            </span>
-                          </td>
-                          <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right hidden md:table-cell w-24">
+                            </StatSpan>
+                          </TableCell>
+                          <TableCell className="text-right hidden-mobile w-24">
                             <span style={{ color: "var(--color-fg-muted)" }}>{user.submissionCount}</span>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
+                    </TableBody>
+                  </Table>
+                </TableWrapper>
 
                 {data.pagination.totalPages > 1 && (
-                  <div
-                    className="px-3 sm:px-6 py-3 sm:py-4 border-t flex flex-col sm:flex-row items-center justify-between gap-3"
+                  <PaginationContainer
                     style={{ borderColor: "var(--color-border-default)" }}
                   >
-                    <p className="text-xs sm:text-sm text-center sm:text-left" style={{ color: "var(--color-fg-muted)" }}>
+                    <PaginationText style={{ color: "var(--color-fg-muted)" }}>
                       Showing {(data.pagination.page - 1) * data.pagination.limit + 1}-
                       {Math.min(data.pagination.page * data.pagination.limit, data.pagination.totalUsers)} of{" "}
                       {data.pagination.totalUsers}
-                    </p>
+                    </PaginationText>
                     <Pagination
                       pageCount={data.pagination.totalPages}
                       currentPage={data.pagination.page}
                       onPageChange={(e, pageNum) => setPage(pageNum)}
                       showPages={{ narrow: false, regular: true, wide: true }}
                     />
-                  </div>
+                  </PaginationContainer>
                 )}
               </>
             )}
-          </div>
+          </TableContainer>
         )}
 
-        <div
-          className="mt-8 p-6 rounded-2xl border"
+        <CTASection
           style={{ backgroundColor: "var(--color-bg-default)", borderColor: "var(--color-border-default)" }}
         >
-          <h2 className="text-lg font-semibold mb-3" style={{ color: "var(--color-fg-default)" }}>
+          <CTATitle style={{ color: "var(--color-fg-default)" }}>
             Join the Leaderboard
-          </h2>
-          <p className="mb-4" style={{ color: "var(--color-fg-muted)" }}>
+          </CTATitle>
+          <CTADescription style={{ color: "var(--color-fg-muted)" }}>
             Install Tokscale CLI and submit your usage data:
-          </p>
-          <div className="space-y-2 font-mono text-sm">
-            <div className="p-3 rounded-lg" style={{ backgroundColor: "var(--color-bg-elevated)", color: "var(--color-fg-muted)" }}>
-              <span style={{ color: "var(--color-primary)" }}>$</span> bunx tokscale login
-            </div>
-            <div className="p-3 rounded-lg" style={{ backgroundColor: "var(--color-bg-elevated)", color: "var(--color-fg-muted)" }}>
-              <span style={{ color: "var(--color-primary)" }}>$</span> bunx tokscale submit
-            </div>
-          </div>
-        </div>
-      </main>
+          </CTADescription>
+          <CodeBlock>
+            <CodeLine style={{ backgroundColor: "var(--color-bg-elevated)", color: "var(--color-fg-muted)" }}>
+              <Prompt style={{ color: "var(--color-primary)" }}>$</Prompt> bunx tokscale login
+            </CodeLine>
+            <CodeLine style={{ backgroundColor: "var(--color-bg-elevated)", color: "var(--color-fg-muted)" }}>
+              <Prompt style={{ color: "var(--color-primary)" }}>$</Prompt> bunx tokscale submit
+            </CodeLine>
+          </CodeBlock>
+        </CTASection>
+      </Main>
 
       <Footer />
-    </div>
+    </PageContainer>
   );
 }

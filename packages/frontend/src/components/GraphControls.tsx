@@ -1,5 +1,6 @@
 "use client";
 
+import styled from "styled-components";
 import type { ViewMode, ColorPaletteName, SourceType, GraphColorPalette } from "@/lib/types";
 import { getPaletteNames, colorPalettes } from "@/lib/themes";
 import { SOURCE_DISPLAY_NAMES } from "@/lib/constants";
@@ -19,6 +20,185 @@ interface GraphControlsProps {
   palette: GraphColorPalette;
   totalTokens: number;
 }
+
+const Container = styled.div`
+  position: relative;
+  margin-bottom: 16px;
+`;
+
+const ViewModeGroup = styled.div`
+  float: right;
+  margin-top: 4px;
+  margin-left: 16px;
+  position: relative;
+  top: 0;
+  display: flex;
+`;
+
+const ViewModeButton = styled.button<{ $isActive: boolean; $position: 'left' | 'right' }>`
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid;
+  transition: all 200ms;
+  
+  ${({ $position }) => $position === 'left' 
+    ? 'border-radius: 9999px 0 0 9999px;' 
+    : 'border-radius: 0 9999px 9999px 0; border-left: none;'
+  }
+  
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px #3b82f6;
+    position: relative;
+    z-index: 1;
+  }
+`;
+
+const PaletteSelectContainer = styled.div`
+  float: right;
+  margin-top: 4px;
+  margin-left: 12px;
+`;
+
+const PaletteSelect = styled.select`
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 200ms;
+  
+  &:hover {
+    border-color: #a3a3a3;
+  }
+  
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px #3b82f6;
+  }
+`;
+
+const Title = styled.h2`
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 12px;
+`;
+
+const TitleBold = styled.span`
+  font-weight: 700;
+`;
+
+const YearSelect = styled.select`
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  background-color: transparent;
+  
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px #3b82f6;
+  }
+`;
+
+const YearOption = styled.option``;
+
+const ClearBoth = styled.div`
+  clear: both;
+`;
+
+const FiltersWrapper = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+`;
+
+const SourceFilterGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const FilterLabel = styled.span`
+  font-size: 12px;
+  font-weight: 600;
+`;
+
+const SourceFilterButton = styled.button<{ $isSelected: boolean }>`
+  padding: 4px 12px;
+  font-size: 12px;
+  border-radius: 9999px;
+  transition: all 200ms;
+  font-weight: ${({ $isSelected }) => $isSelected ? '600' : '400'};
+  opacity: ${({ $isSelected }) => $isSelected ? '1' : '0.5'};
+  border: 1.5px solid;
+  
+  &:hover {
+    transform: scale(1.05);
+  }
+  
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px #3b82f6;
+  }
+`;
+
+const ActionButton = styled.button`
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 9999px;
+  transition: colors 200ms;
+  border: none;
+  background: transparent;
+  
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+  
+  @media (prefers-color-scheme: dark) {
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+  }
+  
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px #3b82f6;
+  }
+`;
+
+const LegendContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+`;
+
+const LegendText = styled.span`
+  font-size: 12px;
+  font-weight: 500;
+`;
+
+const LegendBox = styled.div`
+  width: 12px;
+  height: 12px;
+  border-radius: 6px;
+  transition: transform 200ms;
+  
+  &:hover {
+    transform: scale(1.1);
+  }
+`;
 
 export function GraphControls({
   view,
@@ -45,13 +225,14 @@ export function GraphControls({
   };
 
   return (
-    <div className="relative mb-4">
-      <div role="group" aria-label="View mode" className="float-right mt-1 ml-4 relative top-0 flex">
-        <button
+    <Container>
+      <ViewModeGroup role="group" aria-label="View mode">
+        <ViewModeButton
+          $isActive={view === "2d"}
+          $position="left"
           onClick={() => onViewChange("2d")}
           aria-pressed={view === "2d"}
           aria-label="2D view"
-          className="px-3 py-1.5 text-xs font-semibold rounded-l-full border transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           style={{
             backgroundColor: view === "2d" ? palette.grade3 : "var(--color-bg-button)",
             color: view === "2d" ? "#fff" : "var(--color-fg-default)",
@@ -59,12 +240,13 @@ export function GraphControls({
           }}
         >
           2D
-        </button>
-        <button
+        </ViewModeButton>
+        <ViewModeButton
+          $isActive={view === "3d"}
+          $position="right"
           onClick={() => onViewChange("3d")}
           aria-pressed={view === "3d"}
           aria-label="3D view"
-          className="px-3 py-1.5 text-xs font-semibold rounded-r-full border-t border-b border-r transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           style={{
             backgroundColor: view === "3d" ? palette.grade3 : "var(--color-bg-button)",
             color: view === "3d" ? "#fff" : "var(--color-fg-default)",
@@ -72,15 +254,14 @@ export function GraphControls({
           }}
         >
           3D
-        </button>
-      </div>
+        </ViewModeButton>
+      </ViewModeGroup>
 
-      <div className="float-right mt-1 ml-3">
-        <select
+      <PaletteSelectContainer>
+        <PaletteSelect
           value={paletteName}
           onChange={(e) => onPaletteChange(e.target.value as ColorPaletteName)}
           aria-label="Color palette"
-          className="text-xs py-1.5 px-2 rounded-lg border cursor-pointer font-medium transition-all duration-200 hover:border-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           style={{
             borderColor: "var(--color-border-default)",
             color: "var(--color-fg-default)",
@@ -90,94 +271,90 @@ export function GraphControls({
           {paletteNames.map((name) => (
             <option key={name} value={name}>{colorPalettes[name].name}</option>
           ))}
-        </select>
-      </div>
+        </PaletteSelect>
+      </PaletteSelectContainer>
 
-      <h2 className="text-lg font-medium mb-3" style={{ color: "var(--color-fg-default)" }}>
-        <span className="font-bold" style={{ color: palette.grade1 }}>{formatTokenCount(totalTokens)}</span>
+      <Title style={{ color: "var(--color-fg-default)" }}>
+        <TitleBold style={{ color: palette.grade1 }}>{formatTokenCount(totalTokens)}</TitleBold>
         {" "}tokens used
         {selectedYear && (
           <>
             {" "}in{" "}
             {availableYears.length > 1 ? (
-              <select
+              <YearSelect
                 value={selectedYear}
                 onChange={(e) => onYearChange(e.target.value)}
                 aria-label="Select year"
-                className="font-bold border-none cursor-pointer underline decoration-dotted decoration-2 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-                style={{ color: "var(--color-fg-default)", backgroundColor: "transparent" }}
+                style={{ color: "var(--color-fg-default)" }}
               >
                 {availableYears.map((year) => (
-                  <option key={year} value={year} style={{ backgroundColor: "var(--color-canvas-default)" }}>{year}</option>
+                  <YearOption key={year} value={year} style={{ backgroundColor: "var(--color-canvas-default)" }}>{year}</YearOption>
                 ))}
-              </select>
+              </YearSelect>
             ) : (
-              <span className="font-bold">{selectedYear}</span>
+              <TitleBold>{selectedYear}</TitleBold>
             )}
           </>
         )}
-      </h2>
+      </Title>
 
-      <div className="clear-both" />
+      <ClearBoth />
 
-      <div className="flex flex-wrap items-center justify-between gap-3 mt-3">
+      <FiltersWrapper>
         {availableSources.length > 1 && (
-          <div role="group" aria-label="Source filters" className="flex items-center gap-2 flex-wrap">
-            <span id="source-filter-label" className="text-xs font-semibold" style={{ color: "var(--color-fg-muted)" }}>Filter:</span>
+          <SourceFilterGroup role="group" aria-label="Source filters">
+            <FilterLabel id="source-filter-label" style={{ color: "var(--color-fg-muted)" }}>Filter:</FilterLabel>
             {availableSources.map((source) => {
               const isSelected = sourceFilter.length === 0 || sourceFilter.includes(source);
               return (
-                <button
+                <SourceFilterButton
                   key={source}
+                  $isSelected={isSelected}
                   onClick={() => handleSourceToggle(source)}
                   aria-pressed={isSelected}
                   aria-label={`Filter by ${SOURCE_DISPLAY_NAMES[source] || source}`}
-                  className={`px-3 py-1 text-xs rounded-full transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${isSelected ? "font-semibold" : "opacity-50"}`}
                   style={{
                     backgroundColor: isSelected ? `${palette.grade3}30` : "transparent",
                     color: "var(--color-fg-default)",
-                    border: `1.5px solid ${isSelected ? palette.grade3 : "var(--color-border-default)"}`,
+                    borderColor: isSelected ? palette.grade3 : "var(--color-border-default)",
                   }}
                 >
                   {SOURCE_DISPLAY_NAMES[source] || source}
-                </button>
+                </SourceFilterButton>
               );
             })}
             {sourceFilter.length > 0 && sourceFilter.length < availableSources.length && (
-              <button
+              <ActionButton
                 onClick={() => onSourceFilterChange([...availableSources])}
                 aria-label="Show all sources"
-                className="px-3 py-1 text-xs font-medium rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                 style={{ color: "var(--color-fg-muted)" }}
               >
                 Show all
-              </button>
+              </ActionButton>
             )}
             {sourceFilter.length === availableSources.length && (
-              <button
+              <ActionButton
                 onClick={() => onSourceFilterChange([])}
                 aria-label="Clear all source filters"
-                className="px-3 py-1 text-xs font-medium rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                 style={{ color: "var(--color-fg-muted)" }}
               >
                 Clear
-              </button>
+              </ActionButton>
             )}
-          </div>
+          </SourceFilterGroup>
         )}
 
-        <div className="flex items-center gap-2 ml-auto">
-          <span className="text-xs font-medium" style={{ color: "var(--color-fg-muted)" }}>Less</span>
+        <LegendContainer>
+          <LegendText style={{ color: "var(--color-fg-muted)" }}>Less</LegendText>
           {[0, 1, 2, 3, 4].map((level) => (
-            <div
+            <LegendBox
               key={level}
-              className="w-3 h-3 rounded-md transition-transform hover:scale-110"
               style={{ backgroundColor: palette[`grade${level}` as keyof GraphColorPalette] as string }}
             />
           ))}
-          <span className="text-xs font-medium" style={{ color: "var(--color-fg-muted)" }}>More</span>
-        </div>
-      </div>
-    </div>
+          <LegendText style={{ color: "var(--color-fg-muted)" }}>More</LegendText>
+        </LegendContainer>
+      </FiltersWrapper>
+    </Container>
   );
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import styled, { css } from "styled-components";
+
 export interface TabItem<T extends string> {
   id: T;
   label: string;
@@ -10,6 +12,57 @@ export interface TabBarProps<T extends string> {
   activeTab: T;
   onTabChange: (tab: T) => void;
 }
+
+const TabBarContainer = styled.div`
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  border-radius: 25px;
+  border: 1px solid;
+  padding: 6px;
+`;
+
+const TabButton = styled.button<{ $active?: boolean }>`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 25px;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  transition: color 150ms, background-color 150ms;
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--background, #10121C), 0 0 0 4px #3b82f6;
+  }
+
+  ${(props) =>
+    props.$active
+      ? css`
+          background-color: var(--color-bg-active);
+        `
+      : css`
+          background-color: transparent;
+        `}
+`;
+
+const TabLabel = styled.span<{ $active?: boolean }>`
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+
+  ${(props) =>
+    props.$active
+      ? css`
+          color: var(--color-fg-default);
+        `
+      : css`
+          color: var(--color-fg-muted);
+        `}
+`;
 
 export function TabBar<T extends string>({
   tabs,
@@ -35,10 +88,9 @@ export function TabBar<T extends string>({
   };
 
   return (
-    <div
+    <TabBarContainer
       role="tablist"
       aria-label="Content tabs"
-      className="inline-flex flex-row items-center rounded-[25px] border p-[6px]"
       style={{
         width: "fit-content",
         backgroundColor: "var(--color-bg-elevated)",
@@ -48,7 +100,7 @@ export function TabBar<T extends string>({
       {tabs.map((tab, index) => {
         const isActive = activeTab === tab.id;
         return (
-          <button
+          <TabButton
             key={tab.id}
             role="tab"
             aria-selected={isActive}
@@ -56,22 +108,14 @@ export function TabBar<T extends string>({
             tabIndex={isActive ? 0 : -1}
             onClick={() => onTabChange(tab.id)}
             onKeyDown={(e) => handleKeyDown(e, index)}
-            className="flex items-center justify-center rounded-[25px] px-5 py-[10px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-            style={{
-              backgroundColor: isActive ? "var(--color-bg-active)" : "transparent",
-            }}
+            $active={isActive}
           >
-            <span
-              className="text-lg font-semibold leading-none whitespace-nowrap"
-              style={{
-                color: isActive ? "var(--color-fg-default)" : "var(--color-fg-muted)",
-              }}
-            >
+            <TabLabel $active={isActive}>
               {tab.label}
-            </span>
-          </button>
+            </TabLabel>
+          </TabButton>
         );
       })}
-    </div>
+    </TabBarContainer>
   );
 }

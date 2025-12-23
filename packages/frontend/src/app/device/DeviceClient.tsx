@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import styled from "styled-components";
 
 interface User {
   id: string;
@@ -8,6 +9,217 @@ interface User {
   displayName: string | null;
   avatarUrl: string | null;
 }
+
+const Container = styled.div`
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 16px;
+  padding-right: 16px;
+`;
+
+const LoadingContainer = styled.div`
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const LoadingText = styled.div`
+  color: var(--color-fg-muted);
+`;
+
+const CardWrapper = styled.div`
+  max-width: 448px;
+  width: 100%;
+`;
+
+const Card = styled.div`
+  border-radius: 16px;
+  border: 1px solid;
+  border-color: var(--color-border-default);
+  padding: 32px;
+  background-color: var(--color-bg-default);
+`;
+
+const Header = styled.div`
+  text-align: center;
+  margin-bottom: 32px;
+`;
+
+const IconBox = styled.div`
+  width: 64px;
+  height: 64px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 16px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(to bottom right, #53d1f3, #3bc4e8);
+  box-shadow: 0 10px 15px -3px rgba(83, 209, 243, 0.25);
+`;
+
+const Icon = styled.svg`
+  width: 32px;
+  height: 32px;
+  color: white;
+`;
+
+const Title = styled.h1`
+  font-size: 24px;
+  font-weight: bold;
+  color: var(--color-fg-default);
+`;
+
+const Subtitle = styled.p`
+  margin-top: 8px;
+  color: var(--color-fg-muted);
+`;
+
+const SignInContainer = styled.div`
+  text-align: center;
+`;
+
+const SignInText = styled.p`
+  margin-bottom: 24px;
+  color: var(--color-fg-muted);
+`;
+
+const SignInButton = styled.a`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  font-weight: 500;
+  border-radius: 12px;
+  background-color: var(--color-fg-default);
+  color: var(--color-bg-default);
+  transition: opacity 0.2s;
+  text-decoration: none;
+
+  &:hover {
+    opacity: 0.8;
+  }
+`;
+
+const GitHubIcon = styled.svg`
+  width: 20px;
+  height: 20px;
+`;
+
+const SuccessContainer = styled.div`
+  text-align: center;
+`;
+
+const SuccessIconBox = styled.div`
+  width: 64px;
+  height: 64px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 16px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(83, 209, 243, 0.1);
+`;
+
+const SuccessIcon = styled.svg`
+  width: 32px;
+  height: 32px;
+  color: #53d1f3;
+`;
+
+const SuccessTitle = styled.h2`
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--color-fg-default);
+`;
+
+const SuccessText = styled.p`
+  color: var(--color-fg-muted);
+`;
+
+const Form = styled.form``;
+
+const FormGroup = styled.div`
+  margin-bottom: 16px;
+`;
+
+const FormText = styled.p`
+  text-align: center;
+  margin-bottom: 16px;
+  color: var(--color-fg-muted);
+`;
+
+const Input = styled.input`
+  width: 100%;
+  padding: 16px;
+  text-align: center;
+  font-size: 24px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  letter-spacing: 0.3em;
+  border: 1px solid;
+  border-color: var(--color-border-default);
+  border-radius: 12px;
+  background-color: var(--color-bg-elevated);
+  color: var(--color-fg-default);
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-primary);
+    border-color: transparent;
+  }
+
+  &::placeholder {
+    opacity: 0.5;
+  }
+`;
+
+const ErrorText = styled.p`
+  color: #ef4444;
+  font-size: 14px;
+  text-align: center;
+  margin-bottom: 16px;
+`;
+
+const SubmitButton = styled.button`
+  width: 100%;
+  padding: 12px 24px;
+  color: white;
+  font-weight: 500;
+  border-radius: 12px;
+  background-color: var(--color-primary);
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+
+  &:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const UserInfoText = styled.p`
+  text-align: center;
+  font-size: 14px;
+  margin-top: 16px;
+  color: var(--color-fg-muted);
+`;
+
+const Username = styled.span`
+  font-weight: 500;
+  color: var(--color-fg-muted);
+`;
 
 export default function DeviceClient() {
   const [user, setUser] = useState<User | null>(null);
@@ -64,29 +276,19 @@ export default function DeviceClient() {
 
   if (isLoading) {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "var(--color-bg-default)" }}
-      >
-        <div style={{ color: "var(--color-fg-muted)" }}>Loading...</div>
-      </div>
+      <LoadingContainer style={{ backgroundColor: "var(--color-bg-default)" }}>
+        <LoadingText>Loading...</LoadingText>
+      </LoadingContainer>
     );
   }
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4"
-      style={{ backgroundColor: "var(--color-bg-default)" }}
-    >
-      <div className="max-w-md w-full">
-        <div
-          className="rounded-2xl border p-8"
-          style={{ backgroundColor: "var(--color-bg-default)", borderColor: "var(--color-border-default)" }}
-        >
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: "linear-gradient(to bottom right, #53d1f3, #3bc4e8)", boxShadow: "0 10px 15px -3px rgba(83, 209, 243, 0.25)" }}>
-              <svg
-                className="w-8 h-8 text-white"
+    <Container style={{ backgroundColor: "var(--color-bg-default)" }}>
+      <CardWrapper>
+        <Card>
+          <Header>
+            <IconBox>
+              <Icon
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -97,44 +299,31 @@ export default function DeviceClient() {
                   strokeWidth={2}
                   d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                 />
-              </svg>
-            </div>
-            <h1 className="text-2xl font-bold" style={{ color: "var(--color-fg-default)" }}>
-              Authorize CLI
-            </h1>
-            <p className="mt-2" style={{ color: "var(--color-fg-muted)" }}>
-              Connect your terminal to Tokscale
-            </p>
-          </div>
+              </Icon>
+            </IconBox>
+            <Title>Authorize CLI</Title>
+            <Subtitle>Connect your terminal to Tokscale</Subtitle>
+          </Header>
 
           {!user ? (
-            <div className="text-center">
-              <p className="mb-6" style={{ color: "var(--color-fg-muted)" }}>
+            <SignInContainer>
+              <SignInText>
                 Sign in with GitHub to authorize the CLI.
-              </p>
-              <a
-                href="/api/auth/github?returnTo=/device"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 font-medium rounded-xl transition-opacity hover:opacity-80"
-                style={{ backgroundColor: "var(--color-fg-default)", color: "var(--color-bg-default)" }}
-              >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              </SignInText>
+              <SignInButton href="/api/auth/github?returnTo=/device">
+                <GitHubIcon fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-                </svg>
+                </GitHubIcon>
                 Sign in with GitHub
-              </a>
-            </div>
+              </SignInButton>
+            </SignInContainer>
           ) : status === "success" ? (
-            <div className="text-center">
-              <div
-                className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: "rgba(83, 209, 243, 0.1)" }}
-              >
-                <svg
-                  className="w-8 h-8"
+            <SuccessContainer>
+              <SuccessIconBox>
+                <SuccessIcon
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
-                  style={{ color: "#53d1f3" }}
                 >
                   <path
                     strokeLinecap="round"
@@ -142,62 +331,48 @@ export default function DeviceClient() {
                     strokeWidth={2}
                     d="M5 13l4 4L19 7"
                   />
-                </svg>
-              </div>
-              <h2 className="text-xl font-semibold mb-2" style={{ color: "var(--color-fg-default)" }}>
-                Device Authorized!
-              </h2>
-              <p style={{ color: "var(--color-fg-muted)" }}>
+                </SuccessIcon>
+              </SuccessIconBox>
+              <SuccessTitle>Device Authorized!</SuccessTitle>
+              <SuccessText>
                 You can close this window and return to your terminal.
-              </p>
-            </div>
+              </SuccessText>
+            </SuccessContainer>
           ) : (
-            <form onSubmit={handleSubmit}>
-              <div className="mb-4">
-                <p className="text-center mb-4" style={{ color: "var(--color-fg-muted)" }}>
+            <Form onSubmit={handleSubmit}>
+              <FormGroup>
+                <FormText>
                   Enter the code shown in your terminal:
-                </p>
-                <input
+                </FormText>
+                <Input
                   type="text"
                   value={code}
                   onChange={handleCodeChange}
                   placeholder="XXXX-XXXX"
                   maxLength={9}
-                  className="w-full px-4 py-4 text-center text-2xl font-mono tracking-[0.3em] border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent"
-                  style={{
-                    backgroundColor: "var(--color-bg-elevated)",
-                    borderColor: "var(--color-border-default)",
-                    color: "var(--color-fg-default)",
-                    // @ts-expect-error CSS custom property
-                    "--tw-ring-color": "var(--color-primary)",
-                  }}
                   autoFocus
                 />
-              </div>
+              </FormGroup>
 
               {error && (
-                <p className="text-red-500 text-sm text-center mb-4">{error}</p>
+                <ErrorText>{error}</ErrorText>
               )}
 
-              <button
+              <SubmitButton
                 type="submit"
                 disabled={code.length < 9 || status === "loading"}
-                className="w-full px-6 py-3 text-white font-medium rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors hover:opacity-90"
-                style={{ backgroundColor: "var(--color-primary)" }}
               >
                 {status === "loading" ? "Authorizing..." : "Authorize Device"}
-              </button>
+              </SubmitButton>
 
-              <p className="text-center text-sm mt-4" style={{ color: "var(--color-fg-muted)" }}>
+              <UserInfoText>
                 Signed in as{" "}
-                <span className="font-medium" style={{ color: "var(--color-fg-muted)" }}>
-                  {user.username}
-                </span>
-              </p>
-            </form>
+                <Username>{user.username}</Username>
+              </UserInfoText>
+            </Form>
           )}
-        </div>
-      </div>
-    </div>
+        </Card>
+      </CardWrapper>
+    </Container>
   );
 }

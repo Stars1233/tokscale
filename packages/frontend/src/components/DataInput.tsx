@@ -1,8 +1,216 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import styled, { keyframes } from "styled-components";
 import type { TokenContributionData } from "@/lib/types";
 import { isValidContributionData } from "@/lib/utils";
+
+const Container = styled.div`
+  width: 100%;
+  max-width: 56rem; /* max-w-4xl */
+  margin-left: auto;
+  margin-right: auto;
+`;
+
+const Header = styled.div`
+  margin-bottom: 2rem; /* mb-8 */
+`;
+
+const Title = styled.h2`
+  font-size: 1.875rem; /* text-3xl */
+  line-height: 2.25rem;
+  font-weight: 700; /* font-bold */
+  letter-spacing: -0.025em; /* tracking-tight */
+  margin-bottom: 0.75rem; /* mb-3 */
+  color: var(--color-fg-default);
+`;
+
+const Description = styled.p`
+  color: var(--color-fg-muted);
+`;
+
+const CodeSnippet = styled.code`
+  padding: 0.25rem 0.5rem; /* py-1 px-2 */
+  border-radius: 0.5rem; /* rounded-lg */
+  font-size: 0.875rem; /* text-sm */
+  line-height: 1.25rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; /* font-mono */
+  background-color: var(--color-bg-subtle);
+`;
+
+const InputWrapper = styled.div`
+  margin-bottom: 1.5rem; /* mb-6 */
+`;
+
+const StyledTextarea = styled.textarea<{ $hasError?: boolean }>`
+  width: 100%;
+  height: 18rem; /* h-72 */
+  padding: 1rem; /* p-4 */
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; /* font-mono */
+  font-size: 0.875rem; /* text-sm */
+  border-radius: 1rem; /* rounded-2xl */
+  border-width: 2px;
+  resize: vertical; /* resize-y */
+  outline: none; /* focus:outline-none */
+  transition-property: all;
+  transition-duration: 200ms;
+  background-color: var(--color-bg-elevated);
+  color: var(--color-fg-default);
+  
+  border-color: ${props => props.$hasError ? '#ef4444' : 'var(--color-border-default)'};
+
+  &:focus {
+    /* focus:ring-4 */
+    box-shadow: ${props => props.$hasError ? '0 0 0 4px rgba(239, 68, 68, 0.2)' : 'none'};
+    border-color: ${props => props.$hasError ? '#ef4444' : 'var(--color-primary)'};
+  }
+`;
+
+const TipText = styled.p`
+  margin-top: 0.5rem; /* mt-2 */
+  font-size: 0.875rem; /* text-sm */
+  color: var(--color-fg-muted);
+`;
+
+const ErrorBox = styled.div`
+  margin-bottom: 1.5rem; /* mb-6 */
+  padding: 1rem; /* p-4 */
+  border-radius: 1rem; /* rounded-2xl */
+  border-width: 1px;
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+`;
+
+const ErrorText = styled.p`
+  font-size: 0.875rem; /* text-sm */
+  font-weight: 500; /* font-medium */
+  color: #EF4444;
+`;
+
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 1rem; /* gap-4 */
+`;
+
+const PrimaryButton = styled.button`
+  padding: 0.75rem 1.5rem; /* px-6 py-3 */
+  border-radius: 9999px; /* rounded-full */
+  font-weight: 600; /* font-semibold */
+  font-size: 0.875rem; /* text-sm */
+  color: white;
+  transition-property: all;
+  transition-duration: 200ms;
+  background-color: var(--color-primary);
+  box-shadow: 0 10px 15px -3px rgba(83, 209, 243, 0.25);
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &:not(:disabled):hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* hover:shadow-lg */
+    transform: translateY(-0.125rem); /* hover:-translate-y-0.5 */
+    opacity: 0.9; /* hover:opacity-90 */
+  }
+
+  &:not(:disabled):active {
+    transform: translateY(0); /* active:translate-y-0 */
+  }
+`;
+
+const SecondaryButton = styled.button`
+  padding: 0.75rem 1.5rem; /* px-6 py-3 */
+  border-radius: 9999px; /* rounded-full */
+  font-weight: 600; /* font-semibold */
+  font-size: 0.875rem; /* text-sm */
+  transition-property: all;
+  transition-duration: 200ms;
+  background-color: var(--color-bg-subtle);
+  color: var(--color-fg-default);
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &:not(:disabled):hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* hover:shadow-md */
+    transform: translateY(-0.125rem); /* hover:-translate-y-0.5 */
+  }
+
+  &:not(:disabled):active {
+    transform: translateY(0); /* active:translate-y-0 */
+  }
+`;
+
+const spin = keyframes`
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+`;
+
+const LoadingWrapper = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem; /* gap-2 */
+`;
+
+const SpinnerSvg = styled.svg`
+  animation: ${spin} 1s linear infinite; /* animate-spin */
+  height: 1rem; /* h-4 */
+  width: 1rem; /* w-4 */
+`;
+
+const SpinnerCircle = styled.circle`
+  opacity: 0.25;
+`;
+
+const SpinnerPath = styled.path`
+  opacity: 0.75;
+`;
+
+const InstructionsBox = styled.div`
+  margin-top: 2.5rem; /* mt-10 */
+  padding: 1.5rem; /* p-6 */
+  border-radius: 1rem; /* rounded-2xl */
+  border-width: 1px;
+  background-color: var(--color-card-bg);
+  border-color: var(--color-border-default);
+`;
+
+const InstructionsTitle = styled.h3`
+  font-size: 1rem; /* text-base */
+  font-weight: 700; /* font-bold */
+  margin-bottom: 1rem; /* mb-4 */
+  color: var(--color-fg-default);
+`;
+
+const InstructionsList = styled.ol`
+  font-size: 0.875rem; /* text-sm */
+  list-style-type: decimal; /* list-decimal */
+  list-style-position: inside; /* list-inside */
+  color: var(--color-fg-muted);
+  
+  & > li + li {
+    margin-top: 0.75rem; /* space-y-3 */
+  }
+`;
+
+const ListItem = styled.li`
+  line-height: 1.625; /* leading-relaxed */
+`;
+
+const SmallCodeSnippet = styled.code`
+  padding: 0.25rem 0.5rem; /* px-2 py-1 */
+  border-radius: 0.5rem; /* rounded-lg */
+  font-size: 0.75rem; /* text-xs */
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; /* font-mono */
+  background-color: var(--color-bg-subtle);
+`;
 
 interface DataInputProps {
   onDataLoaded: (data: TokenContributionData) => void;
@@ -56,25 +264,22 @@ export function DataInput({ onDataLoaded }: DataInputProps) {
   }, [onDataLoaded]);
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold tracking-tight mb-3" style={{ color: "var(--color-fg-default)" }}>
+    <Container>
+      <Header>
+        <Title>
           Load Token Usage Data
-        </h2>
-        <p style={{ color: "var(--color-fg-muted)" }}>
+        </Title>
+        <Description>
           Paste JSON from{" "}
-          <code
-            className="px-2 py-1 rounded-lg text-sm font-mono"
-            style={{ backgroundColor: "var(--color-bg-subtle)" }}
-          >
+          <CodeSnippet>
             tokscale graph
-          </code>{" "}
+          </CodeSnippet>{" "}
           command, or load sample data.
-        </p>
-      </div>
+        </Description>
+      </Header>
 
-      <div className="mb-6">
-        <textarea
+      <InputWrapper>
+        <StyledTextarea
           value={rawJson}
           onChange={(e) => {
             setRawJson(e.target.value);
@@ -87,115 +292,80 @@ export function DataInput({ onDataLoaded }: DataInputProps) {
             }
           }}
           placeholder='{"meta": {...}, "summary": {...}, "contributions": [...]}'
-          className={`w-full h-72 p-4 font-mono text-sm rounded-2xl border-2 resize-y focus:outline-none focus:ring-4 transition-all duration-200 ${
-            error ? "border-red-500 focus:ring-red-500/20" : "border-[var(--color-border-default)]"
-          }`}
-          style={{
-            backgroundColor: "var(--color-bg-elevated)",
-            color: "var(--color-fg-default)",
-          }}
-          onFocus={(e) => {
-            if (!error) {
-              e.currentTarget.style.borderColor = "var(--color-primary)";
-            }
-          }}
-          onBlur={(e) => {
-            if (!error) {
-              e.currentTarget.style.borderColor = "var(--color-border-default)";
-            }
-          }}
+          $hasError={!!error}
         />
-        <p className="mt-2 text-sm" style={{ color: "var(--color-fg-muted)" }}>
+        <TipText>
           Tip: Press Ctrl+Enter (Cmd+Enter on Mac) to parse
-        </p>
-      </div>
+        </TipText>
+      </InputWrapper>
 
       {error && (
-        <div
-          className="mb-6 p-4 rounded-2xl border"
-          style={{ backgroundColor: "rgba(239, 68, 68, 0.1)", borderColor: "rgba(239, 68, 68, 0.3)" }}
-        >
-          <p className="text-sm font-medium" style={{ color: "#EF4444" }}>
+        <ErrorBox>
+          <ErrorText>
             {error}
-          </p>
-        </div>
+          </ErrorText>
+        </ErrorBox>
       )}
 
-      <div className="flex gap-4">
-        <button
+      <ButtonGroup>
+        <PrimaryButton
           onClick={parseJson}
           disabled={isLoading || !rawJson.trim()}
-          className="px-6 py-3 rounded-full font-semibold text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 hover:opacity-90"
-          style={{ backgroundColor: "var(--color-primary)", boxShadow: "0 10px 15px -3px rgba(83, 209, 243, 0.25)" }}
         >
           Parse JSON
-        </button>
+        </PrimaryButton>
 
-        <button
+        <SecondaryButton
           onClick={loadSampleData}
           disabled={isLoading}
-          className="px-6 py-3 rounded-full font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
-          style={{ backgroundColor: "var(--color-bg-subtle)", color: "var(--color-fg-default)" }}
         >
           {isLoading ? (
-            <span className="flex items-center gap-2">
-              <svg
-                className="animate-spin h-4 w-4"
+            <LoadingWrapper>
+              <SpinnerSvg
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
               >
-                <circle
-                  className="opacity-25"
+                <SpinnerCircle
                   cx="12"
                   cy="12"
                   r="10"
                   stroke="currentColor"
                   strokeWidth="4"
                 />
-                <path
-                  className="opacity-75"
+                <SpinnerPath
                   fill="currentColor"
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                 />
-              </svg>
+              </SpinnerSvg>
               Loading...
-            </span>
+            </LoadingWrapper>
           ) : (
             "Load Sample Data"
           )}
-        </button>
-      </div>
+        </SecondaryButton>
+      </ButtonGroup>
 
-      <div
-        className="mt-10 p-6 rounded-2xl border"
-        style={{ backgroundColor: "var(--color-card-bg)", borderColor: "var(--color-border-default)" }}
-      >
-        <h3 className="text-base font-bold mb-4" style={{ color: "var(--color-fg-default)" }}>
+      <InstructionsBox>
+        <InstructionsTitle>
           How to get your data
-        </h3>
-        <ol className="text-sm space-y-3 list-decimal list-inside" style={{ color: "var(--color-fg-muted)" }}>
-          <li className="leading-relaxed">
+        </InstructionsTitle>
+        <InstructionsList>
+          <ListItem>
             Install tokscale:{" "}
-            <code
-              className="px-2 py-1 rounded-lg text-xs font-mono"
-              style={{ backgroundColor: "var(--color-bg-subtle)" }}
-            >
+            <SmallCodeSnippet>
               bunx tokscale
-            </code>
-          </li>
-          <li className="leading-relaxed">
+            </SmallCodeSnippet>
+          </ListItem>
+          <ListItem>
             Run the graph command:{" "}
-            <code
-              className="px-2 py-1 rounded-lg text-xs font-mono"
-              style={{ backgroundColor: "var(--color-bg-subtle)" }}
-            >
+            <SmallCodeSnippet>
               tokscale graph
-            </code>
-          </li>
-          <li className="leading-relaxed">Copy the JSON output and paste it above</li>
-        </ol>
-      </div>
-    </div>
+            </SmallCodeSnippet>
+          </ListItem>
+          <ListItem>Copy the JSON output and paste it above</ListItem>
+        </InstructionsList>
+      </InstructionsBox>
+    </Container>
   );
 }

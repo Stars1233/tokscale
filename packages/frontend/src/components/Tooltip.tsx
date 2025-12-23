@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import styled from "styled-components";
 import type { DailyContribution, TooltipPosition, GraphColorPalette } from "@/lib/types";
 import { formatDate, formatCurrency, formatTokenCount } from "@/lib/utils";
 
@@ -10,6 +11,89 @@ interface TooltipProps {
   visible: boolean;
   palette: GraphColorPalette;
 }
+
+const TooltipContainer = styled.div`
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+`;
+
+const TooltipCard = styled.div`
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border-width: 1px;
+  border-style: solid;
+  padding: 16px;
+  min-width: 220px;
+  backdrop-filter: blur(8px);
+`;
+
+const DateText = styled.div`
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 12px;
+`;
+
+const Divider = styled.div`
+  border-top-width: 1px;
+  border-top-style: solid;
+  margin-top: 12px;
+  margin-bottom: 12px;
+`;
+
+const FlexRow = styled.div<{ $marginBottom?: number; $marginTop?: number }>`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  ${props => props.$marginBottom && `margin-bottom: ${props.$marginBottom}px;`}
+  ${props => props.$marginTop && `margin-top: ${props.$marginTop}px;`}
+`;
+
+const Label = styled.span`
+  font-size: 14px;
+  font-weight: 500;
+`;
+
+const TotalValue = styled.span`
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -0.025em;
+`;
+
+const TokenList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+`;
+
+const TokenLabel = styled.span`
+  font-weight: 500;
+`;
+
+const TokenValue = styled.span`
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-weight: 600;
+`;
+
+const CostLabel = styled.span`
+  font-size: 14px;
+  font-weight: 600;
+`;
+
+const CostValue = styled.span`
+  font-weight: 700;
+`;
+
+const MessageLabel = styled.span`
+  font-size: 14px;
+  font-weight: 500;
+`;
+
+const MessageValue = styled.span`
+  font-size: 14px;
+  font-weight: 600;
+`;
 
 function useAdjustedPosition(
   position: TooltipPosition | null,
@@ -49,65 +133,62 @@ export function Tooltip({ day, position, visible, palette }: TooltipProps) {
   const { totals, tokenBreakdown } = day;
 
   return (
-    <div
+    <TooltipContainer
       ref={tooltipRef}
       role="tooltip"
-      className="fixed z-50 pointer-events-none"
       style={{ left: adjustedPosition.x, top: adjustedPosition.y }}
     >
-      <div
-        className="rounded-2xl shadow-xl border p-4 min-w-[220px] backdrop-blur-sm"
+      <TooltipCard
         style={{
           backgroundColor: "var(--color-card-bg)",
           borderColor: "var(--color-border-default)",
           color: "var(--color-fg-default)",
         }}
       >
-        <div className="font-bold text-base mb-3" style={{ color: "var(--color-fg-default)" }}>
+        <DateText style={{ color: "var(--color-fg-default)" }}>
           {formatDate(day.date)}
-        </div>
+        </DateText>
 
-        <div className="border-t my-3" style={{ borderColor: "var(--color-border-default)" }} />
+        <Divider style={{ borderColor: "var(--color-border-default)" }} />
 
-        <div className="flex justify-between items-center mb-3">
-          <span className="text-sm font-medium" style={{ color: "var(--color-fg-muted)" }}>Total Tokens</span>
-          <span
-            className="font-bold text-xl tracking-tight"
+        <FlexRow $marginBottom={12}>
+          <Label style={{ color: "var(--color-fg-muted)" }}>Total Tokens</Label>
+          <TotalValue
             style={{
               color: day.intensity >= 3 ? palette.grade1 : day.intensity >= 2 ? palette.grade2 : "var(--color-fg-default)",
             }}
           >
             {formatTokenCount(totals.tokens)}
-          </span>
-        </div>
+          </TotalValue>
+        </FlexRow>
 
-        <div className="border-t my-3" style={{ borderColor: "var(--color-border-default)" }} />
+        <Divider style={{ borderColor: "var(--color-border-default)" }} />
 
-        <div className="space-y-2 text-sm">
+        <TokenList>
           <TokenRow label="Input" value={tokenBreakdown.input} />
           <TokenRow label="Output" value={tokenBreakdown.output} />
           <TokenRow label="Cache Read" value={tokenBreakdown.cacheRead} />
           <TokenRow label="Cache Write" value={tokenBreakdown.cacheWrite} />
           {tokenBreakdown.reasoning > 0 && <TokenRow label="Reasoning" value={tokenBreakdown.reasoning} />}
-        </div>
+        </TokenList>
 
-        <div className="border-t my-3" style={{ borderColor: "var(--color-border-default)" }} />
+        <Divider style={{ borderColor: "var(--color-border-default)" }} />
 
-        <div className="flex justify-between items-center">
-          <span className="text-sm font-semibold" style={{ color: "var(--color-fg-muted)" }}>Cost</span>
-          <span className="font-bold" style={{ color: "var(--color-fg-default)" }}>
+        <FlexRow>
+          <CostLabel style={{ color: "var(--color-fg-muted)" }}>Cost</CostLabel>
+          <CostValue style={{ color: "var(--color-fg-default)" }}>
             {formatCurrency(totals.cost)}
-          </span>
-        </div>
+          </CostValue>
+        </FlexRow>
 
-        <div className="flex justify-between items-center mt-2">
-          <span className="text-sm font-medium" style={{ color: "var(--color-fg-muted)" }}>Messages</span>
-          <span className="text-sm font-semibold" style={{ color: "var(--color-fg-default)" }}>
+        <FlexRow $marginTop={8}>
+          <MessageLabel style={{ color: "var(--color-fg-muted)" }}>Messages</MessageLabel>
+          <MessageValue style={{ color: "var(--color-fg-default)" }}>
             {totals.messages.toLocaleString()}
-          </span>
-        </div>
-      </div>
-    </div>
+          </MessageValue>
+        </FlexRow>
+      </TooltipCard>
+    </TooltipContainer>
   );
 }
 
@@ -115,11 +196,11 @@ function TokenRow({ label, value }: { label: string; value: number }) {
   if (value === 0) return null;
 
   return (
-    <div className="flex justify-between items-center">
-      <span className="font-medium" style={{ color: "var(--color-fg-muted)" }}>{label}</span>
-      <span className="font-mono font-semibold" style={{ color: "var(--color-fg-default)" }}>
+    <FlexRow>
+      <TokenLabel style={{ color: "var(--color-fg-muted)" }}>{label}</TokenLabel>
+      <TokenValue style={{ color: "var(--color-fg-default)" }}>
         {formatTokenCount(value)}
-      </span>
-    </div>
+      </TokenValue>
+    </FlexRow>
   );
 }

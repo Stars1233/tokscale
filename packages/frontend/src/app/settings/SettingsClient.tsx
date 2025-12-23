@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import styled from "styled-components";
 import { Avatar, Button, Flash } from "@primer/react";
 import { KeyIcon } from "@primer/octicons-react";
 import { Navigation } from "@/components/layout/Navigation";
@@ -21,6 +22,114 @@ interface ApiToken {
   createdAt: string;
   lastUsedAt: string | null;
 }
+
+const PageWrapper = styled.div`
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+`;
+
+const MainContent = styled.main`
+  flex: 1;
+  max-width: 768px;
+  margin: 0 auto;
+  padding: 40px 24px;
+  width: 100%;
+`;
+
+const LoadingMain = styled.main`
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const Title = styled.h1`
+  font-size: 30px;
+  font-weight: bold;
+  margin-bottom: 32px;
+`;
+
+const Section = styled.section`
+  border-radius: 16px;
+  border: 1px solid;
+  padding: 24px;
+  margin-bottom: 24px;
+`;
+
+const SectionTitle = styled.h2`
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+`;
+
+const ProfileWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 16px;
+`;
+
+const ProfileText = styled.p`
+  font-weight: 500;
+`;
+
+const SmallText = styled.p`
+  font-size: 14px;
+`;
+
+const CodeText = styled.code`
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 12px;
+`;
+
+const Description = styled.p`
+  font-size: 14px;
+  margin-bottom: 16px;
+`;
+
+const EmptyState = styled.div`
+  padding: 32px 0;
+  text-align: center;
+`;
+
+const EmptyIcon = styled.div`
+  margin: 0 auto 12px;
+  opacity: 0.5;
+`;
+
+const EmptyText = styled.p`
+  font-size: 14px;
+  margin-top: 8px;
+`;
+
+const TokenList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const TokenItem = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-radius: 12px;
+`;
+
+const TokenInfo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+`;
+
+const IconWrapper = styled.div`
+  color: #737373;
+`;
+
+const TokenName = styled.p`
+  font-weight: 500;
+`;
 
 export default function SettingsClient() {
   const router = useRouter();
@@ -71,13 +180,13 @@ export default function SettingsClient() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--color-bg-default)" }}>
+      <PageWrapper style={{ backgroundColor: "var(--color-bg-default)" }}>
         <Navigation />
-        <main className="flex-1 flex items-center justify-center">
+        <LoadingMain>
           <div style={{ color: "var(--color-fg-muted)" }}>Loading...</div>
-        </main>
+        </LoadingMain>
         <Footer />
-      </div>
+      </PageWrapper>
     );
   }
 
@@ -86,22 +195,21 @@ export default function SettingsClient() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--color-bg-default)" }}>
+    <PageWrapper style={{ backgroundColor: "var(--color-bg-default)" }}>
       <Navigation />
 
-      <main className="flex-1 max-w-3xl mx-auto px-6 py-10 w-full">
-        <h1 className="text-3xl font-bold mb-8" style={{ color: "var(--color-fg-default)" }}>
+      <MainContent>
+        <Title style={{ color: "var(--color-fg-default)" }}>
           Settings
-        </h1>
+        </Title>
 
-        <section
-          className="rounded-2xl border p-6 mb-6"
+        <Section
           style={{ backgroundColor: "var(--color-bg-default)", borderColor: "var(--color-border-default)" }}
         >
-          <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--color-fg-default)" }}>
+          <SectionTitle style={{ color: "var(--color-fg-default)" }}>
             Profile
-          </h2>
-          <div className="flex items-center gap-4">
+          </SectionTitle>
+          <ProfileWrapper>
             <Avatar
               src={user.avatarUrl || `https://github.com/${user.username}.png`}
               alt={user.username}
@@ -109,79 +217,79 @@ export default function SettingsClient() {
               square
             />
             <div>
-              <p className="font-medium" style={{ color: "var(--color-fg-default)" }}>
+              <ProfileText style={{ color: "var(--color-fg-default)" }}>
                 {user.displayName || user.username}
-              </p>
-              <p className="text-sm" style={{ color: "var(--color-fg-muted)" }}>
+              </ProfileText>
+              <SmallText style={{ color: "var(--color-fg-muted)" }}>
                 @{user.username}
-              </p>
+              </SmallText>
               {user.email && (
-                <p className="text-sm" style={{ color: "var(--color-fg-muted)" }}>
+                <SmallText style={{ color: "var(--color-fg-muted)" }}>
                   {user.email}
-                </p>
+                </SmallText>
               )}
             </div>
-          </div>
+          </ProfileWrapper>
           <Flash variant="default" style={{ marginTop: 16 }}>
             Profile information is synced from GitHub and cannot be edited here.
           </Flash>
-        </section>
+        </Section>
 
-        <section
-          className="rounded-2xl border p-6 mb-6"
+        <Section
           style={{ backgroundColor: "var(--color-bg-default)", borderColor: "var(--color-border-default)" }}
         >
-          <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--color-fg-default)" }}>
+          <SectionTitle style={{ color: "var(--color-fg-default)" }}>
             API Tokens
-          </h2>
-          <p className="text-sm mb-4" style={{ color: "var(--color-fg-muted)" }}>
+          </SectionTitle>
+          <Description style={{ color: "var(--color-fg-muted)" }}>
             Tokens are created when you run{" "}
-            <code
-              className="px-1 py-0.5 rounded text-xs"
+            <CodeText
               style={{ backgroundColor: "var(--color-bg-subtle)" }}
             >
               tokscale login
-            </code>{" "}
+            </CodeText>{" "}
             from the CLI.
-          </p>
+          </Description>
 
           {tokens.length === 0 ? (
-            <div className="py-8 text-center" style={{ color: "var(--color-fg-muted)" }}>
-              <KeyIcon size={32} className="mx-auto mb-3 opacity-50" />
+            <EmptyState style={{ color: "var(--color-fg-muted)" }}>
+              <EmptyIcon>
+                <KeyIcon size={32} />
+              </EmptyIcon>
               <p>No API tokens yet.</p>
-              <p className="text-sm mt-2">
+              <EmptyText>
                 Run{" "}
-                <code
-                  className="px-1 py-0.5 rounded text-xs"
+                <CodeText
                   style={{ backgroundColor: "var(--color-bg-subtle)" }}
                 >
                   tokscale login
-                </code>{" "}
+                </CodeText>{" "}
                 to create one.
-              </p>
-            </div>
+              </EmptyText>
+            </EmptyState>
           ) : (
-            <div className="space-y-3">
+            <TokenList>
               {tokens.map((token) => (
-                <div
+                <TokenItem
                   key={token.id}
-                  className="flex items-center justify-between p-4 rounded-xl"
                   style={{ backgroundColor: "var(--color-bg-elevated)" }}
                 >
-                  <div className="flex items-center gap-3">
-                    <KeyIcon size={20} className="text-neutral-500" />
+                  <TokenInfo>
+                    <IconWrapper>
+                      <KeyIcon size={20} />
+                    </IconWrapper>
                     <div>
-                      <p className="font-medium" style={{ color: "var(--color-fg-default)" }}>
+                      <TokenName style={{ color: "var(--color-fg-default)" }}>
                         {token.name}
-                      </p>
-                      <p className="text-sm" style={{ color: "var(--color-fg-muted)" }}>
+                      </TokenName>
+                      <SmallText style={{ color: "var(--color-fg-muted)" }}>
                         Created {new Date(token.createdAt).toLocaleDateString()}
                         {token.lastUsedAt && (
                           <> - Last used {new Date(token.lastUsedAt).toLocaleDateString()}</>
                         )}
-                      </p>
+                      </SmallText>
                     </div>
-                  </div>
+                  </TokenInfo>
                   <Button
                     variant="danger"
                     size="small"
@@ -189,16 +297,16 @@ export default function SettingsClient() {
                   >
                     Revoke
                   </Button>
-                </div>
+                </TokenItem>
               ))}
-            </div>
+            </TokenList>
           )}
-        </section>
+        </Section>
 
 
-      </main>
+      </MainContent>
 
       <Footer />
-    </div>
+    </PageWrapper>
   );
 }
