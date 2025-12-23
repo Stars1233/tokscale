@@ -96,7 +96,7 @@ const HeroContainer = styled.div`
   margin-right: auto;
   margin-bottom: 2.5rem;
   overflow: hidden;
-  height: 424px;
+  height: 470px;
   z-index: 0;
   border-radius: 0px 0px 20px 20px;
   border-bottom: 1px solid rgba(105, 105, 105, 0.4);
@@ -146,7 +146,7 @@ const HeroTitle = styled.h1`
   font-weight: 700;
   color: white;
   text-align: center;
-  font-family: "Figtree", var(--font-geist-sans), sans-serif;
+  font-family: var(--font-figtree), "Figtree", sans-serif;
   line-height: 0.94em;
   letter-spacing: -0.05em;
   text-shadow: 0px 6px 12px 0px rgba(0, 30, 66, 0.6);
@@ -265,7 +265,7 @@ const StarText = styled.span`
   font-size: 18px;
   font-weight: 700;
   color: white;
-  font-family: "Figtree", var(--font-geist-sans), sans-serif;
+  font-family: var(--font-figtree), "Figtree", sans-serif;
 `;
 
 const GitHubLink = styled(Link)`
@@ -273,7 +273,7 @@ const GitHubLink = styled(Link)`
   font-weight: 600;
   transition: color 150ms;
   color: #696969;
-  font-family: "Figtree", var(--font-geist-sans), sans-serif;
+  font-family: var(--font-figtree), "Figtree", sans-serif;
   text-decoration: none;
 
   &:hover {

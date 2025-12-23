@@ -19,7 +19,12 @@ const GlobalStyle = createGlobalStyle`
   }
   
   body {
+    font-family: var(--font-figtree), "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     line-height: 1.5;
+  }
+  
+  code, pre, kbd, samp {
+    font-family: var(--font-mono), "JetBrains Mono", "Inconsolata", monospace;
   }
   
   img, picture, video, canvas, svg {
