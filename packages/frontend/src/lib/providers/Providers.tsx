@@ -24,7 +24,7 @@ const GlobalStyle = createGlobalStyle`
   }
   
   code, pre, kbd, samp {
-    font-family: var(--font-mono), "JetBrains Mono", "Inconsolata", monospace;
+    font-family: var(--font-mono), "JetBrains Mono", "Inconsolata", monospace !important;
   }
   
   img, picture, video, canvas, svg {

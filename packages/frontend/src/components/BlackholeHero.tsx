@@ -220,7 +220,7 @@ const CommandTextWrapper = styled.div`
 
 const CommandPrefix = styled.span`
   color: #FFF;
-  font-family: "Inconsolata", monospace;
+  font-family: "Inconsolata", monospace !important;
   font-size: 16px;
   font-weight: 500;
   line-height: 94%;
@@ -232,7 +232,7 @@ const CommandName = styled.span`
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  font-family: "Inconsolata", monospace;
+  font-family: "Inconsolata", monospace !important;
   font-size: 16px;
   font-weight: 500;
   line-height: 94%;

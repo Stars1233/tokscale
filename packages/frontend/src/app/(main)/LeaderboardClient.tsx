@@ -299,7 +299,7 @@ const CodeLine = styled.div`
   border-radius: 8px;
   display: flex;
   align-items: center;
-  font-family: "Inconsolata", monospace;
+  font-family: "Inconsolata", monospace !important;
   font-size: 16px;
   font-weight: 500;
   letter-spacing: -0.8px;
