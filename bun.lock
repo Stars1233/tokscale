@@ -17,7 +17,7 @@
     },
     "packages/cli": {
       "name": "@tokscale/cli",
-      "version": "1.0.12",
+      "version": "1.0.13",
       "dependencies": {
         "@napi-rs/canvas": "^0.1.68",
         "@opentui/core": "0.1.60",
@@ -43,7 +43,7 @@
     },
     "packages/core": {
       "name": "@tokscale/core",
-      "version": "1.0.12",
+      "version": "1.0.13",
       "devDependencies": {
         "@napi-rs/cli": "^3.4.1",
         "ava": "^6.1.0",
@@ -89,12 +89,12 @@
     },
     "packages/tokscale": {
       "name": "tokscale",
-      "version": "1.0.12",
+      "version": "1.0.13",
       "bin": {
         "tokscale": "./bin.js",
       },
       "dependencies": {
-        "@tokscale/cli": "1.0.7",
+        "@tokscale/cli": "1.0.12",
       },
     },
   },
@@ -1945,6 +1945,8 @@
 
     "@swc/helpers/tslib": ["tslib@2.8.1", "", {}, "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="],
 
+    "@tokscale/cli/@tokscale/core": ["@tokscale/core@1.0.12", "", {}, "sha512-HviUSts3nUXcjBOdEn5cd01D2D1KZ/eRrn3G7ub5+O0BrHpCOeuH8fG9ihCHMJeSAjSn3jj8AzbDrlemd64t1Q=="],
+
     "@tokscale/frontend/react": ["react@19.2.0", "", {}, "sha512-tmbWg6W31tQLeB5cdIBOicJDJRR2KzXsV7uSK9iNfLWQ5bIZfxuPEHp7M8wiHyHnn0DD1i7w3Zmin0FtkrwoCQ=="],
 
     "@tybys/wasm-util/tslib": ["tslib@2.8.1", "", {}, "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="],
@@ -2044,6 +2046,8 @@
     "tar/minipass": ["minipass@7.1.2", "", {}, "sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw=="],
 
     "tar/yallist": ["yallist@5.0.0", "", {}, "sha512-YgvUTfwqyc7UXVMrB+SImsVYSmTS8X/tSrtdNZMImM+n7+QTriRXyXim0mBrTXNeqzVF0KWGgHPeiyViFFrNDw=="],
+
+    "tokscale/@tokscale/cli": ["@tokscale/cli@1.0.12", "", { "dependencies": { "@opentui/core": "0.1.60", "@opentui/react": "^0.1.60", "@opentui/solid": "^0.1.60", "@tokscale/core": "1.0.12", "cli-table3": "^0.6.5", "clipboardy": "^5.0.2", "commander": "^14.0.2", "csv-parse": "^5.6.0", "date-fns": "^4.1.0", "picocolors": "^1.1.1", "react": "^19.2.3", "solid-js": "1.9.9", "string-width": "^8.1.0" } }, "sha512-NTAbEKxEsPdqFvf8pJY5LwyRGVUvwvo3ugQVvNS//CVD0JUXId9e0zKrVofPPpb0iyh+9bNkufnovdwbIXRJAw=="],
 
     "tsconfig-paths/json5": ["json5@1.0.2", "", { "dependencies": { "minimist": "^1.2.0" }, "bin": { "json5": "lib/cli.js" } }, "sha512-g1MWMLBiz8FKi1e4w0UyVL3w+iJceWAFBAaBnnGKOpNa5f8TLktkbre1+s6oICydWAm+HRUGTmI+//xv2hvXYA=="],
 
@@ -2166,6 +2170,8 @@
     "styled-components/@emotion/is-prop-valid/@emotion/memoize": ["@emotion/memoize@0.8.1", "", {}, "sha512-W2P2c/VRW1/1tLox0mVUalvnWXxavmv/Oum2aPsRcoDJuob75FC3Y8FbpfLwUegRcxINtGUMPq0tFCvYNTBXNA=="],
 
     "supertap/js-yaml/argparse": ["argparse@1.0.10", "", { "dependencies": { "sprintf-js": "~1.0.2" } }, "sha512-o5Roy6tNG4SL/FOkCAN6RzjiakZS25RLYFrcMttJqbdd8BWrnA+fGz57iN5Pb06pvBGvl5gQ0B48dJlslXvoTg=="],
+
+    "tokscale/@tokscale/cli/@tokscale/core": ["@tokscale/core@1.0.12", "", {}, "sha512-HviUSts3nUXcjBOdEn5cd01D2D1KZ/eRrn3G7ub5+O0BrHpCOeuH8fG9ihCHMJeSAjSn3jj8AzbDrlemd64t1Q=="],
 
     "vite/esbuild/@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.27.2", "", { "os": "aix", "cpu": "ppc64" }, "sha512-GZMB+a0mOMZs4MpDbj8RJp4cw+w1WV5NYD6xzgvzUJ5Ek2jerwfO2eADyI6ExDSUED+1X8aMbegahsJi+8mgpw=="],
 
