@@ -61,8 +61,8 @@ export function App(props: AppProps) {
 
   const [statusMessage, setStatusMessage] = createSignal<string | null>(null);
   let statusTimeout: ReturnType<typeof setTimeout> | null = null;
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = createSignal(false);
-  const [autoRefreshMs, setAutoRefreshMs] = createSignal(10000);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = createSignal(settings.autoRefreshEnabled ?? false);
+  const [autoRefreshMs, setAutoRefreshMs] = createSignal(settings.autoRefreshMs ?? 10000);
 
   const showStatus = (msg: string, duration = 2000) => {
     if (statusTimeout) clearTimeout(statusTimeout);
@@ -181,6 +181,7 @@ export function App(props: AppProps) {
     if (key.name === "r" && key.shift) {
       const next = !autoRefreshEnabled();
       setAutoRefreshEnabled(next);
+      saveSettings({ autoRefreshEnabled: next });
       showStatus(`Auto update: ${next ? "ON" : "OFF"} (${formatIntervalSeconds(autoRefreshMs())})`);
       return;
     }
@@ -188,6 +189,7 @@ export function App(props: AppProps) {
     if ((key.name === "+") || (key.name === "=" && key.shift)) {
       const next = getAutoRefreshIntervalStep(autoRefreshMs(), "up");
       setAutoRefreshMs(next);
+      saveSettings({ autoRefreshMs: next });
       showStatus(`Auto update interval: ${formatIntervalSeconds(next)}`);
       return;
     }
@@ -195,6 +197,7 @@ export function App(props: AppProps) {
     if (key.name === "-" || key.name === "_") {
       const next = getAutoRefreshIntervalStep(autoRefreshMs(), "down");
       setAutoRefreshMs(next);
+      saveSettings({ autoRefreshMs: next });
       showStatus(`Auto update interval: ${formatIntervalSeconds(next)}`);
       return;
     }

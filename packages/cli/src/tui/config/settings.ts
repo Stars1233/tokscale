@@ -12,6 +12,8 @@ const CACHE_STALE_THRESHOLD_MS = 60 * 1000;
 
 interface TUISettings {
   colorPalette: string;
+  autoRefreshEnabled?: boolean;
+  autoRefreshMs?: number;
 }
 
 interface CachedTUIData {
@@ -29,14 +31,16 @@ export function loadSettings(): TUISettings {
     }
   } catch {
   }
-  return { colorPalette: "green" };
+  return { colorPalette: "green", autoRefreshEnabled: false, autoRefreshMs: 10000 };
 }
 
-export function saveSettings(settings: TUISettings): void {
+export function saveSettings(updates: Partial<TUISettings>): void {
   if (!existsSync(CONFIG_DIR)) {
     mkdirSync(CONFIG_DIR, { recursive: true });
   }
-  writeFileSync(CONFIG_FILE, JSON.stringify(settings, null, 2));
+  const current = loadSettings();
+  const merged = { ...current, ...updates };
+  writeFileSync(CONFIG_FILE, JSON.stringify(merged, null, 2));
 }
 
 function sourcesMatch(enabledSources: Set<string>, cachedSources: string[]): boolean {
