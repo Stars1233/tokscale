@@ -34,7 +34,7 @@
 
 | Frontend (3D Contributions Graph) | Wrapped 2025 |
 |:---:|:---:|
-| <a href="https://tokscale.ai"><img alt="Frontend (3D Contributions Graph)" src=".github/assets/frontend-contributions-graph.png" width="700px" /></a> | <a href="#wrapped-2025"><img alt="Wrapped 2025" src=".github/assets/wrapped-2025.png" width="700px" /></a> |
+| <a href="https://tokscale.ai"><img alt="Frontend (3D Contributions Graph)" src=".github/assets/frontend-contributions-graph.png" width="700px" /></a> | <a href="#wrapped-2025"><img alt="Wrapped 2025" src=".github/assets/wrapped-2025-agents.png" width="700px" /></a> |
 
 > **[`bunx tokscale submit`](#ソーシャルプラットフォームコマンド)を実行して、使用量データをリーダーボードに送信し、公開プロフィールを作成しましょう！**
 
@@ -84,7 +84,7 @@ AI支援開発の時代において、**トークンは新しいエネルギー*
 curl -fsSL https://bun.sh/install | bash
 
 # bunxで直接実行
-bunx tokscale
+bunx tokscale@latest
 ```
 
 これだけです！セットアップ不要で完全なインタラクティブTUI体験が得られます。
@@ -127,10 +127,9 @@ bun run cli
 ```bash
 # ネイティブコアをビルド（リポジトリルートから実行）
 bun run build:core
-
-# インストールを確認
-bun run cli graph --benchmark
 ```
+
+ネイティブモジュールは`bunx tokscale`コマンドでデフォルトで有効になっています。ネイティブモジュールがインストールされていない場合（例：ローカル開発時）、CLIは完全な互換性のために自動的にTypeScript実装にフォールバックします（パフォーマンスは低下）。
 
 ## 使用方法
 
@@ -356,9 +355,9 @@ Tokscaleには使用量データを共有し、他の開発者と競争できる
 
 Spotify Wrappedにインスパイアされた、AIコーディングアシスタントの年間使用量をまとめた美しいレビュー画像を生成します。
 
-| `bunx tokscale@latest wrapped` | `bunx tokscale@latest wrapped --agents` | `bunx tokscale@latest wrapped --agents --pin-sisyphus` |
+| `bunx tokscale@latest wrapped` | `bunx tokscale@latest wrapped --clients` | `bunx tokscale@latest wrapped --agents --disable-pinned` |
 |:---:|:---:|:---:|
-| ![Wrapped 2025](.github/assets/wrapped-2025.png) | ![Wrapped 2025 (Agents)](.github/assets/wrapped-2025-agents.png) | ![Wrapped 2025 (Agents + Pin Sisyphus)](.github/assets/wrapped-2025-agents-pin-sisyphus.png) |
+| ![Wrapped 2025 (Agents + Pin Sisyphus)](.github/assets/wrapped-2025-agents.png) | ![Wrapped 2025 (Clients)](.github/assets/wrapped-2025-clients.png) | ![Wrapped 2025 (Agents + Disable Pinned)](.github/assets/wrapped-2025-agents-disable-pinned.png) |
 
 ### コマンド
 

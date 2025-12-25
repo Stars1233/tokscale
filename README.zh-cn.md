@@ -34,7 +34,7 @@
 
 | Frontend (3D Contributions Graph) | Wrapped 2025 |
 |:---:|:---:|
-| <a href="https://tokscale.ai"><img alt="Frontend (3D Contributions Graph)" src=".github/assets/frontend-contributions-graph.png" width="700px" /></a> | <a href="#wrapped-2025"><img alt="Wrapped 2025" src=".github/assets/wrapped-2025.png" width="700px" /></a> |
+| <a href="https://tokscale.ai"><img alt="Frontend (3D Contributions Graph)" src=".github/assets/frontend-contributions-graph.png" width="700px" /></a> | <a href="#wrapped-2025"><img alt="Wrapped 2025" src=".github/assets/wrapped-2025-agents.png" width="700px" /></a> |
 
 > **运行 [`bunx tokscale submit`](#社交平台命令) 将您的使用数据提交到排行榜并创建公开个人资料！**
 
@@ -84,7 +84,7 @@
 curl -fsSL https://bun.sh/install | bash
 
 # 直接用 bunx 运行
-bunx tokscale
+bunx tokscale@latest
 ```
 
 就这样！零配置即可获得完整的交互式 TUI 体验。
@@ -127,10 +127,9 @@ bun run cli
 ```bash
 # 构建原生核心（从仓库根目录运行）
 bun run build:core
-
-# 验证安装
-bun run cli graph --benchmark
 ```
+
+原生模块在 `bunx tokscale` 命令上默认启用。当未安装原生模块时（例如在本地开发时），CLI 会自动回退到 TypeScript 实现以保证完全兼容性（性能较慢）。
 
 ## 使用方法
 
@@ -356,9 +355,9 @@ Tokscale 包含一个社交平台，您可以在其中分享使用数据并与�
 
 生成一张精美的年度回顾图片，总结您的 AI 编程助手使用情况——灵感来自 Spotify Wrapped。
 
-| `bunx tokscale@latest wrapped` | `bunx tokscale@latest wrapped --agents` | `bunx tokscale@latest wrapped --agents --pin-sisyphus` |
+| `bunx tokscale@latest wrapped` | `bunx tokscale@latest wrapped --clients` | `bunx tokscale@latest wrapped --agents --disable-pinned` |
 |:---:|:---:|:---:|
-| ![Wrapped 2025](.github/assets/wrapped-2025.png) | ![Wrapped 2025 (Agents)](.github/assets/wrapped-2025-agents.png) | ![Wrapped 2025 (Agents + Pin Sisyphus)](.github/assets/wrapped-2025-agents-pin-sisyphus.png) |
+| ![Wrapped 2025 (Agents + Pin Sisyphus)](.github/assets/wrapped-2025-agents.png) | ![Wrapped 2025 (Clients)](.github/assets/wrapped-2025-clients.png) | ![Wrapped 2025 (Agents + Disable Pinned)](.github/assets/wrapped-2025-agents-disable-pinned.png) |
 
 ### 命令
 

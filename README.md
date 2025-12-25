@@ -34,7 +34,7 @@
 
 | Frontend (3D Contributions Graph) | Wrapped 2025 |
 |:---:|:---:|
-| <a href="https://tokscale.ai"><img alt="Frontend (3D Contributions Graph)" src=".github/assets/frontend-contributions-graph.png" width="700px" /></a> | <a href="#wrapped-2025"><img alt="Wrapped 2025" src=".github/assets/wrapped-2025.png" width="700px" /></a> |
+| <a href="https://tokscale.ai"><img alt="Frontend (3D Contributions Graph)" src=".github/assets/frontend-contributions-graph.png" width="700px" /></a> | <a href="#wrapped-2025"><img alt="Wrapped 2025" src=".github/assets/wrapped-2025-agents.png" width="700px" /></a> |
 
 > **Run [`bunx tokscale@latest submit`](#social) to submit your usage data to the leaderboard and create your public profile!**
 
@@ -390,9 +390,9 @@ Submitted data goes through Level 1 validation:
 
 Generate a beautiful year-in-review image summarizing your AI coding assistant usage—inspired by Spotify Wrapped.
 
-| `bunx tokscale@latest wrapped` | `bunx tokscale@latest wrapped --agents` | `bunx tokscale@latest wrapped --agents --pin-sisyphus` |
+| `bunx tokscale@latest wrapped` | `bunx tokscale@latest wrapped --clients` | `bunx tokscale@latest wrapped --agents --disable-pinned` |
 |:---:|:---:|:---:|
-| ![Wrapped 2025](.github/assets/wrapped-2025.png) | ![Wrapped 2025 (Agents)](.github/assets/wrapped-2025-agents.png) | ![Wrapped 2025 (Agents + Pin Sisyphus)](.github/assets/wrapped-2025-agents-pin-sisyphus.png) |
+| ![Wrapped 2025 (Agents + Pin Sisyphus)](.github/assets/wrapped-2025-agents.png) | ![Wrapped 2025 (Clients)](.github/assets/wrapped-2025-clients.png) | ![Wrapped 2025 (Agents + Disable Pinned)](.github/assets/wrapped-2025-agents-disable-pinned.png) |
 
 ### Command
 

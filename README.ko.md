@@ -34,7 +34,7 @@
 
 | Frontend (3D Contributions Graph) | Wrapped 2025 |
 |:---:|:---:|
-| <a href="https://tokscale.ai"><img alt="Frontend (3D Contributions Graph)" src=".github/assets/frontend-contributions-graph.png" width="700px" /></a> | <a href="#wrapped-2025"><img alt="Wrapped 2025" src=".github/assets/wrapped-2025.png" width="700px" /></a> |
+| <a href="https://tokscale.ai"><img alt="Frontend (3D Contributions Graph)" src=".github/assets/frontend-contributions-graph.png" width="700px" /></a> | <a href="#wrapped-2025"><img alt="Wrapped 2025" src=".github/assets/wrapped-2025-agents.png" width="700px" /></a> |
 
 > **[`bunx tokscale submit`](#소셜-플랫폼-명령어)를 실행하여 사용량 데이터를 리더보드에 제출하고 공개 프로필을 만드세요!**
 
@@ -84,7 +84,7 @@ AI 지원 개발 시대에 **토큰은 새로운 에너지**입니다. 토큰은
 curl -fsSL https://bun.sh/install | bash
 
 # bunx로 바로 실행
-bunx tokscale
+bunx tokscale@latest
 ```
 
 이게 전부입니다! 별도 설정 없이 바로 완전한 인터랙티브 TUI 경험을 제공합니다.
@@ -126,10 +126,9 @@ bun run cli
 ```bash
 # 네이티브 코어 빌드 (저장소 루트에서 실행)
 bun run build:core
-
-# 설치 확인
-bun run cli graph --benchmark
 ```
+
+네이티브 모듈은 `bunx tokscale` 명령에서 기본적으로 활성화됩니다. 네이티브 모듈이 설치되지 않은 경우(예: 로컬 개발 시), CLI는 완전한 호환성을 위해 자동으로 TypeScript 구현으로 폴백됩니다(성능은 느려집니다).
 
 ## 사용법
 
@@ -355,9 +354,9 @@ Tokscale은 사용량 데이터를 공유하고 다른 개발자와 경쟁할 �
 
 Spotify Wrapped에서 영감을 받아, AI 코딩 어시스턴트 사용량을 요약한 아름다운 연간 리뷰 이미지를 생성합니다.
 
-| `bunx tokscale@latest wrapped` | `bunx tokscale@latest wrapped --agents` | `bunx tokscale@latest wrapped --agents --pin-sisyphus` |
+| `bunx tokscale@latest wrapped` | `bunx tokscale@latest wrapped --clients` | `bunx tokscale@latest wrapped --agents --disable-pinned` |
 |:---:|:---:|:---:|
-| ![Wrapped 2025](.github/assets/wrapped-2025.png) | ![Wrapped 2025 (Agents)](.github/assets/wrapped-2025-agents.png) | ![Wrapped 2025 (Agents + Pin Sisyphus)](.github/assets/wrapped-2025-agents-pin-sisyphus.png) |
+| ![Wrapped 2025 (Agents + Pin Sisyphus)](.github/assets/wrapped-2025-agents.png) | ![Wrapped 2025 (Clients)](.github/assets/wrapped-2025-clients.png) | ![Wrapped 2025 (Agents + Disable Pinned)](.github/assets/wrapped-2025-agents-disable-pinned.png) |
 
 ### 명령어
 
