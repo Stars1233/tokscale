@@ -386,6 +386,8 @@ Submitted data goes through Level 1 validation:
 
 ## Wrapped 2025
 
+![Wrapped 2025](.github/assets/hero-wrapped-2025.png)
+
 Generate a beautiful year-in-review image summarizing your AI coding assistant usage—inspired by Spotify Wrapped.
 
 | `tokscale wrapped` | `tokscale wrapped --agents` | `tokscale wrapped --agents --pin-sisyphus` |

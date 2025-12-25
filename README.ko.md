@@ -351,6 +351,8 @@ Tokscale은 사용량 데이터를 공유하고 다른 개발자와 경쟁할 �
 
 ## Wrapped 2025
 
+![Wrapped 2025](.github/assets/hero-wrapped-2025.png)
+
 Spotify Wrapped에서 영감을 받아, AI 코딩 어시스턴트 사용량을 요약한 아름다운 연간 리뷰 이미지를 생성합니다.
 
 | `tokscale wrapped` | `tokscale wrapped --agents` | `tokscale wrapped --agents --pin-sisyphus` |
