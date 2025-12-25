@@ -838,9 +838,10 @@ export async function generateWrapped(options: WrappedOptions): Promise<string> 
 
   const agentsRequested = options.includeAgents !== false;
   const hasAgentData = !!data.topAgents?.length;
+  const opencodeEnabled = !options.sources || options.sources.includes("opencode");
   let effectiveIncludeAgents = agentsRequested && hasAgentData;
 
-  if (agentsRequested && !hasAgentData) {
+  if (agentsRequested && opencodeEnabled && !hasAgentData) {
     console.warn(pc.yellow(`\n  ⚠ No OpenCode agent data found for ${data.year}.`));
     console.warn(pc.gray("    Falling back to clients view.\n"));
   }
