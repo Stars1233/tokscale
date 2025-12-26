@@ -36,6 +36,8 @@ export function SourceLogo({ sourceId, height = 14, className = "" }: SourceLogo
         return "/assets/logos/gemini.png";
       case "cursor":
         return "/assets/logos/cursor.jpg";
+      case "amp":
+        return "/assets/logos/amp.png";
       default:
         return null;
     }

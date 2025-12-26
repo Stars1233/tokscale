@@ -30,6 +30,7 @@ export const SOURCE_DISPLAY_NAMES: Record<string, string> = {
   codex: "Codex CLI",
   gemini: "Gemini CLI",
   cursor: "Cursor",
+  amp: "Amp",
 };
 
 export const SOURCE_COLORS: Record<string, string> = {
@@ -38,6 +39,7 @@ export const SOURCE_COLORS: Record<string, string> = {
   codex: "#3b82f6",
   gemini: "#8b5cf6",
   cursor: "#22c55e",
+  amp: "#EC4899",
 };
 
 // Derived values
