@@ -99,6 +99,7 @@ export function parseAmpMessages(): UnifiedMessage[] {
       const threadId = thread.id || path.basename(file, ".json");
 
       // Parse from usageLedger.events (preferred - cleaner aggregated data)
+      const beforeCount = messages.length;
       if (thread.usageLedger?.events) {
         for (const event of thread.usageLedger.events) {
           if (!event.timestamp || !event.model) continue;
@@ -126,8 +127,10 @@ export function parseAmpMessages(): UnifiedMessage[] {
             )
           );
         }
-      } else {
-        // Fallback: Parse from individual message usage
+      }
+
+      // Fallback: If no messages added from ledger, parse from individual message usage
+      if (messages.length === beforeCount) {
         for (const msg of thread.messages || []) {
           if (msg.role !== "assistant" || !msg.usage) continue;
 

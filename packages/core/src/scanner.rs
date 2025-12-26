@@ -197,6 +197,7 @@ mod tests {
             codex_files: vec![],
             gemini_files: vec![PathBuf::from("d.json")],
             cursor_files: vec![],
+            amp_files: vec![],
         };
         assert_eq!(result.total_files(), 4);
     }
@@ -209,6 +210,7 @@ mod tests {
             codex_files: vec![PathBuf::from("c.jsonl")],
             gemini_files: vec![PathBuf::from("d.json")],
             cursor_files: vec![PathBuf::from("e.csv")],
+            amp_files: vec![],
         };
 
         let all = result.all_files();

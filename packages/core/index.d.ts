@@ -103,7 +103,7 @@ export interface GraphMeta {
 export interface GraphOptions {
   /** Home directory path (defaults to user's home) */
   homeDir?: string
-  /** Sources to include: "opencode", "claude", "codex", "gemini" */
+  /** Sources to include: "opencode", "claude", "codex", "gemini", "cursor", "amp" */
   sources?: Array<string>
   /** Start date filter (YYYY-MM-DD) */
   since?: string
@@ -210,6 +210,7 @@ export interface ParsedMessages {
   claudeCount: number
   codexCount: number
   geminiCount: number
+  ampCount: number
   processingTimeMs: number
 }
 
@@ -229,7 +230,7 @@ export interface PricingEntry {
 export interface ReportOptions {
   /** Home directory path (defaults to user's home) */
   homeDir?: string
-  /** Sources to include: "opencode", "claude", "codex", "gemini" */
+  /** Sources to include: "opencode", "claude", "codex", "gemini", "cursor", "amp" */
   sources?: Array<string>
   /** Pricing data for cost calculation */
   pricing: Array<PricingEntry>
@@ -251,6 +252,7 @@ export interface ScanStats {
   codexFiles: number
   geminiFiles: number
   cursorFiles: number
+  ampFiles: number
   totalFiles: number
 }
 

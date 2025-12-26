@@ -442,6 +442,7 @@ export interface ParsedMessages {
   claudeCount: number;
   codexCount: number;
   geminiCount: number;
+  ampCount: number;
   processingTimeMs: number;
 }
 
@@ -669,6 +670,7 @@ export async function parseLocalSourcesAsync(options: LocalParseOptions): Promis
       claudeCount: result.claudeCount,
       codexCount: result.codexCount,
       geminiCount: result.geminiCount,
+      ampCount: result.ampCount,
       processingTimeMs: result.processingTimeMs,
     };
   }

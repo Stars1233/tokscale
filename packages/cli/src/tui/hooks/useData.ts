@@ -157,7 +157,7 @@ async function loadData(enabledSources: Set<SourceType>, dateFilters?: DateFilte
     includeCursor && loadCursorCredentials() ? syncCursorCache() : Promise.resolve({ synced: false, rows: 0 }),
     localSources.length > 0
       ? parseLocalSourcesAsync({ sources: localSources as ("opencode" | "claude" | "codex" | "gemini")[], since, until, year })
-      : Promise.resolve({ messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, processingTimeMs: 0 } as ParsedMessages),
+      : Promise.resolve({ messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, ampCount: 0, processingTimeMs: 0 } as ParsedMessages),
   ]);
 
   const cursorSync = phase1Results[1].status === "fulfilled" 
@@ -173,6 +173,7 @@ async function loadData(enabledSources: Set<SourceType>, dateFilters?: DateFilte
     claudeCount: 0,
     codexCount: 0,
     geminiCount: 0,
+    ampCount: 0,
     processingTimeMs: 0,
   };
 

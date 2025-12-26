@@ -15,6 +15,7 @@ import {
   parseClaudeCodeMessages,
   parseCodexMessages,
   parseGeminiMessages,
+  parseAmpMessages,
 } from "./sessions/index.js";
 import { PricingFetcher } from "./pricing.js";
 import type {
@@ -238,6 +239,34 @@ function collectMessages(
     }
   }
 
+  // Amp
+  if (enabledSources.includes("amp")) {
+    const ampMessages = parseAmpMessages();
+    for (const msg of ampMessages) {
+      const pricing = fetcher.getModelPricing(msg.modelId);
+      const cost = pricing
+        ? fetcher.calculateCost(
+            {
+              input: msg.tokens.input,
+              output: msg.tokens.output,
+              cacheRead: msg.tokens.cacheRead,
+              cacheWrite: msg.tokens.cacheWrite,
+            },
+            pricing
+          )
+        : 0;
+
+      messages.push({
+        source: "amp",
+        modelId: msg.modelId,
+        providerId: msg.providerId,
+        timestamp: msg.timestamp,
+        tokens: msg.tokens,
+        cost,
+      });
+    }
+  }
+
   return messages;
 }
 
@@ -248,7 +277,7 @@ function getEnabledSources(options: GraphOptions): SourceType[] {
   if (options.sources && options.sources.length > 0) {
     return options.sources;
   }
-  return ["opencode", "claude", "codex", "gemini"];
+  return ["opencode", "claude", "codex", "gemini", "amp"];
 }
 
 /**

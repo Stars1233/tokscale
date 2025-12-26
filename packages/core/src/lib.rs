@@ -645,6 +645,7 @@ pub fn get_model_report(options: ReportOptions) -> napi::Result<ModelReport> {
             "codex".to_string(),
             "gemini".to_string(),
             "cursor".to_string(),
+            "amp".to_string(),
         ]
     });
 
@@ -742,6 +743,7 @@ pub fn get_monthly_report(options: ReportOptions) -> napi::Result<MonthlyReport>
             "codex".to_string(),
             "gemini".to_string(),
             "cursor".to_string(),
+            "amp".to_string(),
         ]
     });
 
@@ -814,6 +816,7 @@ pub fn generate_graph_with_pricing(options: ReportOptions) -> napi::Result<Graph
             "codex".to_string(),
             "gemini".to_string(),
             "cursor".to_string(),
+            "amp".to_string(),
         ]
     });
 

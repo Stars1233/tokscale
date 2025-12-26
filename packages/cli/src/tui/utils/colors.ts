@@ -58,6 +58,7 @@ export const SOURCE_COLORS: Record<SourceType, string> = {
   codex: "#3b82f6",
   cursor: "#a855f7",
   gemini: "#06b6d4",
+  amp: "#EC4899",
 };
 
 export function getSourceColor(source: SourceType | string): string {

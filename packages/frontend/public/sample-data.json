@@ -15,7 +15,10 @@
     "averagePerDay": 142.18176054999998,
     "maxCostInSingleDay": 522.1466327000019,
     "sources": [
+      "amp",
       "claude",
+      "codex",
+      "cursor",
       "gemini",
       "opencode"
     ],

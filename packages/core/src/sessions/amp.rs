@@ -15,7 +15,7 @@ pub struct AmpUsageEvent {
     pub credits: Option<f64>,
     pub tokens: Option<AmpTokens>,
     #[serde(rename = "operationType")]
-    pub operation_type: Option<String>,
+    pub _operation_type: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -148,7 +148,9 @@ pub fn parse_amp_file(path: &Path) -> Vec<UnifiedMessage> {
                     event.credits.unwrap_or(0.0),
                 ));
             }
-            return messages;
+            if !messages.is_empty() {
+                return messages;
+            }
         }
     }
 

@@ -64,6 +64,7 @@ const SOURCE_DISPLAY_NAMES: Record<string, string> = {
   codex: "Codex CLI",
   gemini: "Gemini CLI",
   cursor: "Cursor IDE",
+  amp: "Amp",
 };
 
 const ASSETS_BASE_URL = "https://tokscale.ai/assets/logos";
@@ -93,6 +94,7 @@ const CLIENT_LOGO_URLS: Record<string, string> = {
   "Codex CLI": `${ASSETS_BASE_URL}/openai.jpg`,
   "Gemini CLI": `${ASSETS_BASE_URL}/gemini.png`,
   "Cursor IDE": `${ASSETS_BASE_URL}/cursor.jpg`,
+  "Amp": `${ASSETS_BASE_URL}/amp.png`,
 };
 
 const PROVIDER_LOGO_URLS: Record<string, string> = {
@@ -210,8 +212,8 @@ async function ensureFontsLoaded(): Promise<void> {
 
 async function loadWrappedData(options: WrappedOptions): Promise<WrappedData> {
   const year = options.year || new Date().getFullYear().toString();
-  const sources = options.sources || ["opencode", "claude", "codex", "gemini", "cursor"];
-  const localSources = sources.filter(s => s !== "cursor") as ("opencode" | "claude" | "codex" | "gemini")[];
+  const sources = options.sources || ["opencode", "claude", "codex", "gemini", "cursor", "amp"];
+  const localSources = sources.filter(s => s !== "cursor") as ("opencode" | "claude" | "codex" | "gemini" | "amp")[];
   const includeCursor = sources.includes("cursor");
 
   const since = `${year}-01-01`;
@@ -224,7 +226,7 @@ async function loadWrappedData(options: WrappedOptions): Promise<WrappedData> {
     includeCursor && loadCursorCredentials() ? syncCursorCache() : Promise.resolve({ synced: false, rows: 0 }),
     localSources.length > 0
       ? parseLocalSourcesAsync({ sources: localSources, since, until, year, forceTypescript: options.includeAgents !== false })
-      : Promise.resolve({ messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, processingTimeMs: 0 } as ParsedMessages),
+      : Promise.resolve({ messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, ampCount: 0, processingTimeMs: 0 } as ParsedMessages),
   ]);
 
   const cursorSync = phase1Results[1].status === "fulfilled" 
@@ -240,6 +242,7 @@ async function loadWrappedData(options: WrappedOptions): Promise<WrappedData> {
     claudeCount: 0,
     codexCount: 0,
     geminiCount: 0,
+    ampCount: 0,
     processingTimeMs: 0,
   };
 
