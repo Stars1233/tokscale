@@ -15,6 +15,8 @@ interface AmpUsageEvent {
   tokens: {
     input: number;
     output: number;
+    cacheReadInputTokens?: number;
+    cacheCreationInputTokens?: number;
   };
   operationType: string;
 }
@@ -110,8 +112,8 @@ export function parseAmpMessages(): UnifiedMessage[] {
           const tokens: TokenBreakdown = {
             input: event.tokens?.input || 0,
             output: event.tokens?.output || 0,
-            cacheRead: 0,
-            cacheWrite: 0,
+            cacheRead: event.tokens?.cacheReadInputTokens || 0,
+            cacheWrite: event.tokens?.cacheCreationInputTokens || 0,
             reasoning: 0,
           };
 

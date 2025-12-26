@@ -22,6 +22,10 @@ pub struct AmpUsageEvent {
 pub struct AmpTokens {
     pub input: Option<i64>,
     pub output: Option<i64>,
+    #[serde(rename = "cacheReadInputTokens")]
+    pub cache_read_input_tokens: Option<i64>,
+    #[serde(rename = "cacheCreationInputTokens")]
+    pub cache_creation_input_tokens: Option<i64>,
 }
 
 /// Amp message usage (per-message, more detailed)
@@ -130,6 +134,8 @@ pub fn parse_amp_file(path: &Path) -> Vec<UnifiedMessage> {
                 let tokens = event.tokens.unwrap_or(AmpTokens {
                     input: Some(0),
                     output: Some(0),
+                    cache_read_input_tokens: Some(0),
+                    cache_creation_input_tokens: Some(0),
                 });
 
                 messages.push(UnifiedMessage::new(
@@ -141,8 +147,8 @@ pub fn parse_amp_file(path: &Path) -> Vec<UnifiedMessage> {
                     TokenBreakdown {
                         input: tokens.input.unwrap_or(0),
                         output: tokens.output.unwrap_or(0),
-                        cache_read: 0,
-                        cache_write: 0,
+                        cache_read: tokens.cache_read_input_tokens.unwrap_or(0),
+                        cache_write: tokens.cache_creation_input_tokens.unwrap_or(0),
                         reasoning: 0,
                     },
                     event.credits.unwrap_or(0.0),

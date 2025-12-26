@@ -629,6 +629,8 @@ fn parse_all_messages_with_pricing(
     all_messages.extend(cursor_messages);
 
     // Parse Amp files in parallel
+    // Calculate cost using our pricing data for consistency with other providers
+    // Fall back to credits (original cost) only if no pricing is found
     let amp_messages: Vec<UnifiedMessage> = scan_result
         .amp_files
         .par_iter()
@@ -636,7 +638,8 @@ fn parse_all_messages_with_pricing(
             sessions::amp::parse_amp_file(path)
                 .into_iter()
                 .map(|mut msg| {
-                    msg.cost = pricing_data.calculate_cost(
+                    let credits = msg.cost; // Store original credits value
+                    let calculated_cost = pricing_data.calculate_cost(
                         &msg.model_id,
                         msg.tokens.input,
                         msg.tokens.output,
@@ -644,6 +647,12 @@ fn parse_all_messages_with_pricing(
                         msg.tokens.cache_write,
                         msg.tokens.reasoning,
                     );
+                    // Use calculated cost if available, otherwise keep credits
+                    msg.cost = if calculated_cost > 0.0 {
+                        calculated_cost
+                    } else {
+                        credits
+                    };
                     msg
                 })
                 .collect::<Vec<_>>()
