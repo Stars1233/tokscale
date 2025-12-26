@@ -35,17 +35,18 @@ pub struct DroidTokenUsage {
 }
 
 /// Normalize model name from Droid's custom format
-/// e.g., "custom:Claude-Opus-4.5-Thinking-[Anthropic]-0" -> "claude-opus-4-5-thinking"
-/// e.g., "gemini-2.5-pro" -> "gemini-2.5-pro"
+/// e.g., "custom:Claude-Opus-4.5-Thinking-[Anthropic]-0" -> "claude-opus-4-5-thinking-0"
+/// e.g., "gemini-2.5-pro" -> "gemini-2-5-pro"
+/// e.g., "Claude-Sonnet-4-[Anthropic]" -> "claude-sonnet-4"
 fn normalize_model_name(model: &str) -> String {
     // Remove "custom:" prefix if present
     let mut normalized = model.strip_prefix("custom:").unwrap_or(model).to_string();
 
     // Handle bracket notation like "Claude-Opus-4.5-Thinking-[Anthropic]-0"
-    // Remove [anything] patterns and trailing hyphens/numbers
+    // Remove [anything] patterns (like TypeScript's .replace(/\[.*?\]/g, ""))
     let mut result = String::new();
     let mut in_bracket = false;
-    
+
     for ch in normalized.chars() {
         match ch {
             '[' => in_bracket = true,
@@ -54,27 +55,35 @@ fn normalize_model_name(model: &str) -> String {
             _ => {}
         }
     }
-    
+
     normalized = result;
-    
-    // Remove trailing hyphens and single digits
-    normalized = normalized
-        .trim_end_matches(|c: char| c == '-' || c.is_ascii_digit())
-        .to_string();
-    
-    // Remove trailing hyphens again (in case we removed digits)
+
+    // Remove trailing hyphens only (like TypeScript's .replace(/-+$/, ""))
+    // NOTE: Do NOT remove trailing digits - TypeScript keeps them
     normalized = normalized.trim_end_matches('-').to_string();
 
-    // Convert to lowercase and normalize dots/hyphens
-    normalized = normalized
-        .to_lowercase()
-        .replace('.', "-")
-        .split('-')
-        .filter(|s| !s.is_empty())
-        .collect::<Vec<_>>()
-        .join("-");
+    // Convert to lowercase (like TypeScript's .toLowerCase())
+    normalized = normalized.to_lowercase();
 
-    normalized
+    // Replace dots with hyphens (like TypeScript's .replace(/\./g, "-"))
+    normalized = normalized.replace('.', "-");
+
+    // Collapse multiple consecutive hyphens into one (like TypeScript's .replace(/-+/g, "-"))
+    let mut collapsed = String::new();
+    let mut last_was_hyphen = false;
+    for ch in normalized.chars() {
+        if ch == '-' {
+            if !last_was_hyphen {
+                collapsed.push(ch);
+            }
+            last_was_hyphen = true;
+        } else {
+            collapsed.push(ch);
+            last_was_hyphen = false;
+        }
+    }
+
+    collapsed
 }
 
 /// Determine provider from model name
@@ -239,22 +248,25 @@ mod tests {
 
     #[test]
     fn test_normalize_model_name_custom_prefix() {
+        // TypeScript keeps trailing digits: "claude-opus-4-5-thinking-0"
         assert_eq!(
             normalize_model_name("custom:Claude-Opus-4.5-Thinking-[Anthropic]-0"),
-            "claude-opus-4-5-thinking"
+            "claude-opus-4-5-thinking-0"
         );
     }
 
     #[test]
     fn test_normalize_model_name_simple() {
+        // Dots become hyphens: "gemini-2.5-pro" -> "gemini-2-5-pro"
         assert_eq!(normalize_model_name("gemini-2.5-pro"), "gemini-2-5-pro");
     }
 
     #[test]
     fn test_normalize_model_name_brackets() {
+        // TypeScript keeps trailing digits: "claude-sonnet-4"
         assert_eq!(
             normalize_model_name("Claude-Sonnet-4-[Anthropic]"),
-            "claude-sonnet"
+            "claude-sonnet-4"
         );
     }
 
