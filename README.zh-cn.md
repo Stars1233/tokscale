@@ -49,8 +49,8 @@
 | <img width="48px" src=".github/assets/client-openai.jpg" alt="Codex" /> | [Codex CLI](https://github.com/openai/codex) | `~/.codex/sessions/` | ✅ 支持 |
 | <img width="48px" src=".github/assets/client-gemini.png" alt="Gemini" /> | [Gemini CLI](https://github.com/google-gemini/gemini-cli) | `~/.gemini/tmp/*/chats/` | ✅ 支持 |
 | <img width="48px" src=".github/assets/client-cursor.jpg" alt="Cursor" /> | [Cursor IDE](https://cursor.com/) | 通过 `~/.config/tokscale/cursor-cache/` API 同步 | ✅ 支持 |
-| <img width="48px" src=".github/assets/client-amp.png" alt="Amp" /> | [Amp](https://ampcode.com/) | `~/.local/share/amp/threads/` | ✅ 支持 / 从 `v1.0.18` 开始（下一版本） |
-| <img width="48px" src=".github/assets/client-droid.png" alt="Droid" /> | [Droid (Factory.ai)](https://factory.ai/) | `~/.factory/sessions/` | ✅ 支持 / 从 `v1.0.18` 开始（下一版本） |
+| <img width="48px" src=".github/assets/client-amp.png" alt="Amp" /> | [Amp (AmpCode)](https://ampcode.com/) | `~/.local/share/amp/threads/` | ✅ 支持 / 从 `v1.0.18` 开始（下一版本） |
+| <img width="48px" src=".github/assets/client-droid.png" alt="Droid" /> | [Droid (Factory Droid)](https://factory.ai/) | `~/.factory/sessions/` | ✅ 支持 / 从 `v1.0.18` 开始（下一版本） |
 
 使用 [🚅 LiteLLM 的价格数据](https://github.com/BerriAI/litellm)提供实时价格计算，支持分层定价模型和缓存 Token 折扣。
 

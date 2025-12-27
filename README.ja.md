@@ -49,8 +49,8 @@
 | <img width="48px" src=".github/assets/client-openai.jpg" alt="Codex" /> | [Codex CLI](https://github.com/openai/codex) | `~/.codex/sessions/` | ✅ 対応 |
 | <img width="48px" src=".github/assets/client-gemini.png" alt="Gemini" /> | [Gemini CLI](https://github.com/google-gemini/gemini-cli) | `~/.gemini/tmp/*/chats/` | ✅ 対応 |
 | <img width="48px" src=".github/assets/client-cursor.jpg" alt="Cursor" /> | [Cursor IDE](https://cursor.com/) | `~/.config/tokscale/cursor-cache/`経由でAPI同期 | ✅ 対応 |
-| <img width="48px" src=".github/assets/client-amp.png" alt="Amp" /> | [Amp](https://ampcode.com/) | `~/.local/share/amp/threads/` | ✅ 対応 / `v1.0.18`から（次回リリース） |
-| <img width="48px" src=".github/assets/client-droid.png" alt="Droid" /> | [Droid (Factory.ai)](https://factory.ai/) | `~/.factory/sessions/` | ✅ 対応 / `v1.0.18`から（次回リリース） |
+| <img width="48px" src=".github/assets/client-amp.png" alt="Amp" /> | [Amp (AmpCode)](https://ampcode.com/) | `~/.local/share/amp/threads/` | ✅ 対応 / `v1.0.18`から（次回リリース） |
+| <img width="48px" src=".github/assets/client-droid.png" alt="Droid" /> | [Droid (Factory Droid)](https://factory.ai/) | `~/.factory/sessions/` | ✅ 対応 / `v1.0.18`から（次回リリース） |
 
 [🚅 LiteLLMの価格データ](https://github.com/BerriAI/litellm)を使用してリアルタイム価格計算を提供し、階層型価格モデルとキャッシュトークン割引をサポートしています。
 

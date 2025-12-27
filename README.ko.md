@@ -49,8 +49,8 @@
 | <img width="48px" src=".github/assets/client-openai.jpg" alt="Codex" /> | [Codex CLI](https://github.com/openai/codex) | `~/.codex/sessions/` | ✅ 지원 |
 | <img width="48px" src=".github/assets/client-gemini.png" alt="Gemini" /> | [Gemini CLI](https://github.com/google-gemini/gemini-cli) | `~/.gemini/tmp/*/chats/` | ✅ 지원 |
 | <img width="48px" src=".github/assets/client-cursor.jpg" alt="Cursor" /> | [Cursor IDE](https://cursor.com/) | `~/.config/tokscale/cursor-cache/`를 통한 API 동기화 | ✅ 지원 |
-| <img width="48px" src=".github/assets/client-amp.png" alt="Amp" /> | [Amp](https://ampcode.com/) | `~/.local/share/amp/threads/` | ✅ 지원 / `v1.0.18`부터 (다음 릴리스) |
-| <img width="48px" src=".github/assets/client-droid.png" alt="Droid" /> | [Droid (Factory.ai)](https://factory.ai/) | `~/.factory/sessions/` | ✅ 지원 / `v1.0.18`부터 (다음 릴리스) |
+| <img width="48px" src=".github/assets/client-amp.png" alt="Amp" /> | [Amp (AmpCode)](https://ampcode.com/) | `~/.local/share/amp/threads/` | ✅ 지원 / `v1.0.18`부터 (다음 릴리스) |
+| <img width="48px" src=".github/assets/client-droid.png" alt="Droid" /> | [Droid (Factory Droid)](https://factory.ai/) | `~/.factory/sessions/` | ✅ 지원 / `v1.0.18`부터 (다음 릴리스) |
 
 [🚅 LiteLLM의 가격 데이터](https://github.com/BerriAI/litellm)를 사용해 **실시간 비용 계산**을 제공합니다. 구간별 가격 모델(대용량 컨텍스트 등)과 **캐시 토큰 할인**도 지원합니다.
 
