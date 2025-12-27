@@ -6,7 +6,7 @@
 /**
  * Valid source identifiers
  */
-export type SourceType = "opencode" | "claude" | "codex" | "gemini" | "cursor" | "amp";
+export type SourceType = "opencode" | "claude" | "codex" | "gemini" | "cursor" | "amp" | "droid";
 
 /**
  * Token breakdown by category

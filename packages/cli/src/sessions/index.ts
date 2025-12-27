@@ -12,6 +12,7 @@ export { parseClaudeCodeMessages, getClaudeCodeProjectsPath } from "./claudecode
 export { parseCodexMessages, getCodexSessionsPath } from "./codex.js";
 export { parseGeminiMessages, getGeminiBasePath } from "./gemini.js";
 export { parseAmpMessages, getAmpThreadsPath } from "./amp.js";
+export { parseDroidMessages, getDroidSessionsPath } from "./droid.js";
 
 import type { UnifiedMessage, SourceType } from "./types.js";
 import { parseOpenCodeMessages } from "./opencode.js";
@@ -19,6 +20,7 @@ import { parseClaudeCodeMessages } from "./claudecode.js";
 import { parseCodexMessages } from "./codex.js";
 import { parseGeminiMessages } from "./gemini.js";
 import { parseAmpMessages } from "./amp.js";
+import { parseDroidMessages } from "./droid.js";
 
 export interface ParsedMessages {
   messages: UnifiedMessage[];
@@ -27,6 +29,7 @@ export interface ParsedMessages {
   codexCount: number;
   geminiCount: number;
   ampCount: number;
+  droidCount: number;
   processingTimeMs: number;
 }
 
@@ -72,6 +75,7 @@ export function parseLocalSources(options: ParseOptions = {}): ParsedMessages {
   let codexCount = 0;
   let geminiCount = 0;
   let ampCount = 0;
+  let droidCount = 0;
 
   // Parse OpenCode
   if (!sources || sources.includes("opencode")) {
@@ -128,6 +132,17 @@ export function parseLocalSources(options: ParseOptions = {}): ParsedMessages {
     }
   }
 
+  // Parse Droid
+  if (!sources || sources.includes("droid")) {
+    const messages = parseDroidMessages();
+    for (const msg of messages) {
+      if (isDateInRange(msg.date, options.since, options.until, options.year)) {
+        allMessages.push(msg);
+        droidCount++;
+      }
+    }
+  }
+
   const processingTimeMs = performance.now() - startTime;
 
   return {
@@ -137,6 +152,7 @@ export function parseLocalSources(options: ParseOptions = {}): ParsedMessages {
     codexCount,
     geminiCount,
     ampCount,
+    droidCount,
     processingTimeMs,
   };
 }

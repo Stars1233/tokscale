@@ -156,8 +156,8 @@ async function loadData(enabledSources: Set<SourceType>, dateFilters?: DateFilte
     pricingFetcher.fetchPricing(),
     includeCursor && loadCursorCredentials() ? syncCursorCache() : Promise.resolve({ synced: false, rows: 0 }),
     localSources.length > 0
-      ? parseLocalSourcesAsync({ sources: localSources as ("opencode" | "claude" | "codex" | "gemini" | "amp")[], since, until, year })
-      : Promise.resolve({ messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, ampCount: 0, processingTimeMs: 0 } as ParsedMessages),
+      ? parseLocalSourcesAsync({ sources: localSources as ("opencode" | "claude" | "codex" | "gemini" | "amp" | "droid")[], since, until, year })
+      : Promise.resolve({ messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, ampCount: 0, droidCount: 0, processingTimeMs: 0 } as ParsedMessages),
   ]);
 
   const cursorSync = phase1Results[1].status === "fulfilled" 
@@ -174,6 +174,7 @@ async function loadData(enabledSources: Set<SourceType>, dateFilters?: DateFilte
     codexCount: 0,
     geminiCount: 0,
     ampCount: 0,
+    droidCount: 0,
     processingTimeMs: 0,
   };
 

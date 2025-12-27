@@ -194,6 +194,7 @@ interface NativeParsedMessages {
   codexCount: number;
   geminiCount: number;
   ampCount: number;
+  droidCount?: number;
   processingTimeMs: number;
 }
 
@@ -445,6 +446,7 @@ export interface ParsedMessages {
   codexCount: number;
   geminiCount: number;
   ampCount: number;
+  droidCount: number;
   processingTimeMs: number;
 }
 
@@ -673,6 +675,7 @@ export async function parseLocalSourcesAsync(options: LocalParseOptions): Promis
       codexCount: result.codexCount,
       geminiCount: result.geminiCount,
       ampCount: result.ampCount,
+      droidCount: result.droidCount ?? 0,
       processingTimeMs: result.processingTimeMs,
     };
   }

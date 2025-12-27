@@ -15,6 +15,7 @@ pub enum SessionType {
     Gemini,
     Cursor,
     Amp,
+    Droid,
 }
 
 /// Result of scanning all session directories
@@ -26,6 +27,7 @@ pub struct ScanResult {
     pub gemini_files: Vec<PathBuf>,
     pub cursor_files: Vec<PathBuf>,
     pub amp_files: Vec<PathBuf>,
+    pub droid_files: Vec<PathBuf>,
 }
 
 impl ScanResult {
@@ -37,6 +39,7 @@ impl ScanResult {
             + self.gemini_files.len()
             + self.cursor_files.len()
             + self.amp_files.len()
+            + self.droid_files.len()
     }
 
     /// Get all files as a single vector
@@ -60,6 +63,9 @@ impl ScanResult {
         }
         for path in &self.amp_files {
             result.push((SessionType::Amp, path.clone()));
+        }
+        for path in &self.droid_files {
+            result.push((SessionType::Droid, path.clone()));
         }
 
         result
@@ -94,6 +100,7 @@ pub fn scan_directory(root: &str, pattern: &str) -> Vec<PathBuf> {
                 "T-*.json" => {
                     file_name.starts_with("T-") && file_name.ends_with(".json")
                 }
+                "*.settings.json" => file_name.ends_with(".settings.json"),
                 _ => false,
             }
         })
@@ -112,6 +119,7 @@ pub fn scan_all_sources(home_dir: &str, sources: &[String]) -> ScanResult {
     let include_gemini = include_all || sources.iter().any(|s| s == "gemini");
     let include_cursor = include_all || sources.iter().any(|s| s == "cursor");
     let include_amp = include_all || sources.iter().any(|s| s == "amp");
+    let include_droid = include_all || sources.iter().any(|s| s == "droid");
 
     // Define scan tasks
     let mut tasks: Vec<(SessionType, String, &str)> = Vec::new();
@@ -158,6 +166,12 @@ pub fn scan_all_sources(home_dir: &str, sources: &[String]) -> ScanResult {
         tasks.push((SessionType::Amp, amp_path, "T-*.json"));
     }
 
+    if include_droid {
+        // Droid: ~/.factory/sessions/*.settings.json
+        let droid_path = format!("{}/.factory/sessions", home_dir);
+        tasks.push((SessionType::Droid, droid_path, "*.settings.json"));
+    }
+
     // Execute scans in parallel
     let scan_results: Vec<(SessionType, Vec<PathBuf>)> = tasks
         .into_par_iter()
@@ -176,6 +190,7 @@ pub fn scan_all_sources(home_dir: &str, sources: &[String]) -> ScanResult {
             SessionType::Gemini => result.gemini_files = files,
             SessionType::Cursor => result.cursor_files = files,
             SessionType::Amp => result.amp_files = files,
+            SessionType::Droid => result.droid_files = files,
         }
     }
 
@@ -198,6 +213,7 @@ mod tests {
             gemini_files: vec![PathBuf::from("d.json")],
             cursor_files: vec![],
             amp_files: vec![],
+            droid_files: vec![],
         };
         assert_eq!(result.total_files(), 4);
     }
@@ -211,6 +227,7 @@ mod tests {
             gemini_files: vec![PathBuf::from("d.json")],
             cursor_files: vec![PathBuf::from("e.csv")],
             amp_files: vec![],
+            droid_files: vec![],
         };
 
         let all = result.all_files();

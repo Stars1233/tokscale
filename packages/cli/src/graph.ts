@@ -277,7 +277,7 @@ function getEnabledSources(options: GraphOptions): SourceType[] {
   if (options.sources && options.sources.length > 0) {
     return options.sources;
   }
-  return ["opencode", "claude", "codex", "gemini", "cursor", "amp"];
+  return ["opencode", "claude", "codex", "gemini", "cursor", "amp", "droid"];
 }
 
 /**

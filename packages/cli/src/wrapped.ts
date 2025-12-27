@@ -212,8 +212,8 @@ async function ensureFontsLoaded(): Promise<void> {
 
 async function loadWrappedData(options: WrappedOptions): Promise<WrappedData> {
   const year = options.year || new Date().getFullYear().toString();
-  const sources = options.sources || ["opencode", "claude", "codex", "gemini", "cursor", "amp"];
-  const localSources = sources.filter(s => s !== "cursor") as ("opencode" | "claude" | "codex" | "gemini" | "amp")[];
+  const sources = options.sources || ["opencode", "claude", "codex", "gemini", "cursor", "amp", "droid"];
+  const localSources = sources.filter(s => s !== "cursor") as ("opencode" | "claude" | "codex" | "gemini" | "amp" | "droid")[];
   const includeCursor = sources.includes("cursor");
 
   const since = `${year}-01-01`;
@@ -226,7 +226,7 @@ async function loadWrappedData(options: WrappedOptions): Promise<WrappedData> {
     includeCursor && loadCursorCredentials() ? syncCursorCache() : Promise.resolve({ synced: false, rows: 0 }),
     localSources.length > 0
       ? parseLocalSourcesAsync({ sources: localSources, since, until, year, forceTypescript: options.includeAgents !== false })
-      : Promise.resolve({ messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, ampCount: 0, processingTimeMs: 0 } as ParsedMessages),
+      : Promise.resolve({ messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, ampCount: 0, droidCount: 0, processingTimeMs: 0 } as ParsedMessages),
   ]);
 
   const cursorSync = phase1Results[1].status === "fulfilled" 
@@ -243,6 +243,7 @@ async function loadWrappedData(options: WrappedOptions): Promise<WrappedData> {
     codexCount: 0,
     geminiCount: 0,
     ampCount: 0,
+    droidCount: 0,
     processingTimeMs: 0,
   };
 

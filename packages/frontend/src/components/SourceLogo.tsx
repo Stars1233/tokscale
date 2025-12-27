@@ -38,6 +38,8 @@ export function SourceLogo({ sourceId, height = 14, className = "" }: SourceLogo
         return "/assets/logos/cursor.jpg";
       case "amp":
         return "/assets/logos/amp.png";
+      case "droid":
+        return "/assets/logos/droid.png";
       default:
         return null;
     }

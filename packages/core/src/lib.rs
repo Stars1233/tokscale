@@ -36,7 +36,7 @@ pub fn health_check() -> String {
 pub struct GraphOptions {
     /// Home directory path (defaults to user's home)
     pub home_dir: Option<String>,
-    /// Sources to include: "opencode", "claude", "codex", "gemini", "cursor", "amp"
+    /// Sources to include: "opencode", "claude", "codex", "gemini", "cursor", "amp", "droid"
     pub sources: Option<Vec<String>>,
     /// Start date filter (YYYY-MM-DD)
     pub since: Option<String>,
@@ -90,6 +90,7 @@ pub struct ParsedMessages {
     pub codex_count: i32,
     pub gemini_count: i32,
     pub amp_count: i32,
+    pub droid_count: i32,
     pub processing_time_ms: u32,
 }
 
@@ -237,6 +238,7 @@ pub fn generate_graph(options: GraphOptions) -> napi::Result<GraphResult> {
             "gemini".to_string(),
             "cursor".to_string(),
             "amp".to_string(),
+            "droid".to_string(),
         ]
     });
 
@@ -302,6 +304,14 @@ pub fn generate_graph(options: GraphOptions) -> napi::Result<GraphResult> {
         .collect();
     all_messages.extend(amp_messages);
 
+    // Parse Droid files in parallel
+    let droid_messages: Vec<UnifiedMessage> = scan_result
+        .droid_files
+        .par_iter()
+        .flat_map(|path| sessions::droid::parse_droid_file(path))
+        .collect();
+    all_messages.extend(droid_messages);
+
     // 3. Apply date filters
     let filtered_messages = filter_messages(all_messages, &options);
 
@@ -347,6 +357,7 @@ pub struct ScanStats {
     pub gemini_files: i32,
     pub cursor_files: i32,
     pub amp_files: i32,
+    pub droid_files: i32,
     pub total_files: i32,
 }
 
@@ -363,6 +374,7 @@ pub fn scan_sessions(home_dir: Option<String>, sources: Option<Vec<String>>) -> 
             "gemini".to_string(),
             "cursor".to_string(),
             "amp".to_string(),
+            "droid".to_string(),
         ]
     });
 
@@ -375,6 +387,7 @@ pub fn scan_sessions(home_dir: Option<String>, sources: Option<Vec<String>>) -> 
         gemini_files: result.gemini_files.len() as i32,
         cursor_files: result.cursor_files.len() as i32,
         amp_files: result.amp_files.len() as i32,
+        droid_files: result.droid_files.len() as i32,
         total_files: result.total_files() as i32,
     })
 }
@@ -407,7 +420,7 @@ pub struct PricingEntry {
 pub struct ReportOptions {
     /// Home directory path (defaults to user's home)
     pub home_dir: Option<String>,
-    /// Sources to include: "opencode", "claude", "codex", "gemini", "cursor", "amp"
+    /// Sources to include: "opencode", "claude", "codex", "gemini", "cursor", "amp", "droid"
     pub sources: Option<Vec<String>>,
     /// Pricing data for cost calculation
     pub pricing: Vec<PricingEntry>,
@@ -660,6 +673,29 @@ fn parse_all_messages_with_pricing(
         .collect();
     all_messages.extend(amp_messages);
 
+    // Parse Droid files in parallel
+    let droid_messages: Vec<UnifiedMessage> = scan_result
+        .droid_files
+        .par_iter()
+        .flat_map(|path| {
+            sessions::droid::parse_droid_file(path)
+                .into_iter()
+                .map(|mut msg| {
+                    msg.cost = pricing_data.calculate_cost(
+                        &msg.model_id,
+                        msg.tokens.input,
+                        msg.tokens.output,
+                        msg.tokens.cache_read,
+                        msg.tokens.cache_write,
+                        msg.tokens.reasoning,
+                    );
+                    msg
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    all_messages.extend(droid_messages);
+
     all_messages
 }
 
@@ -678,6 +714,7 @@ pub fn get_model_report(options: ReportOptions) -> napi::Result<ModelReport> {
             "gemini".to_string(),
             "cursor".to_string(),
             "amp".to_string(),
+            "droid".to_string(),
         ]
     });
 
@@ -776,6 +813,7 @@ pub fn get_monthly_report(options: ReportOptions) -> napi::Result<MonthlyReport>
             "gemini".to_string(),
             "cursor".to_string(),
             "amp".to_string(),
+            "droid".to_string(),
         ]
     });
 
@@ -849,6 +887,7 @@ pub fn generate_graph_with_pricing(options: ReportOptions) -> napi::Result<Graph
             "gemini".to_string(),
             "cursor".to_string(),
             "amp".to_string(),
+            "droid".to_string(),
         ]
     });
 
@@ -914,6 +953,7 @@ pub fn parse_local_sources(options: LocalParseOptions) -> napi::Result<ParsedMes
             "codex".to_string(),
             "gemini".to_string(),
             "amp".to_string(),
+            "droid".to_string(),
         ]
     });
 
@@ -992,6 +1032,20 @@ pub fn parse_local_sources(options: LocalParseOptions) -> napi::Result<ParsedMes
     let amp_count = amp_msgs.len() as i32;
     messages.extend(amp_msgs);
 
+    // Parse Droid files in parallel
+    let droid_msgs: Vec<ParsedMessage> = scan_result
+        .droid_files
+        .par_iter()
+        .flat_map(|path| {
+            sessions::droid::parse_droid_file(path)
+                .into_iter()
+                .map(|msg| unified_to_parsed(&msg))
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    let droid_count = droid_msgs.len() as i32;
+    messages.extend(droid_msgs);
+
     // Apply date filters
     let filtered = filter_parsed_messages(messages, &options);
 
@@ -1002,6 +1056,7 @@ pub fn parse_local_sources(options: LocalParseOptions) -> napi::Result<ParsedMes
         codex_count,
         gemini_count,
         amp_count,
+        droid_count,
         processing_time_ms: start.elapsed().as_millis() as u32,
     })
 }

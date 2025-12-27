@@ -59,8 +59,14 @@ export const SOURCE_COLORS: Record<SourceType, string> = {
   cursor: "#a855f7",
   gemini: "#06b6d4",
   amp: "#EC4899",
+  droid: "#10b981",
 };
 
 export function getSourceColor(source: SourceType | string): string {
   return SOURCE_COLORS[source as SourceType] || "#888888";
+}
+
+export function getSourceDisplayName(source: string): string {
+  if (source === "droid") return "Droid";
+  return source.charAt(0).toUpperCase() + source.slice(1);
 }

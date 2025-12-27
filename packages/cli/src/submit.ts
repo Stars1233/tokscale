@@ -20,6 +20,7 @@ interface SubmitOptions {
   gemini?: boolean;
   cursor?: boolean;
   amp?: boolean;
+  droid?: boolean;
   since?: string;
   until?: string;
   year?: string;
@@ -45,7 +46,7 @@ interface SubmitResponse {
   details?: string[];
 }
 
-type SourceType = "opencode" | "claude" | "codex" | "gemini" | "cursor" | "amp";
+type SourceType = "opencode" | "claude" | "codex" | "gemini" | "cursor" | "amp" | "droid";
 
 /**
  * Submit command - sends usage data to the platform
@@ -75,7 +76,7 @@ export async function submit(options: SubmitOptions = {}): Promise<void> {
   const pricingEntries = fetcher.toPricingEntries();
 
   // Determine sources
-  const hasFilter = options.opencode || options.claude || options.codex || options.gemini || options.cursor || options.amp;
+  const hasFilter = options.opencode || options.claude || options.codex || options.gemini || options.cursor || options.amp || options.droid;
   let sources: SourceType[] | undefined;
   if (hasFilter) {
     sources = [];
@@ -85,6 +86,7 @@ export async function submit(options: SubmitOptions = {}): Promise<void> {
     if (options.gemini) sources.push("gemini");
     if (options.cursor) sources.push("cursor");
     if (options.amp) sources.push("amp");
+    if (options.droid) sources.push("droid");
   }
 
   let data: TokenContributionData;

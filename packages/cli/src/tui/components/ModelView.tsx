@@ -1,6 +1,6 @@
 import { For, createMemo, type Accessor } from "solid-js";
 import type { TUIData, SortType } from "../hooks/useData.js";
-import { getModelColor } from "../utils/colors.js";
+import { getModelColor, getSourceDisplayName } from "../utils/colors.js";
 import { formatTokensCompact, formatCostFull } from "../utils/format.js";
 import { isNarrow, isVeryNarrow } from "../utils/responsive.js";
 
@@ -65,7 +65,7 @@ export function ModelView(props: ModelViewProps) {
   const formattedRows = createMemo(() => {
     const nameWidth = nameColumnWidths().text;
     return visibleEntries().map((entry) => {
-      const sourceLabel = entry.source.charAt(0).toUpperCase() + entry.source.slice(1);
+      const sourceLabel = getSourceDisplayName(entry.source);
       const fullName = `${sourceLabel} ${entry.model}`;
       let displayName = fullName;
       if (fullName.length > nameWidth) {

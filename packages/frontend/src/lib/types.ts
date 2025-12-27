@@ -1,4 +1,4 @@
-export type SourceType = "opencode" | "claude" | "codex" | "gemini" | "cursor" | "amp";
+export type SourceType = "opencode" | "claude" | "codex" | "gemini" | "cursor" | "amp" | "droid";
 
 export interface TokenBreakdown {
   input: number;

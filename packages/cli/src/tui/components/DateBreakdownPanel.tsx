@@ -1,6 +1,6 @@
 import { For, createMemo } from "solid-js";
 import type { DailyModelBreakdown } from "../types/index.js";
-import { getSourceColor } from "../utils/colors.js";
+import { getSourceColor, getSourceDisplayName } from "../utils/colors.js";
 import { formatTokens, formatCost } from "../utils/format.js";
 import { ModelRow } from "./ModelRow.js";
 
@@ -48,7 +48,7 @@ export function DateBreakdownPanel(props: DateBreakdownPanelProps) {
           {([source, models]) => (
             <box flexDirection="column">
               <box flexDirection="row" gap={1}>
-                <text fg={getSourceColor(source)} bold>{`● ${source.toUpperCase()}`}</text>
+                <text fg={getSourceColor(source)} bold>{`● ${getSourceDisplayName(source)}`}</text>
                 <text dim>{`(${models.length} model${models.length > 1 ? "s" : ""})`}</text>
               </box>
               <For each={models}>

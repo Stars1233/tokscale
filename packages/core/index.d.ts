@@ -211,6 +211,7 @@ export interface ParsedMessages {
   codexCount: number
   geminiCount: number
   ampCount: number
+  droidCount: number
   processingTimeMs: number
 }
 
@@ -253,6 +254,7 @@ export interface ScanStats {
   geminiFiles: number
   cursorFiles: number
   ampFiles: number
+  droidFiles: number
   totalFiles: number
 }
 
