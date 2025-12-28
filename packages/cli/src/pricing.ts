@@ -71,7 +71,57 @@ export function isWordBoundaryMatch(haystack: string, needle: string): boolean {
 const LITELLM_PRICING_URL =
   "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json";
 
+const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/models";
+const OPENROUTER_CACHE_FILENAME = "openrouter-pricing.json";
+
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+// OpenRouter API response types
+export interface OpenRouterModel {
+  id: string; // e.g., "z-ai/glm-4.7"
+  pricing: {
+    prompt: string; // Cost per token as string
+    completion: string;
+    input_cache_read?: string;
+    input_cache_write?: string;
+  };
+}
+
+export interface OpenRouterResponse {
+  data: OpenRouterModel[];
+}
+
+/**
+ * Response from /api/v1/models/{author}/{slug}/endpoints
+ * Contains all available providers for a specific model
+ */
+export interface OpenRouterEndpoint {
+  name: string;                 // e.g., "Z.AI | z-ai/glm-4.7-20251222"
+  model_name: string;           // e.g., "Z.AI: GLM 4.7"
+  provider_name: string;         // e.g., "Z.AI", "DeepInfra", "Chutes"
+  pricing: {
+    prompt: string;              // Cost per input token (string format)
+    completion: string;          // Cost per output token (string format)
+    input_cache_read?: string;   // Cache read cost (optional)
+    input_cache_write?: string;  // Cache write cost (optional)
+  };
+}
+
+export interface OpenRouterEndpointsResponse {
+  data: {
+    id: string;                  // e.g., "z-ai/glm-4.7"
+    name: string;                // e.g., "Z.AI: GLM 4.7"
+    endpoints: OpenRouterEndpoint[];
+  };
+}
+
+// Manual mapping from model IDs to OpenRouter model IDs
+// Format: { "local-model-id": "openrouter-provider/model-id" }
+export const OPENROUTER_MODEL_MAPPING: Record<string, string> = {
+  // GLM models - Z-AI is the primary/author provider
+  "glm-4.7": "z-ai/glm-4.7",
+  "glm-4-7": "z-ai/glm-4.7",
+};
 
 export interface LiteLLMModelPricing {
   input_cost_per_token?: number;
@@ -89,6 +139,11 @@ export type PricingDataset = Record<string, LiteLLMModelPricing>;
 interface CachedPricing {
   timestamp: number;
   data: PricingDataset;
+}
+
+interface CachedOpenRouterPricing {
+  timestamp: number;
+  data: Record<string, LiteLLMModelPricing>;
 }
 
 /**
@@ -154,32 +209,208 @@ function saveCachedPricing(data: PricingDataset): void {
   }
 }
 
+// OpenRouter cache functions
+function getOpenRouterCachePath(): string {
+  return path.join(getCacheDir(), OPENROUTER_CACHE_FILENAME);
+}
+
+function loadCachedOpenRouterPricing(): CachedOpenRouterPricing | null {
+  try {
+    const cachePath = getOpenRouterCachePath();
+    if (!fs.existsSync(cachePath)) {
+      return null;
+    }
+
+    const content = fs.readFileSync(cachePath, "utf-8");
+    const cached = JSON.parse(content) as CachedOpenRouterPricing;
+
+    // Check TTL (same as LiteLLM)
+    const age = Date.now() - cached.timestamp;
+    if (age > CACHE_TTL_MS) {
+      return null; // Cache expired
+    }
+
+    return cached;
+  } catch {
+    return null;
+  }
+}
+
+function saveOpenRouterCachedPricing(data: Record<string, LiteLLMModelPricing>): void {
+  try {
+    const cacheDir = getCacheDir();
+    if (!fs.existsSync(cacheDir)) {
+      fs.mkdirSync(cacheDir, { recursive: true });
+    }
+
+    const cached: CachedOpenRouterPricing = {
+      timestamp: Date.now(),
+      data,
+    };
+
+    fs.writeFileSync(getOpenRouterCachePath(), JSON.stringify(cached), "utf-8");
+  } catch {
+    // Ignore cache write errors
+  }
+}
+
+/**
+ * Convert OpenRouter pricing (string values) to LiteLLM format (number values)
+ */
+function convertOpenRouterToLiteLLM(model: OpenRouterModel): LiteLLMModelPricing {
+  return {
+    input_cost_per_token: parseFloat(model.pricing.prompt) || 0,
+    output_cost_per_token: parseFloat(model.pricing.completion) || 0,
+    cache_read_input_token_cost: model.pricing.input_cache_read
+      ? parseFloat(model.pricing.input_cache_read)
+      : undefined,
+    cache_creation_input_token_cost: model.pricing.input_cache_write
+      ? parseFloat(model.pricing.input_cache_write)
+      : undefined,
+  };
+}
+
+/**
+ * Fetch endpoints for a specific OpenRouter model and extract author provider pricing
+ * @param author - Provider/author from model ID (e.g., "z-ai")
+ * @param slug - Model name (e.g., "glm-4.7")
+ * @returns Pricing from author provider, or null if not found
+ */
+function fetchModelEndpoints(
+  author: string,
+  slug: string
+): Promise<LiteLLMModelPricing | null> {
+  return new Promise((resolve) => {
+    const url = `https://openrouter.ai/api/v1/models/${author}/${slug}/endpoints`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+    fetch(url, { signal: controller.signal })
+      .then((response) => {
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          console.warn(`Failed to fetch endpoints for ${author}/${slug}: ${response.status}`);
+          return null;
+        }
+
+        return response.json() as Promise<OpenRouterEndpointsResponse>;
+      })
+      .then((apiResponse) => {
+        if (!apiResponse) {
+          resolve(null);
+          return;
+        }
+
+        // Mapping for author names that don't match provider names exactly
+        const providerNameMapping: Record<string, string> = {
+          "z-ai": "Z.AI",
+        };
+
+        const expectedProvider = providerNameMapping[author.toLowerCase()] || author;
+
+        // Find endpoint from author provider (case-insensitive match)
+        const authorEndpoint = apiResponse.data.endpoints.find(
+          endpoint => endpoint.provider_name.toLowerCase() === expectedProvider.toLowerCase()
+        );
+
+        if (!authorEndpoint) {
+          console.warn(`No endpoint found for provider "${author}" in model ${author}/${slug}`);
+          resolve(null);
+          return;
+        }
+
+        // Convert to LiteLLM format
+        resolve({
+          input_cost_per_token: parseFloat(authorEndpoint.pricing.prompt) || 0,
+          output_cost_per_token: parseFloat(authorEndpoint.pricing.completion) || 0,
+          cache_read_input_token_cost: authorEndpoint.pricing.input_cache_read
+            ? parseFloat(authorEndpoint.pricing.input_cache_read)
+            : undefined,
+          cache_creation_input_token_cost: authorEndpoint.pricing.input_cache_write
+            ? parseFloat(authorEndpoint.pricing.input_cache_write)
+            : undefined,
+        });
+      })
+      .catch(() => {
+        resolve(null);
+      })
+      .finally(() => {
+        clearTimeout(timeoutId);
+      });
+  });
+}
+
 export class PricingFetcher {
   private pricingData: PricingDataset | null = null;
+  private openRouterData: Record<string, LiteLLMModelPricing> | null = null;
 
   /**
    * Fetch pricing data (with disk cache, 1-hour TTL)
+   * Also fetches OpenRouter pricing in parallel for fallback
    */
   async fetchPricing(): Promise<PricingDataset> {
-    if (this.pricingData) return this.pricingData;
+    if (this.pricingData && this.openRouterData) return this.pricingData;
 
     // Try to load from cache first
-    const cached = loadCachedPricing();
-    if (cached) {
-      this.pricingData = cached.data;
+    const cachedLiteLLM = loadCachedPricing();
+    const cachedOpenRouter = loadCachedOpenRouterPricing();
+
+    // Load LiteLLM from cache or fetch
+    if (cachedLiteLLM) {
+      this.pricingData = cachedLiteLLM.data;
+    }
+
+    // Load OpenRouter from cache or fetch
+    if (cachedOpenRouter) {
+      this.openRouterData = cachedOpenRouter.data;
+    }
+
+    // If both caches are loaded, we're done
+    if (this.pricingData && this.openRouterData) {
       return this.pricingData;
     }
 
+    // Fetch what's missing in parallel
+    const promises: Promise<unknown>[] = [];
+
+    if (!this.pricingData) {
+      promises.push(this.fetchLiteLLMPricing());
+    }
+
+    if (!this.openRouterData) {
+      promises.push(
+        this.fetchOpenRouterPricing().catch(() => {
+          // Ignore OpenRouter fetch errors - it's a fallback
+        })
+      );
+    }
+
+    await Promise.all(promises);
+
+    // Ensure pricingData is set (should always be true at this point)
+    if (!this.pricingData) {
+      throw new Error("Failed to fetch LiteLLM pricing");
+    }
+
+    return this.pricingData;
+  }
+
+  /**
+   * Fetch LiteLLM pricing from network
+   */
+  private async fetchLiteLLMPricing(): Promise<PricingDataset> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
-    
+
     let response: Response;
     try {
       response = await fetch(LITELLM_PRICING_URL, { signal: controller.signal });
     } finally {
       clearTimeout(timeoutId);
     }
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch pricing: ${response.status}`);
     }
@@ -201,20 +432,49 @@ export class PricingFetcher {
 
   /**
    * Convert pricing data to format expected by Rust native module
+   * Includes both LiteLLM and OpenRouter fallback pricing
    */
   toPricingEntries(): PricingEntry[] {
-    if (!this.pricingData) return [];
+    const entries: PricingEntry[] = [];
 
-    return Object.entries(this.pricingData).map(([modelId, pricing]) => ({
-      modelId,
-      pricing: {
-        inputCostPerToken: pricing.input_cost_per_token ?? 0,
-        outputCostPerToken: pricing.output_cost_per_token ?? 0,
-        // napi-rs expects undefined (not null) for Option<T> fields
-        cacheReadInputTokenCost: pricing.cache_read_input_token_cost,
-        cacheCreationInputTokenCost: pricing.cache_creation_input_token_cost,
-      },
-    }));
+    // Add LiteLLM pricing
+    if (this.pricingData) {
+      for (const [modelId, pricing] of Object.entries(this.pricingData)) {
+        entries.push({
+          modelId,
+          pricing: {
+            inputCostPerToken: pricing.input_cost_per_token ?? 0,
+            outputCostPerToken: pricing.output_cost_per_token ?? 0,
+            // napi-rs expects undefined (not null) for Option<T> fields
+            cacheReadInputTokenCost: pricing.cache_read_input_token_cost,
+            cacheCreationInputTokenCost: pricing.cache_creation_input_token_cost,
+          },
+        });
+      }
+    }
+
+    // Add OpenRouter fallback pricing for mapped models (if not already in LiteLLM)
+    if (this.openRouterData) {
+      for (const [localModelId, openRouterModelId] of Object.entries(OPENROUTER_MODEL_MAPPING)) {
+        // Skip if already exists in LiteLLM
+        if (this.pricingData && this.pricingData[localModelId]) continue;
+
+        const pricing = this.openRouterData[openRouterModelId];
+        if (pricing) {
+          entries.push({
+            modelId: localModelId,
+            pricing: {
+              inputCostPerToken: pricing.input_cost_per_token ?? 0,
+              outputCostPerToken: pricing.output_cost_per_token ?? 0,
+              cacheReadInputTokenCost: pricing.cache_read_input_token_cost,
+              cacheCreationInputTokenCost: pricing.cache_creation_input_token_cost,
+            },
+          });
+        }
+      }
+    }
+
+    return entries;
   }
 
   getModelPricing(modelID: string): LiteLLMModelPricing | null {
@@ -269,7 +529,8 @@ export class PricingFetcher {
       }
     }
 
-    return null;
+    // Fallback to OpenRouter for mapped models
+    return this.getOpenRouterPricing(modelID);
   }
 
   calculateCost(
@@ -292,6 +553,104 @@ export class PricingFetcher {
 
     return inputCost + outputCost + cacheWriteCost + cacheReadCost;
   }
+
+  /**
+   * Fetch OpenRouter pricing data (lazy loading with disk cache)
+   *
+   * When called without modelID: loads from cache only (no network)
+   * When called with modelID: fetches only that model's endpoints
+   *
+   * @param modelID - Optional OpenRouter model ID to fetch (e.g., "z-ai/glm-4.7")
+   */
+  private async fetchOpenRouterPricing(
+    modelID?: string
+  ): Promise<Record<string, LiteLLMModelPricing>> {
+    if (this.openRouterData) return this.openRouterData;
+
+    const cached = loadCachedOpenRouterPricing();
+    if (cached) {
+      this.openRouterData = cached.data;
+      return this.openRouterData;
+    }
+
+    const normalizedData: Record<string, LiteLLMModelPricing> = {};
+
+    if (!modelID) {
+      const uniqueOpenRouterIds = [...new Set(Object.values(OPENROUTER_MODEL_MAPPING))];
+
+      await Promise.all(
+        uniqueOpenRouterIds.map(async (openRouterModelId) => {
+          const [author, slug] = openRouterModelId.split('/');
+          if (!author || !slug) return;
+
+          const pricing = await fetchModelEndpoints(author, slug);
+          if (pricing) {
+            normalizedData[openRouterModelId] = pricing;
+          }
+        })
+      );
+    } else {
+      const [author, slug] = modelID.split('/');
+      if (author && slug) {
+        const pricing = await fetchModelEndpoints(author, slug);
+        if (pricing) {
+          normalizedData[modelID] = pricing;
+        }
+      }
+    }
+
+    this.openRouterData = normalizedData;
+    saveOpenRouterCachedPricing(this.openRouterData);
+
+    return this.openRouterData;
+  }
+
+  /**
+   * Look up pricing in OpenRouter using manual mapping
+   */
+  private getOpenRouterPricing(modelID: string): LiteLLMModelPricing | null {
+    if (!this.openRouterData) return null;
+
+    // Check manual mapping
+    const lowerModelID = modelID.toLowerCase();
+    const openRouterID = OPENROUTER_MODEL_MAPPING[lowerModelID];
+
+    if (openRouterID && this.openRouterData[openRouterID]) {
+      return this.openRouterData[openRouterID];
+    }
+
+    return null;
+  }
+
+  /**
+   * Get model pricing with OpenRouter fallback
+   * First tries LiteLLM, then falls back to OpenRouter for mapped models
+   */
+  async getModelPricingWithFallback(modelID: string): Promise<LiteLLMModelPricing | null> {
+    // First try LiteLLM (existing logic)
+    const liteLLMPricing = this.getModelPricing(modelID);
+    if (liteLLMPricing) {
+      return liteLLMPricing;
+    }
+
+    // Fallback to OpenRouter for mapped models only
+    const lowerModelID = modelID.toLowerCase();
+    const openRouterID = OPENROUTER_MODEL_MAPPING[lowerModelID];
+
+    if (!openRouterID) {
+      // Model not in manual mapping, no fallback available
+      return null;
+    }
+
+    // Fetch OpenRouter data (lazily, only when needed)
+    try {
+      await this.fetchOpenRouterPricing(openRouterID);
+      return this.getOpenRouterPricing(modelID);
+    } catch {
+      // OpenRouter fetch failed, return null
+      return null;
+    }
+  }
 }
 
 /**
@@ -300,6 +659,20 @@ export class PricingFetcher {
 export function clearPricingCache(): void {
   try {
     const cachePath = getCachePath();
+    if (fs.existsSync(cachePath)) {
+      fs.unlinkSync(cachePath);
+    }
+  } catch {
+    // Ignore errors
+  }
+}
+
+/**
+ * Clear OpenRouter pricing cache (for testing or forced refresh)
+ */
+export function clearOpenRouterPricingCache(): void {
+  try {
+    const cachePath = getOpenRouterCachePath();
     if (fs.existsSync(cachePath)) {
       fs.unlinkSync(cachePath);
     }

@@ -104,7 +104,7 @@ In the age of AI-assisted development, **tokens are the new energy**. They power
   - Real-time filtering and sorting
   - Zero flicker rendering (native Zig engine)
 - **Multi-platform support** - Track usage across OpenCode, Claude Code, Codex CLI, Cursor IDE, Gemini CLI, and Amp
-- **Real-time pricing** - Fetches current pricing from LiteLLM with 1-hour disk cache
+- **Real-time pricing** - Fetches current pricing from LiteLLM with 1-hour disk cache; automatic OpenRouter fallback for new models
 - **Detailed breakdowns** - Input, output, cache read/write, and reasoning token tracking
 - **Native Rust core** - All parsing and aggregation done in Rust for 10x faster processing
 - **Web visualization** - Interactive contribution graph with 2D and 3D views
@@ -803,7 +803,11 @@ Cursor data is fetched from the Cursor API using your session token and cached l
 
 Tokscale fetches real-time pricing from [LiteLLM's pricing database](https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json).
 
-**Caching**: Pricing data is cached to disk at `~/.cache/tokscale/pricing.json` with a 1-hour TTL. This ensures fast startup while keeping pricing data fresh.
+**Dynamic Fallback**: For models not yet available in LiteLLM (e.g., recently released models), Tokscale automatically fetches pricing from [OpenRouter's endpoints API](https://openrouter.ai/docs/api/api-reference/endpoints/list-endpoints). This ensures you get accurate pricing from the model's author provider (e.g., Z.AI for glm-4.7) without waiting for LiteLLM updates.
+
+**Caching**: Pricing data is cached to disk with 1-hour TTL for fast startup:
+- LiteLLM cache: `~/.cache/tokscale/pricing.json`
+- OpenRouter cache: `~/.cache/tokscale/openrouter-pricing.json` (incremental, caches only models you've used)
 
 Pricing includes:
 - Input tokens
