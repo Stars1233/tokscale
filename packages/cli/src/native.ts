@@ -5,7 +5,7 @@
  * Falls back to TypeScript implementations when native module is unavailable.
  */
 
-import type { PricingEntry } from "./pricing.js";
+import type { PricingEntry } from "./pricing/index.js";
 import type {
   TokenContributionData,
   GraphOptions as TSGraphOptions,

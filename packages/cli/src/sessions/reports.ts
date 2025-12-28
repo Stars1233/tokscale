@@ -5,8 +5,8 @@
  */
 
 import type { UnifiedMessage, TokenBreakdown, SourceType } from "./types.js";
-import type { PricingEntry } from "../pricing.js";
-import { normalizeModelName, isWordBoundaryMatch } from "../pricing.js";
+import type { PricingEntry } from "../pricing/index.js";
+import { normalizeModelName, isWordBoundaryMatch } from "../pricing/index.js";
 import type { TokenContributionData } from "../graph-types.js";
 
 export interface ModelUsage {

@@ -5,7 +5,7 @@
 
 import pc from "picocolors";
 import { loadCredentials, getApiBaseUrl } from "./credentials.js";
-import { PricingFetcher } from "./pricing.js";
+import { PricingFetcher } from "./pricing/index.js";
 import {
   isNativeAvailable,
   generateGraphWithPricingAsync,

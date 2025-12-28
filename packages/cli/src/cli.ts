@@ -14,7 +14,7 @@ import pc from "picocolors";
 import { login, logout, whoami } from "./auth.js";
 import { submit } from "./submit.js";
 import { generateWrapped } from "./wrapped.js";
-import { PricingFetcher, type PricingLookupResult } from "./pricing.js";
+import { PricingFetcher, type PricingLookupResult } from "./pricing/index.js";
 import {
   loadCursorCredentials,
   saveCursorCredentials,

@@ -17,7 +17,7 @@ import {
   parseGeminiMessages,
   parseAmpMessages,
 } from "./sessions/index.js";
-import { PricingFetcher } from "./pricing.js";
+import { PricingFetcher } from "./pricing/index.js";
 import type {
   TokenContributionData,
   DailyContribution,

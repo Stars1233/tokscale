@@ -10,7 +10,7 @@ import {
   finalizeGraphAsync,
   type ParsedMessages,
 } from "./native.js";
-import { PricingFetcher } from "./pricing.js";
+import { PricingFetcher } from "./pricing/index.js";
 import { syncCursorCache, loadCursorCredentials } from "./cursor.js";
 import { loadCredentials } from "./credentials.js";
 import type { SourceType } from "./graph-types.js";
