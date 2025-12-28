@@ -162,8 +162,12 @@ export function App(props: AppProps) {
   };
 
   const handleSortChange = (sort: SortType) => {
-    setSortBy(sort);
-    setSortDesc(true);
+    if (sortBy() === sort) {
+      setSortDesc(!sortDesc());
+    } else {
+      setSortBy(sort);
+      setSortDesc(true);
+    }
   };
 
   useKeyboard((key) => {
@@ -216,8 +220,7 @@ export function App(props: AppProps) {
     }
 
     if (key.name === "c" && !key.meta && !key.ctrl) {
-      setSortBy("cost");
-      setSortDesc(true);
+      handleSortChange("cost");
       return;
     }
 
@@ -263,8 +266,7 @@ export function App(props: AppProps) {
       return;
     }
     if (key.name === "t") {
-      setSortBy("tokens");
-      setSortDesc(true);
+      handleSortChange("tokens");
       return;
     }
 

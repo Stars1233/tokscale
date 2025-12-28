@@ -55,7 +55,26 @@ export function DailyView(props: DailyViewProps) {
     });
   });
 
-  const visibleEntries = createMemo(() => sortedEntries().slice(0, props.height - 3));
+  const visibleEntries = createMemo(() => {
+    const maxRows = Math.max(props.height - 3, 0);
+    return sortedEntries().slice(0, maxRows);
+  });
+
+  const formattedRows = createMemo(() => {
+    const dateColWidth = dateColumnWidths().column;
+    const narrow = isNarrowTerminal();
+    return visibleEntries().map((entry) => ({
+      entry,
+      dateColWidth,
+      narrow,
+      input: formatTokensCompact(entry.input),
+      output: formatTokensCompact(entry.output),
+      cacheRead: formatTokensCompact(entry.cacheRead),
+      cacheWrite: formatTokensCompact(entry.cacheWrite),
+      total: formatTokensCompact(entry.total),
+      cost: formatCostFull(entry.cost),
+    }));
+  });
 
   const sortArrow = () => (props.sortDesc ? "▼" : "▲");
   const dateHeader = () => "Date";
@@ -70,12 +89,11 @@ export function DailyView(props: DailyViewProps) {
     return `${("  " + dateHeader()).padEnd(dateColWidth)}${"Input".padStart(INPUT_COL_WIDTH)}${"Output".padStart(OUTPUT_COL_WIDTH)}${"C.Read".padStart(CACHE_READ_COL_WIDTH)}${"C.Write".padStart(CACHE_WRITE_COL_WIDTH)}${totalHeader().padStart(TOTAL_COL_WIDTH)}${costHeader().padStart(COST_COL_WIDTH)}`;
   };
 
-  const renderRow = (entry: typeof visibleEntries extends () => (infer T)[] ? T : never) => {
-    const dateColWidth = dateColumnWidths().column;
-    if (isNarrowTerminal()) {
-      return `${entry.date.padEnd(dateColWidth)}${formatTokensCompact(entry.total).padStart(TOTAL_COL_WIDTH)}`;
+  const renderRowData = (row: typeof formattedRows extends () => (infer T)[] ? T : never) => {
+    if (row.narrow) {
+      return `${row.entry.date.padEnd(row.dateColWidth)}${row.total.padStart(TOTAL_COL_WIDTH)}`;
     }
-    return `${entry.date.padEnd(dateColWidth)}${formatTokensCompact(entry.input).padStart(INPUT_COL_WIDTH)}${formatTokensCompact(entry.output).padStart(OUTPUT_COL_WIDTH)}${formatTokensCompact(entry.cacheRead).padStart(CACHE_READ_COL_WIDTH)}${formatTokensCompact(entry.cacheWrite).padStart(CACHE_WRITE_COL_WIDTH)}${formatTokensCompact(entry.total).padStart(TOTAL_COL_WIDTH)}`;
+    return `${row.entry.date.padEnd(row.dateColWidth)}${row.input.padStart(INPUT_COL_WIDTH)}${row.output.padStart(OUTPUT_COL_WIDTH)}${row.cacheRead.padStart(CACHE_READ_COL_WIDTH)}${row.cacheWrite.padStart(CACHE_WRITE_COL_WIDTH)}${row.total.padStart(TOTAL_COL_WIDTH)}`;
   };
 
   return (
@@ -86,24 +104,24 @@ export function DailyView(props: DailyViewProps) {
         </text>
       </box>
 
-      <For each={visibleEntries()}>
-        {(entry, i) => {
+      <For each={formattedRows()}>
+        {(row, i) => {
           const isActive = createMemo(() => i() === props.selectedIndex());
           const rowBg = createMemo(() => isActive() ? "blue" : (i() % 2 === 1 ? STRIPE_BG : undefined));
-          
+
           return (
             <box flexDirection="row">
               <text
                 bg={rowBg()}
                 fg={isActive() ? "white" : undefined}
               >
-                {renderRow(entry)}
+                {renderRowData(row)}
               </text>
               <text
                 fg="green"
                 bg={rowBg()}
               >
-                {formatCostFull(entry.cost).padStart(COST_COL_WIDTH)}
+                {row.cost.padStart(COST_COL_WIDTH)}
               </text>
             </box>
           );
