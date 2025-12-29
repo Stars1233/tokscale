@@ -5,7 +5,8 @@ import type { TUIData, DailyModelBreakdown } from "../types/index.js";
 
 const CONFIG_DIR = join(homedir(), ".config", "tokscale");
 const CACHE_DIR = join(homedir(), ".cache", "tokscale");
-const CONFIG_FILE = join(CONFIG_DIR, "tui-settings.json");
+const CONFIG_FILE = join(CONFIG_DIR, "settings.json");
+const LEGACY_CONFIG_FILE = join(CONFIG_DIR, "tui-settings.json");
 const CACHE_FILE = join(CACHE_DIR, "tui-data-cache.json");
 
 const CACHE_STALE_THRESHOLD_MS = 60 * 1000;
@@ -13,17 +14,19 @@ const MIN_AUTO_REFRESH_MS = 30000;
 const MAX_AUTO_REFRESH_MS = 3600000;
 const DEFAULT_AUTO_REFRESH_MS = 60000;
 
-interface TUISettings {
+export interface TokscaleSettings {
   colorPalette: string;
   autoRefreshEnabled?: boolean;
   autoRefreshMs?: number;
+  includeUnusedModels?: boolean;
 }
 
-function validateSettings(raw: unknown): TUISettings {
-  const defaults: TUISettings = { 
+function validateSettings(raw: unknown): TokscaleSettings {
+  const defaults: TokscaleSettings = { 
     colorPalette: "blue", 
     autoRefreshEnabled: false, 
-    autoRefreshMs: DEFAULT_AUTO_REFRESH_MS 
+    autoRefreshMs: DEFAULT_AUTO_REFRESH_MS,
+    includeUnusedModels: false,
   };
   
   if (!raw || typeof raw !== "object") return defaults;
@@ -38,7 +41,9 @@ function validateSettings(raw: unknown): TUISettings {
     autoRefreshMs = Math.min(MAX_AUTO_REFRESH_MS, Math.max(MIN_AUTO_REFRESH_MS, obj.autoRefreshMs));
   }
   
-  return { colorPalette, autoRefreshEnabled, autoRefreshMs };
+  const includeUnusedModels = typeof obj.includeUnusedModels === "boolean" ? obj.includeUnusedModels : defaults.includeUnusedModels;
+  
+  return { colorPalette, autoRefreshEnabled, autoRefreshMs, includeUnusedModels };
 }
 
 interface CachedTUIData {
@@ -49,18 +54,22 @@ interface CachedTUIData {
   };
 }
 
-export function loadSettings(): TUISettings {
+export function loadSettings(): TokscaleSettings {
   try {
     if (existsSync(CONFIG_FILE)) {
       const raw = JSON.parse(readFileSync(CONFIG_FILE, "utf-8"));
       return validateSettings(raw);
     }
+    if (existsSync(LEGACY_CONFIG_FILE)) {
+      const raw = JSON.parse(readFileSync(LEGACY_CONFIG_FILE, "utf-8"));
+      return validateSettings(raw);
+    }
   } catch {
   }
-  return { colorPalette: "blue", autoRefreshEnabled: false, autoRefreshMs: DEFAULT_AUTO_REFRESH_MS };
+  return { colorPalette: "blue", autoRefreshEnabled: false, autoRefreshMs: DEFAULT_AUTO_REFRESH_MS, includeUnusedModels: false };
 }
 
-export function saveSettings(updates: Partial<TUISettings>): void {
+export function saveSettings(updates: Partial<TokscaleSettings>): void {
   try {
     if (!existsSync(CONFIG_DIR)) {
       mkdirSync(CONFIG_DIR, { recursive: true });

@@ -48,6 +48,7 @@ import * as fs from "node:fs";
 import { performance } from "node:perf_hooks";
 import type { SourceType } from "./graph-types.js";
 import type { TUIOptions, TabType } from "./tui/types/index.js";
+import { loadSettings } from "./tui/config/settings.js";
 
 type LaunchTUIFunction = (options?: TUIOptions) => Promise<void>;
 
@@ -668,8 +669,13 @@ async function showModelReport(options: FilterOptions & DateFilterOptions & { be
 
   // Create table
   const table = createUsageTable("Source/Model");
+  
+  const settings = loadSettings();
+  const filteredEntries = settings.includeUnusedModels 
+    ? report.entries 
+    : report.entries.filter(e => e.input + e.output + e.cacheRead + e.cacheWrite > 0);
 
-  for (const entry of report.entries) {
+  for (const entry of filteredEntries) {
     const sourceLabel = getSourceLabel(entry.source);
     const modelDisplay = `${pc.dim(sourceLabel)} ${formatModelName(entry.model)}`;
     table.push(
@@ -794,7 +800,12 @@ async function showMonthlyReport(options: FilterOptions & DateFilterOptions & { 
   // Create table
   const table = createUsageTable("Month");
 
-  for (const entry of report.entries) {
+  const settings = loadSettings();
+  const filteredEntries = settings.includeUnusedModels
+    ? report.entries
+    : report.entries.filter(e => e.input + e.output + e.cacheRead + e.cacheWrite > 0);
+
+  for (const entry of filteredEntries) {
     table.push(
       formatUsageRow(
         entry.month,

@@ -23,7 +23,7 @@ import {
 import { PricingFetcher } from "../../pricing-stub.js";
 import { syncCursorCache, loadCursorCredentials } from "../../cursor.js";
 import { getModelColor } from "../utils/colors.js";
-import { loadCachedData, saveCachedData, isCacheStale } from "../config/settings.js";
+import { loadCachedData, saveCachedData, isCacheStale, loadSettings } from "../config/settings.js";
 
 export type {
   SortType,
@@ -221,7 +221,8 @@ async function loadData(
   const report = phase2Results[0].value;
   const graph = phase2Results[1].value;
 
-  const modelEntries: ModelEntry[] = report.entries.map(e => ({
+  const settings = loadSettings();
+  const allModelEntries: ModelEntry[] = report.entries.map(e => ({
     source: e.source,
     model: e.model,
     input: e.input,
@@ -232,6 +233,9 @@ async function loadData(
     total: e.input + e.output + e.cacheWrite + e.cacheRead + e.reasoning,
     cost: e.cost,
   }));
+  const modelEntries = settings.includeUnusedModels
+    ? allModelEntries
+    : allModelEntries.filter(e => e.total > 0);
 
   const dailyMap = new Map<string, DailyEntry>();
   for (const contrib of graph.contributions) {

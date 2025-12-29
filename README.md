@@ -216,7 +216,7 @@ The interactive TUI mode provides:
   - `q`: Quit
 - **Mouse Support**: Click tabs, buttons, and filters
 - **Themes**: Green, Halloween, Teal, Blue, Pink, Purple, Orange, Monochrome, YlGnBu
-- **Settings Persistence**: Theme preference saved to `~/.config/tokscale/tui-settings.json`
+- **Settings Persistence**: Preferences saved to `~/.config/tokscale/settings.json` (see [Configuration](#configuration))
 
 ### Filtering by Platform
 
@@ -315,6 +315,24 @@ tokscale cursor logout
 ### Example Output (`--light` version)
 
 <img alt="CLI Light" src="./.github/assets/cli-light.png" />
+
+### Configuration
+
+Tokscale stores settings in `~/.config/tokscale/settings.json`:
+
+```json
+{
+  "colorPalette": "blue",
+  "includeUnusedModels": false
+}
+```
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `colorPalette` | string | `"blue"` | TUI color theme (green, halloween, teal, blue, pink, purple, orange, monochrome, ylgnbu) |
+| `includeUnusedModels` | boolean | `false` | Show models with zero tokens in reports |
+| `autoRefreshEnabled` | boolean | `false` | Enable auto-refresh in TUI |
+| `autoRefreshMs` | number | `60000` | Auto-refresh interval (30000-3600000ms) |
 
 ### Environment Variables
 
