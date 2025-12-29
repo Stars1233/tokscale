@@ -535,92 +535,6 @@ tokscale graph --benchmark     # Benchmark graph generation
 tokscale graph --output packages/frontend/public/my-data.json
 ```
 
-### Architecture
-
-```
-tokscale/
-├── packages/
-│   ├── cli/src/            # TypeScript CLI
-│   │   ├── cli.ts          # Commander.js entry point
-│   │   ├── tui/            # OpenTUI interactive interface
-│   │   │   ├── App.tsx     # Main TUI app (Solid.js)
-│   │   │   ├── components/ # TUI components
-│   │   │   ├── hooks/      # Data fetching & state
-│   │   │   ├── config/     # Themes & settings
-│   │   │   └── utils/      # Formatting utilities
-│   │   ├── sessions/       # Platform session parsers
-│   │   │   ├── claudecode.ts  # Claude Code parser
-│   │   │   ├── codex.ts       # Codex CLI parser
-│   │   │   ├── gemini.ts      # Gemini CLI parser
-│   │   │   └── opencode.ts    # OpenCode parser
-│   │   ├── cursor.ts       # Cursor IDE integration
-│   │   ├── graph.ts        # Graph data generation
-│   │   ├── pricing.ts      # LiteLLM pricing fetcher
-│   │   └── native.ts       # Native module loader
-│   │
-│   ├── core/               # Rust native module (napi-rs)
-│   │   ├── src/
-│   │   │   ├── lib.rs      # NAPI exports
-│   │   │   ├── scanner.rs  # Parallel file discovery
-│   │   │   ├── parser.rs   # SIMD JSON parsing
-│   │   │   ├── aggregator.rs # Parallel aggregation
-│   │   │   ├── pricing.rs  # Cost calculation
-│   │   │   └── sessions/   # Platform-specific parsers
-│   │   ├── Cargo.toml
-│   │   └── package.json
-│   │
-│   ├── frontend/           # Next.js visualization & social platform
-│   │   └── src/
-│   │       ├── app/        # Next.js app router
-│   │       └── components/ # React components
-│   │
-│   └── benchmarks/         # Performance benchmarks
-│       ├── runner.ts       # Benchmark harness
-│       └── generate.ts     # Synthetic data generator
-```
-
-#### Hybrid TypeScript + Rust Architecture
-
-Tokscale uses a hybrid architecture for optimal performance:
-
-1. **TypeScript Layer**: CLI interface, pricing fetch (with disk cache), output formatting
-2. **Rust Native Core**: ALL parsing, cost calculation, and aggregation
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     TypeScript (CLI)                        │
-│  • Fetch pricing from LiteLLM (cached to disk, 1hr TTL)     │
-│  • Pass pricing data to Rust                                │
-│  • Display formatted results                                │
-└─────────────────────┬───────────────────────────────────────┘
-                      │ pricing entries
-                      ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Rust Native Core                         │
-│  • Parallel file scanning (rayon)                           │
-│  • SIMD JSON parsing (simd-json)                            │
-│  • Cost calculation with pricing data                       │
-│  • Parallel aggregation by model/month/day                  │
-└─────────────────────────────────────────────────────────────┘
-```
-
-All heavy computation is done in Rust. The native module is required for CLI operation.
-
-#### Key Technologies
-
-| Layer | Technology | Purpose |
-|-------|------------|---------|
-| CLI | [Commander.js](https://github.com/tj/commander.js) | Command-line parsing |
-| TUI | [OpenTUI](https://github.com/sst/opentui) + [Solid.js](https://www.solidjs.com/) | Interactive terminal UI (zero-flicker rendering) |
-| Runtime | [Bun](https://bun.sh/) | Fast JavaScript runtime (required) |
-| Tables | [cli-table3](https://github.com/cli-table/cli-table3) | Terminal table rendering (legacy CLI) |
-| Colors | [picocolors](https://github.com/alexeyraspopov/picocolors) | Terminal colors |
-| Native | [napi-rs](https://napi.rs/) | Node.js bindings for Rust |
-| Parallelism | [Rayon](https://github.com/rayon-rs/rayon) | Data parallelism in Rust |
-| JSON | [simd-json](https://github.com/simd-lite/simd-json) | SIMD-accelerated parsing |
-| Frontend | [Next.js 16](https://nextjs.org/) | React framework |
-| 3D Viz | [obelisk.js](https://github.com/nicklockwood/obelisk.js) | Isometric 3D rendering |
-
 ### Performance
 
 The native Rust module provides significant performance improvements:
@@ -806,8 +720,8 @@ Tokscale fetches real-time pricing from [LiteLLM's pricing database](https://git
 **Dynamic Fallback**: For models not yet available in LiteLLM (e.g., recently released models), Tokscale automatically fetches pricing from [OpenRouter's endpoints API](https://openrouter.ai/docs/api/api-reference/endpoints/list-endpoints). This ensures you get accurate pricing from the model's author provider (e.g., Z.AI for glm-4.7) without waiting for LiteLLM updates.
 
 **Caching**: Pricing data is cached to disk with 1-hour TTL for fast startup:
-- LiteLLM cache: `~/.cache/tokscale/pricing.json`
-- OpenRouter cache: `~/.cache/tokscale/openrouter-pricing.json` (incremental, caches only models you've used)
+- LiteLLM cache: `~/.cache/tokscale/pricing-litellm.json`
+- OpenRouter cache: `~/.cache/tokscale/pricing-openrouter.json` (incremental, caches only models you've used)
 
 Pricing includes:
 - Input tokens

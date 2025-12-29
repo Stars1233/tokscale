@@ -497,92 +497,6 @@ tokscale graph --benchmark     # グラフ生成をベンチマーク
 tokscale graph --output packages/frontend/public/my-data.json
 ```
 
-### アーキテクチャ
-
-```
-tokscale/
-├── packages/
-│   ├── cli/src/            # TypeScript CLI
-│   │   ├── cli.ts          # Commander.jsエントリーポイント
-│   │   ├── tui/            # OpenTUIインタラクティブインターフェース
-│   │   │   ├── App.tsx     # メインTUIアプリ（Solid.js）
-│   │   │   ├── components/ # TUIコンポーネント
-│   │   │   ├── hooks/      # データフェッチ＆状態
-│   │   │   ├── config/     # テーマ＆設定
-│   │   │   └── utils/      # フォーマットユーティリティ
-│   │   ├── sessions/       # プラットフォームセッションパーサー
-│   │   │   ├── claudecode.ts  # Claude Codeパーサー
-│   │   │   ├── codex.ts       # Codex CLIパーサー
-│   │   │   ├── gemini.ts      # Gemini CLIパーサー
-│   │   │   └── opencode.ts    # OpenCodeパーサー
-│   │   ├── cursor.ts       # Cursor IDE統合
-│   │   ├── graph.ts        # グラフデータ生成
-│   │   ├── pricing.ts      # LiteLLM価格フェッチャー
-│   │   └── native.ts       # ネイティブモジュールローダー
-│   │
-│   ├── core/               # Rustネイティブモジュール（napi-rs）
-│   │   ├── src/
-│   │   │   ├── lib.rs      # NAPIエクスポート
-│   │   │   ├── scanner.rs  # 並列ファイル探索
-│   │   │   ├── parser.rs   # SIMD JSON解析
-│   │   │   ├── aggregator.rs # 並列集計
-│   │   │   ├── pricing.rs  # コスト計算
-│   │   │   └── sessions/   # プラットフォーム固有パーサー
-│   │   ├── Cargo.toml
-│   │   └── package.json
-│   │
-│   ├── frontend/           # Next.js可視化＆ソーシャルプラットフォーム
-│   │   └── src/
-│   │       ├── app/        # Next.jsアプリルーター
-│   │       └── components/ # Reactコンポーネント
-│   │
-│   └── benchmarks/         # パフォーマンスベンチマーク
-│       ├── runner.ts       # ベンチマークハーネス
-│       └── generate.ts     # 合成データジェネレーター
-```
-
-#### ハイブリッドTypeScript + Rustアーキテクチャ
-
-Tokscaleは最適なパフォーマンスのためにハイブリッドアーキテクチャを使用しています：
-
-1. **TypeScriptレイヤー**: CLIインターフェース、価格フェッチ（ディスクキャッシュ付き）、出力フォーマット
-2. **Rustネイティブコア**: すべての解析、コスト計算、集計
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     TypeScript (CLI)                        │
-│  • LiteLLMから価格を取得（ディスクキャッシュ、1時間TTL）        │
-│  • 価格データをRustに渡す                                     │
-│  • フォーマットされた結果を表示                                │
-└─────────────────────┬───────────────────────────────────────┘
-                      │ pricing entries
-                      ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Rustネイティブコア                         │
-│  • 並列ファイルスキャン（rayon）                              │
-│  • SIMD JSON解析（simd-json）                               │
-│  • 価格データを使用したコスト計算                              │
-│  • モデル/月/日別の並列集計                                   │
-└─────────────────────────────────────────────────────────────┘
-```
-
-すべての重い計算はRustで行われます。ネイティブモジュールはCLI操作に必須です。
-
-#### 主要技術
-
-| レイヤー | 技術 | 用途 |
-|-------|------------|---------|
-| CLI | [Commander.js](https://github.com/tj/commander.js) | コマンドライン解析 |
-| TUI | [OpenTUI](https://github.com/sst/opentui) + [Solid.js](https://www.solidjs.com/) | インタラクティブターミナルUI（ゼロフリッカーレンダリング） |
-| ランタイム | [Bun](https://bun.sh/) | 高速JavaScriptランタイム（必須） |
-| テーブル | [cli-table3](https://github.com/cli-table/cli-table3) | ターミナルテーブルレンダリング（レガシーCLI） |
-| 色 | [picocolors](https://github.com/alexeyraspopov/picocolors) | ターミナルカラー |
-| ネイティブ | [napi-rs](https://napi.rs/) | Rust用Node.jsバインディング |
-| 並列性 | [Rayon](https://github.com/rayon-rs/rayon) | Rustデータ並列処理 |
-| JSON | [simd-json](https://github.com/simd-lite/simd-json) | SIMD高速化解析 |
-| フロントエンド | [Next.js 16](https://nextjs.org/) | Reactフレームワーク |
-| 3D可視化 | [obelisk.js](https://github.com/nicklockwood/obelisk.js) | アイソメトリック3Dレンダリング |
-
 ### パフォーマンス
 
 ネイティブRustモジュールは大幅なパフォーマンス向上を提供します：
@@ -765,7 +679,9 @@ CursorデータはセッショントークンでCursor APIから取得され、�
 
 Tokscaleは[LiteLLMの価格データベース](https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json)からリアルタイム価格を取得します。
 
-**キャッシュ**: 価格データは1時間TTLで`~/.cache/tokscale/pricing.json`にディスクキャッシュされます。これにより、価格データを最新に保ちながら高速な起動を確保します。
+**キャッシュ**: 価格データは1時間TTLでディスクにキャッシュされ、高速な起動を確保します：
+- LiteLLMキャッシュ: `~/.cache/tokscale/pricing-litellm.json`
+- OpenRouterキャッシュ: `~/.cache/tokscale/pricing-openrouter.json`（増分式、使用したモデルのみキャッシュ）
 
 価格には以下が含まれます：
 - 入力トークン

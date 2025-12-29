@@ -228,18 +228,19 @@ async function main() {
     .option("--until <date>", "End date (YYYY-MM-DD)")
     .option("--year <year>", "Filter to specific year")
     .option("--benchmark", "Show processing time")
+    .option("--no-spinner", "Disable spinner (for AI agents and scripts - keeps stdout clean)")
     .action(async (options) => {
       if (options.json) {
         await outputJsonReport("monthly", options);
       } else if (options.light) {
-        await showMonthlyReport(options);
+        await showMonthlyReport(options, { spinner: options.spinner });
       } else {
         const launchTUI = await tryLoadTUI();
         if (launchTUI) {
           await launchTUI(buildTUIOptions(options, "daily"));
         } else {
           showTUIUnavailableMessage();
-          await showMonthlyReport(options);
+          await showMonthlyReport(options, { spinner: options.spinner });
         }
       }
     });
@@ -263,18 +264,19 @@ async function main() {
     .option("--until <date>", "End date (YYYY-MM-DD)")
     .option("--year <year>", "Filter to specific year")
     .option("--benchmark", "Show processing time")
+    .option("--no-spinner", "Disable spinner (for AI agents and scripts - keeps stdout clean)")
     .action(async (options) => {
       if (options.json) {
         await outputJsonReport("models", options);
       } else if (options.light) {
-        await showModelReport(options);
+        await showModelReport(options, { spinner: options.spinner });
       } else {
         const launchTUI = await tryLoadTUI();
         if (launchTUI) {
           await launchTUI(buildTUIOptions(options, "model"));
         } else {
           showTUIUnavailableMessage();
-          await showModelReport(options);
+          await showModelReport(options, { spinner: options.spinner });
         }
       }
     });
@@ -297,6 +299,7 @@ async function main() {
     .option("--until <date>", "End date (YYYY-MM-DD)")
     .option("--year <year>", "Filter to specific year")
     .option("--benchmark", "Show processing time")
+    .option("--no-spinner", "Disable spinner (for AI agents and scripts - keeps stdout clean)")
     .action(async (options) => {
       await handleGraphCommand(options);
     });
@@ -412,7 +415,8 @@ async function main() {
     .description("Look up pricing for a model")
     .option("--json", "Output as JSON")
     .option("--provider <source>", "(deprecated, ignored) Force provider - pricing source is now auto-selected")
-    .action(async (modelId: string, options: { json?: boolean; provider?: string }) => {
+    .option("--no-spinner", "Disable spinner (for AI agents and scripts - keeps stdout clean)")
+    .action(async (modelId: string, options: { json?: boolean; provider?: string; spinner?: boolean }) => {
       await handlePricingCommand(modelId, options);
     });
 
@@ -472,20 +476,21 @@ async function main() {
       .option("--until <date>", "End date (YYYY-MM-DD)")
       .option("--year <year>", "Filter to specific year")
       .option("--benchmark", "Show processing time")
+      .option("--no-spinner", "Disable spinner (for AI agents and scripts - keeps stdout clean)")
       .parse();
     
     const opts = defaultProgram.opts();
     if (opts.json) {
       await outputJsonReport("models", opts);
     } else if (opts.light) {
-      await showModelReport(opts);
+      await showModelReport(opts, { spinner: opts.spinner });
     } else {
       const launchTUI = await tryLoadTUI();
       if (launchTUI) {
         await launchTUI(buildTUIOptions(opts));
       } else {
         showTUIUnavailableMessage();
-        await showModelReport(opts);
+        await showModelReport(opts, { spinner: opts.spinner });
       }
     }
   }
@@ -571,7 +576,7 @@ async function loadDataSourcesParallel(
   return { fetcher, cursorSync, localMessages };
 }
 
-async function showModelReport(options: FilterOptions & DateFilterOptions & { benchmark?: boolean }) {
+async function showModelReport(options: FilterOptions & DateFilterOptions & { benchmark?: boolean }, extraOptions?: { spinner?: boolean }) {
   const dateFilters = getDateFilters(options);
   const enabledSources = getEnabledSources(options);
   const onlyCursor = enabledSources?.length === 1 && enabledSources[0] === 'cursor';
@@ -598,9 +603,10 @@ async function showModelReport(options: FilterOptions & DateFilterOptions & { be
   }
   console.log();
 
-  // Start spinner for loading phase
-  const spinner = createSpinner({ color: "cyan" });
-  spinner.start(pc.gray("Loading data sources..."));
+  // Start spinner for loading phase (unless disabled for AI agents)
+  const useSpinner = extraOptions?.spinner !== false;
+  const spinner = useSpinner ? createSpinner({ color: "cyan" }) : null;
+  spinner?.start(pc.gray("Loading data sources..."));
 
   // Filter out cursor for local parsing (it's synced separately via network)
   const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid'])
@@ -614,11 +620,15 @@ async function showModelReport(options: FilterOptions & DateFilterOptions & { be
   );
   
   if (!localMessages && !onlyCursor) {
-    spinner.error('Failed to parse local session files');
+    if (spinner) {
+      spinner.error('Failed to parse local session files');
+    } else {
+      console.error('Failed to parse local session files');
+    }
     process.exit(1);
   }
 
-  spinner.update(pc.gray("Finalizing report..."));
+  spinner?.update(pc.gray("Finalizing report..."));
   const startTime = performance.now();
 
   let report: ModelReport;
@@ -633,12 +643,16 @@ async function showModelReport(options: FilterOptions & DateFilterOptions & { be
       year: dateFilters.year,
     });
   } catch (e) {
-    spinner.error(`Error: ${(e as Error).message}`);
+    if (spinner) {
+      spinner.error(`Error: ${(e as Error).message}`);
+    } else {
+      console.error(`Error: ${(e as Error).message}`);
+    }
     process.exit(1);
   }
 
   const processingTime = performance.now() - startTime;
-  spinner.stop();
+  spinner?.stop();
 
   if (report.entries.length === 0) {
     if (onlyCursor && !cursorSync.synced) {
@@ -705,7 +719,7 @@ async function showModelReport(options: FilterOptions & DateFilterOptions & { be
   console.log();
 }
 
-async function showMonthlyReport(options: FilterOptions & DateFilterOptions & { benchmark?: boolean }) {
+async function showMonthlyReport(options: FilterOptions & DateFilterOptions & { benchmark?: boolean }, extraOptions?: { spinner?: boolean }) {
   const dateRange = getDateRangeLabel(options);
   const title = dateRange 
     ? `Monthly Token Usage Report (${dateRange})`
@@ -717,9 +731,10 @@ async function showMonthlyReport(options: FilterOptions & DateFilterOptions & { 
   }
   console.log();
 
-  // Start spinner for loading phase
-  const spinner = createSpinner({ color: "cyan" });
-  spinner.start(pc.gray("Loading data sources..."));
+  // Start spinner for loading phase (unless disabled for AI agents)
+  const useSpinner = extraOptions?.spinner !== false;
+  const spinner = useSpinner ? createSpinner({ color: "cyan" }) : null;
+  spinner?.start(pc.gray("Loading data sources..."));
 
   const dateFilters = getDateFilters(options);
   const enabledSources = getEnabledSources(options);
@@ -732,11 +747,15 @@ async function showMonthlyReport(options: FilterOptions & DateFilterOptions & { 
   const { fetcher, cursorSync, localMessages } = await loadDataSourcesParallel(localSources, dateFilters);
   
   if (!localMessages) {
-    spinner.error('Failed to parse local session files');
+    if (spinner) {
+      spinner.error('Failed to parse local session files');
+    } else {
+      console.error('Failed to parse local session files');
+    }
     process.exit(1);
   }
 
-  spinner.update(pc.gray("Finalizing report..."));
+  spinner?.update(pc.gray("Finalizing report..."));
   const startTime = performance.now();
 
   let report: MonthlyReport;
@@ -750,12 +769,16 @@ async function showMonthlyReport(options: FilterOptions & DateFilterOptions & { 
       year: dateFilters.year,
     });
   } catch (e) {
-    spinner.error(`Error: ${(e as Error).message}`);
+    if (spinner) {
+      spinner.error(`Error: ${(e as Error).message}`);
+    } else {
+      console.error(`Error: ${(e as Error).message}`);
+    }
     process.exit(1);
   }
 
   const processingTime = performance.now() - startTime;
-  spinner.stop();
+  spinner?.stop();
 
   if (report.entries.length === 0) {
     console.log(pc.yellow("  No usage data found.\n"));
@@ -857,11 +880,13 @@ async function outputJsonReport(
 interface GraphCommandOptions extends FilterOptions, DateFilterOptions {
   output?: string;
   benchmark?: boolean;
+  spinner?: boolean;
 }
 
 async function handleGraphCommand(options: GraphCommandOptions) {
-  // Start spinner for loading phase (only if outputting to file, not stdout)
-  const spinner = options.output ? createSpinner({ color: "cyan" }) : null;
+  // Start spinner for loading phase (only if outputting to file, not stdout, and not disabled)
+  const useSpinner = options.output && options.spinner !== false;
+  const spinner = useSpinner ? createSpinner({ color: "cyan" }) : null;
   spinner?.start(pc.gray("Loading data sources..."));
 
   const dateFilters = getDateFilters(options);
@@ -965,15 +990,16 @@ async function handleWrappedCommand(options: WrappedCommandOptions) {
   }
 }
 
-async function handlePricingCommand(modelId: string, options: { json?: boolean; provider?: string }) {
+async function handlePricingCommand(modelId: string, options: { json?: boolean; provider?: string; spinner?: boolean }) {
   // Warn about deprecated --provider flag
   if (options.provider) {
     console.log(pc.yellow(`\n  Warning: --provider flag is deprecated and ignored.`));
     console.log(pc.gray("  Pricing source is now auto-selected (LiteLLM with OpenRouter fallback).\n"));
   }
 
-  const spinner = createSpinner({ color: "cyan" });
-  spinner.start(pc.gray("Fetching pricing data..."));
+  const useSpinner = options.spinner !== false;
+  const spinner = useSpinner ? createSpinner({ color: "cyan" }) : null;
+  spinner?.start(pc.gray("Fetching pricing data..."));
 
   // Load core module with ESM/CJS interop handling (same pattern as native.ts)
   let core: typeof import("@tokscale/core");
@@ -981,7 +1007,7 @@ async function handlePricingCommand(modelId: string, options: { json?: boolean; 
     const mod = await import("@tokscale/core");
     core = (mod.default ?? mod) as typeof import("@tokscale/core");
   } catch (importErr) {
-    spinner.stop();
+    spinner?.stop();
     const errorMsg = (importErr as Error).message || "Unknown error";
     if (options.json) {
       console.log(JSON.stringify({ error: "Native module not available", details: errorMsg }, null, 2));
@@ -994,7 +1020,7 @@ async function handlePricingCommand(modelId: string, options: { json?: boolean; 
 
   try {
     const nativeResult = await core.lookupPricing(modelId);
-    spinner.stop();
+    spinner?.stop();
 
     const result = {
       matchedKey: nativeResult.matchedKey,
@@ -1041,7 +1067,7 @@ async function handlePricingCommand(modelId: string, options: { json?: boolean; 
       console.log();
     }
   } catch (err) {
-    spinner.stop();
+    spinner?.stop();
     const errorMsg = (err as Error).message || "Unknown error";
     
     // Check if this is a "model not found" error from Rust or a different error

@@ -496,92 +496,6 @@ tokscale graph --benchmark     # 그래프 생성 벤치마크
 tokscale graph --output packages/frontend/public/my-data.json
 ```
 
-### 아키텍처
-
-```
-tokscale/
-├── packages/
-│   ├── cli/src/            # TypeScript CLI
-│   │   ├── cli.ts          # Commander.js 진입점
-│   │   ├── tui/            # OpenTUI 인터랙티브 인터페이스
-│   │   │   ├── App.tsx     # 메인 TUI 앱 (Solid.js)
-│   │   │   ├── components/ # TUI 컴포넌트
-│   │   │   ├── hooks/      # 데이터 페칭 & 상태
-│   │   │   ├── config/     # 테마 & 설정
-│   │   │   └── utils/      # 포매팅 유틸리티
-│   │   ├── sessions/       # 플랫폼 세션 파서
-│   │   │   ├── claudecode.ts  # Claude Code 파서
-│   │   │   ├── codex.ts       # Codex CLI 파서
-│   │   │   ├── gemini.ts      # Gemini CLI 파서
-│   │   │   └── opencode.ts    # OpenCode 파서
-│   │   ├── cursor.ts       # Cursor IDE 통합
-│   │   ├── graph.ts        # 그래프 데이터 생성
-│   │   ├── pricing.ts      # LiteLLM 가격 정보 페처
-│   │   └── native.ts       # 네이티브 모듈 로더
-│   │
-│   ├── core/               # Rust 네이티브 모듈 (napi-rs)
-│   │   ├── src/
-│   │   │   ├── lib.rs      # NAPI 익스포트
-│   │   │   ├── scanner.rs  # 병렬 파일 탐색
-│   │   │   ├── parser.rs   # SIMD JSON 파싱
-│   │   │   ├── aggregator.rs # 병렬 집계
-│   │   │   ├── pricing.rs  # 비용 계산
-│   │   │   └── sessions/   # 플랫폼별 파서
-│   │   ├── Cargo.toml
-│   │   └── package.json
-│   │
-│   ├── frontend/           # Next.js 시각화 & 소셜 플랫폼
-│   │   └── src/
-│   │       ├── app/        # Next.js 앱 라우터
-│   │       └── components/ # React 컴포넌트
-│   │
-│   └── benchmarks/         # 성능 벤치마크
-│       ├── runner.ts       # 벤치마크 하니스
-│       └── generate.ts     # 합성 데이터 생성기
-```
-
-#### 하이브리드 TypeScript + Rust 아키텍처
-
-Tokscale은 성능과 호환성을 동시에 잡기 위해 하이브리드 아키텍처를 사용합니다:
-
-1. **TypeScript 레이어**: CLI 인터페이스, 가격 정보 페치(디스크 캐시 포함), 출력 포매팅
-2. **Rust 네이티브 코어**: 파싱, 비용 계산, 집계 전반
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     TypeScript (CLI)                        │
-│  • LiteLLM에서 가격 정보 페치 (디스크 캐시, 1시간 TTL)          │
-│  • 가격 데이터를 Rust에 전달                                  │
-│  • 포매팅된 결과 표시                                         │
-└─────────────────────┬───────────────────────────────────────┘
-                      │ pricing entries
-                      ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Rust 네이티브 코어                         │
-│  • 병렬 파일 스캐닝 (rayon)                                   │
-│  • SIMD JSON 파싱 (simd-json)                               │
-│  • 가격 데이터로 비용 계산                                     │
-│  • 모델/월/일별 병렬 집계                                      │
-└─────────────────────────────────────────────────────────────┘
-```
-
-모든 무거운 연산은 Rust에서 처리됩니다. 네이티브 모듈은 CLI 동작에 필수입니다.
-
-#### 핵심 기술
-
-| 레이어 | 기술 | 용도 |
-|-------|------------|---------|
-| CLI | [Commander.js](https://github.com/tj/commander.js) | 명령줄 파싱 |
-| TUI | [OpenTUI](https://github.com/sst/opentui) + [Solid.js](https://www.solidjs.com/) | 인터랙티브 터미널 UI (깜빡임 없는 렌더링) |
-| 런타임 | [Bun](https://bun.sh/) | 빠른 JavaScript 런타임 (필수) |
-| 테이블 | [cli-table3](https://github.com/cli-table/cli-table3) | 터미널 테이블 렌더링 (레거시 CLI) |
-| 색상 | [picocolors](https://github.com/alexeyraspopov/picocolors) | 터미널 색상 |
-| 네이티브 | [napi-rs](https://napi.rs/) | Rust용 Node.js 바인딩 |
-| 병렬성 | [Rayon](https://github.com/rayon-rs/rayon) | Rust 데이터 병렬 처리 |
-| JSON | [simd-json](https://github.com/simd-lite/simd-json) | SIMD 가속 파싱 |
-| 프론트엔드 | [Next.js 16](https://nextjs.org/) | React 프레임워크 |
-| 3D 시각화 | [obelisk.js](https://github.com/nicklockwood/obelisk.js) | 아이소메트릭 3D 렌더링 |
-
 ### 성능
 
 네이티브 Rust 모듈은 상당한 성능 향상을 제공합니다:
@@ -764,7 +678,9 @@ Cursor 데이터는 세션 토큰을 사용하여 Cursor API에서 가져와 로
 
 Tokscale은 [LiteLLM의 가격 데이터베이스](https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json)에서 실시간 가격을 가져옵니다.
 
-**캐싱**: 가격 데이터는 1시간 TTL로 `~/.cache/tokscale/pricing.json`에 디스크 캐시됩니다. 이로써 가격 데이터를 최신 상태로 유지하면서 빠른 시작을 보장합니다.
+**캐싱**: 가격 데이터는 1시간 TTL로 디스크에 캐시되어 빠른 시작을 보장합니다:
+- LiteLLM 캐시: `~/.cache/tokscale/pricing-litellm.json`
+- OpenRouter 캐시: `~/.cache/tokscale/pricing-openrouter.json` (증분 방식, 사용한 모델만 캐시)
 
 가격 포함 항목:
 - 입력 토큰
