@@ -36,8 +36,8 @@ thiserror = "2"
 anyhow = "1"
 
 # HTTP client (async) - for pricing fetching
-# Using native-tls instead of rustls-tls to avoid ring cross-compilation issues on ARM
-reqwest = { version = "0.12", features = ["json", "native-tls"], default-features = false }
+# Using native-tls-vendored to compile OpenSSL from source for cross-compilation
+reqwest = { version = "0.12", features = ["json", "native-tls-vendored"], default-features = false }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 
 # For disk caching (XDG paths)
