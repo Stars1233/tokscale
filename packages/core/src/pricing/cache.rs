@@ -51,7 +51,11 @@ pub fn save_cache<T: Serialize>(filename: &str, data: &T) -> Result<(), std::io:
     let content = serde_json::to_string(&cached)?;
     
     let final_path = get_cache_path(filename);
-    let tmp_filename = format!(".{}.{}.tmp", filename, std::process::id());
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(0);
+    let tmp_filename = format!(".{}.{}.{:x}.tmp", filename, std::process::id(), nanos);
     let tmp_path = dir.join(&tmp_filename);
     
     use std::io::Write;

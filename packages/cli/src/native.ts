@@ -5,7 +5,6 @@
  * Native module is REQUIRED - no TypeScript fallback.
  */
 
-import type { PricingEntry } from "@tokscale/core";
 import type {
   TokenContributionData,
   GraphOptions as TSGraphOptions,
@@ -99,21 +98,9 @@ interface NativeGraphResult {
   contributions: NativeDailyContribution[];
 }
 
-// Types for pricing-aware APIs
-interface NativePricingEntry {
-  modelId: string;
-  pricing: {
-    inputCostPerToken: number;
-    outputCostPerToken: number;
-    cacheReadInputTokenCost?: number;
-    cacheCreationInputTokenCost?: number;
-  };
-}
-
 interface NativeReportOptions {
   homeDir?: string;
   sources?: string[];
-  pricing: NativePricingEntry[];
   since?: string;
   until?: string;
   year?: string;
@@ -198,7 +185,6 @@ interface NativeLocalParseOptions {
 interface NativeFinalizeReportOptions {
   homeDir?: string;
   localMessages: NativeParsedMessages;
-  pricing: NativePricingEntry[];
   includeCursor: boolean;
   since?: string;
   until?: string;
@@ -448,7 +434,6 @@ export interface LocalParseOptions {
 
 export interface FinalizeOptions {
   localMessages: ParsedMessages;
-  pricing: PricingEntry[];
   includeCursor: boolean;
   since?: string;
   until?: string;
@@ -656,7 +641,6 @@ export async function finalizeReportAsync(options: FinalizeOptions): Promise<Mod
   const nativeOptions: NativeFinalizeReportOptions = {
     homeDir: undefined,
     localMessages: options.localMessages,
-    pricing: options.pricing,
     includeCursor: options.includeCursor,
     since: options.since,
     until: options.until,
@@ -674,7 +658,6 @@ export async function finalizeMonthlyReportAsync(options: FinalizeOptions): Prom
   const nativeOptions: NativeFinalizeReportOptions = {
     homeDir: undefined,
     localMessages: options.localMessages,
-    pricing: options.pricing,
     includeCursor: options.includeCursor,
     since: options.since,
     until: options.until,
@@ -692,7 +675,6 @@ export async function finalizeGraphAsync(options: FinalizeOptions): Promise<Toke
   const nativeOptions: NativeFinalizeReportOptions = {
     homeDir: undefined,
     localMessages: options.localMessages,
-    pricing: options.pricing,
     includeCursor: options.includeCursor,
     since: options.since,
     until: options.until,
@@ -704,7 +686,7 @@ export async function finalizeGraphAsync(options: FinalizeOptions): Promise<Toke
 }
 
 export async function generateGraphWithPricingAsync(
-  options: TSGraphOptions & { pricing: PricingEntry[] }
+  options: TSGraphOptions
 ): Promise<TokenContributionData> {
   if (!isNativeAvailable()) {
     throw new Error("Native module required. Run: bun run build:core");
@@ -713,7 +695,6 @@ export async function generateGraphWithPricingAsync(
   const nativeOptions: NativeReportOptions = {
     homeDir: undefined,
     sources: options.sources,
-    pricing: options.pricing,
     since: options.since,
     until: options.until,
     year: options.year,

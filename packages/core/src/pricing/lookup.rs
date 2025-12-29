@@ -126,10 +126,12 @@ impl PricingLookup {
         };
         
         let p = &result.pricing;
-        let input_cost = input as f64 * p.input_cost_per_token.unwrap_or(0.0);
-        let output_cost = (output + reasoning) as f64 * p.output_cost_per_token.unwrap_or(0.0);
-        let cache_read_cost = cache_read as f64 * p.cache_read_input_token_cost.unwrap_or(0.0);
-        let cache_write_cost = cache_write as f64 * p.cache_creation_input_token_cost.unwrap_or(0.0);
+        let safe_price = |opt: Option<f64>| opt.filter(|v| v.is_finite() && *v >= 0.0).unwrap_or(0.0);
+        
+        let input_cost = input as f64 * safe_price(p.input_cost_per_token);
+        let output_cost = (output + reasoning) as f64 * safe_price(p.output_cost_per_token);
+        let cache_read_cost = cache_read as f64 * safe_price(p.cache_read_input_token_cost);
+        let cache_write_cost = cache_write as f64 * safe_price(p.cache_creation_input_token_cost);
         
         input_cost + output_cost + cache_read_cost + cache_write_cost
     }

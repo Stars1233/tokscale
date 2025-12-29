@@ -35,10 +35,6 @@ impl PricingService {
         Ok(Self::new(litellm_data, openrouter_data))
     }
     
-    pub async fn fetch() -> Result<Self, String> {
-        Self::fetch_inner().await
-    }
-    
     pub async fn get_or_init() -> Result<Arc<PricingService>, String> {
         PRICING_SERVICE.get_or_try_init(|| async {
             Self::fetch_inner().await.map(Arc::new)

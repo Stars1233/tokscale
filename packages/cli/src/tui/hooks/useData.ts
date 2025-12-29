@@ -20,7 +20,7 @@ import {
   finalizeGraphAsync,
   type ParsedMessages,
 } from "../../native.js";
-import { PricingFetcher } from "../../pricing-stub.js";
+
 import { syncCursorCache, loadCursorCredentials } from "../../cursor.js";
 import { getModelColor } from "../utils/colors.js";
 import { loadCachedData, saveCachedData, isCacheStale, loadSettings } from "../config/settings.js";
@@ -154,8 +154,6 @@ async function loadData(
   const includeCursor = sources.includes("cursor");
   const { since, until, year } = dateFilters ?? {};
 
-  const pricingFetcher = new PricingFetcher();
-  
   setPhase?.("parsing-sources");
   
   const phase1Results = await Promise.allSettled([
@@ -172,10 +170,6 @@ async function loadData(
     ? phase1Results[1].value 
     : null;
 
-  setPhase?.("loading-pricing");
-  const modelIds = localMessages?.messages.map(m => m.modelId) ?? [];
-  await pricingFetcher.fetchPricingForModels(modelIds);
-
   const emptyMessages: ParsedMessages = {
     messages: [],
     opencodeCount: 0,
@@ -191,7 +185,6 @@ async function loadData(
   const phase2Results = await Promise.allSettled([
     finalizeReportAsync({
       localMessages: localMessages || emptyMessages,
-      pricing: pricingFetcher.toPricingEntries(),
       includeCursor: includeCursor && cursorSync.synced,
       since,
       until,
@@ -199,7 +192,6 @@ async function loadData(
     }),
     finalizeGraphAsync({
       localMessages: localMessages || emptyMessages,
-      pricing: pricingFetcher.toPricingEntries(),
       includeCursor: includeCursor && cursorSync.synced,
       since,
       until,

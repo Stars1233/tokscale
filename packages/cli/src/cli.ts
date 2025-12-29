@@ -14,7 +14,7 @@ import pc from "picocolors";
 import { login, logout, whoami } from "./auth.js";
 import { submit } from "./submit.js";
 import { generateWrapped } from "./wrapped.js";
-import { PricingFetcher, type PricingLookupResult } from "./pricing-stub.js";
+
 import {
   loadCursorCredentials,
   saveCursorCredentials,
@@ -514,12 +514,7 @@ function getEnabledSources(options: FilterOptions): SourceType[] | undefined {
 
 
 
-async function fetchPricingForMessages(messages: ParsedMessages | null): Promise<PricingFetcher> {
-  const fetcher = new PricingFetcher();
-  const modelIds = messages?.messages.map(m => m.modelId) ?? [];
-  await fetcher.fetchPricingForModels(modelIds);
-  return fetcher;
-}
+
 
 /**
  * Sync Cursor usage data from API to local cache.
@@ -541,7 +536,6 @@ async function syncCursorData(): Promise<CursorSyncResult> {
 }
 
 interface LoadedDataSources {
-  fetcher: PricingFetcher;
   cursorSync: CursorSyncResult;
   localMessages: ParsedMessages | null;
 }
@@ -573,10 +567,7 @@ async function loadDataSourcesParallel(
     ? localResult.value
     : null;
 
-  onPhase?.(pc.gray("Loading pricing data..."));
-  const fetcher = await fetchPricingForMessages(localMessages);
-
-  return { fetcher, cursorSync, localMessages };
+  return { cursorSync, localMessages };
 }
 
 async function showModelReport(options: FilterOptions & DateFilterOptions & { benchmark?: boolean }, extraOptions?: { spinner?: boolean }) {
@@ -614,7 +605,7 @@ async function showModelReport(options: FilterOptions & DateFilterOptions & { be
 
   spinner?.start(pc.gray("Scanning session data..."));
 
-  const { fetcher, cursorSync, localMessages } = await loadDataSourcesParallel(
+  const { cursorSync, localMessages } = await loadDataSourcesParallel(
     onlyCursor ? [] : localSources,
     dateFilters,
     (phase) => spinner?.update(phase)
@@ -637,7 +628,6 @@ async function showModelReport(options: FilterOptions & DateFilterOptions & { be
     const emptyMessages: ParsedMessages = { messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, ampCount: 0, droidCount: 0, processingTimeMs: 0 };
     report = await finalizeReportAsync({
       localMessages: localMessages || emptyMessages,
-      pricing: fetcher.toPricingEntries(),
       includeCursor: includeCursor && cursorSync.synced,
       since: dateFilters.since,
       until: dateFilters.until,
@@ -748,7 +738,7 @@ async function showMonthlyReport(options: FilterOptions & DateFilterOptions & { 
 
   spinner?.start(pc.gray("Scanning session data..."));
 
-  const { fetcher, cursorSync, localMessages } = await loadDataSourcesParallel(
+  const { cursorSync, localMessages } = await loadDataSourcesParallel(
     localSources,
     dateFilters,
     (phase) => spinner?.update(phase)
@@ -770,7 +760,6 @@ async function showMonthlyReport(options: FilterOptions & DateFilterOptions & { 
   try {
     report = await finalizeMonthlyReportAsync({
       localMessages,
-      pricing: fetcher.toPricingEntries(),
       includeCursor: includeCursor && cursorSync.synced,
       since: dateFilters.since,
       until: dateFilters.until,
@@ -855,7 +844,7 @@ async function outputJsonReport(
   const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid'])
     .filter(s => s !== 'cursor');
 
-  const { fetcher, cursorSync, localMessages } = await loadDataSourcesParallel(
+  const { cursorSync, localMessages } = await loadDataSourcesParallel(
     onlyCursor ? [] : localSources,
     dateFilters
   );
@@ -870,7 +859,6 @@ async function outputJsonReport(
   if (reportType === "models") {
     const report = await finalizeReportAsync({
       localMessages: localMessages || emptyMessages,
-      pricing: fetcher.toPricingEntries(),
       includeCursor: includeCursor && cursorSync.synced,
       since: dateFilters.since,
       until: dateFilters.until,
@@ -880,7 +868,6 @@ async function outputJsonReport(
   } else {
     const report = await finalizeMonthlyReportAsync({
       localMessages: localMessages || emptyMessages,
-      pricing: fetcher.toPricingEntries(),
       includeCursor: includeCursor && cursorSync.synced,
       since: dateFilters.since,
       until: dateFilters.until,
@@ -908,7 +895,7 @@ async function handleGraphCommand(options: GraphCommandOptions) {
 
   spinner?.start(pc.gray("Scanning session data..."));
 
-  const { fetcher, cursorSync, localMessages } = await loadDataSourcesParallel(
+  const { cursorSync, localMessages } = await loadDataSourcesParallel(
     localSources,
     dateFilters,
     (phase) => spinner?.update(phase)
@@ -924,7 +911,6 @@ async function handleGraphCommand(options: GraphCommandOptions) {
 
   const data = await finalizeGraphAsync({
     localMessages,
-    pricing: fetcher.toPricingEntries(),
     includeCursor: includeCursor && cursorSync.synced,
     since: dateFilters.since,
     until: dateFilters.until,

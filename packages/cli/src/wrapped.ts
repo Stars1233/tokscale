@@ -246,7 +246,6 @@ async function loadWrappedData(options: WrappedOptions): Promise<WrappedData> {
   const [reportResult, graphResult] = await Promise.allSettled([
     finalizeReportAsync({
       localMessages: localMessages || emptyMessages,
-      pricing: [],
       includeCursor: includeCursor && cursorSync.synced,
       since,
       until,
@@ -254,7 +253,6 @@ async function loadWrappedData(options: WrappedOptions): Promise<WrappedData> {
     }),
     finalizeGraphAsync({
       localMessages: localMessages || emptyMessages,
-      pricing: [],
       includeCursor: includeCursor && cursorSync.synced,
       since,
       until,

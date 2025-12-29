@@ -10,13 +10,11 @@ use napi_derive::napi;
 mod aggregator;
 mod parser;
 mod pricing;
-mod pricing_legacy;
 mod scanner;
 mod sessions;
 
 pub use aggregator::*;
 pub use parser::*;
-pub use pricing_legacy::PricingData;
 pub use scanner::*;
 
 /// Version of the native module
@@ -106,13 +104,12 @@ pub struct LocalParseOptions {
     pub year: Option<String>,
 }
 
-/// Options for finalizing report with pricing
+/// Options for finalizing report
 #[napi(object)]
 #[derive(Debug, Clone)]
 pub struct FinalizeReportOptions {
     pub home_dir: Option<String>,
     pub local_messages: ParsedMessages,
-    pub pricing: Vec<PricingEntry>,
     pub include_cursor: bool,
     pub since: Option<String>,
     pub until: Option<String>,
@@ -397,39 +394,14 @@ pub fn scan_sessions(home_dir: Option<String>, sources: Option<Vec<String>>) -> 
 // Pricing-aware APIs
 // =============================================================================
 
-/// Pricing data for a single model (passed from TypeScript)
-#[napi(object)]
-#[derive(Debug, Clone)]
-pub struct ModelPricing {
-    pub input_cost_per_token: f64,
-    pub output_cost_per_token: f64,
-    pub cache_read_input_token_cost: Option<f64>,
-    pub cache_creation_input_token_cost: Option<f64>,
-}
-
-/// Entry in the pricing map
-#[napi(object)]
-#[derive(Debug, Clone)]
-pub struct PricingEntry {
-    pub model_id: String,
-    pub pricing: ModelPricing,
-}
-
-/// Options for reports with pricing
+/// Options for reports
 #[napi(object)]
 #[derive(Debug, Clone)]
 pub struct ReportOptions {
-    /// Home directory path (defaults to user's home)
     pub home_dir: Option<String>,
-    /// Sources to include: "opencode", "claude", "codex", "gemini", "cursor", "amp", "droid"
     pub sources: Option<Vec<String>>,
-    /// Pricing data for cost calculation
-    pub pricing: Vec<PricingEntry>,
-    /// Start date filter (YYYY-MM-DD)
     pub since: Option<String>,
-    /// End date filter (YYYY-MM-DD)
     pub until: Option<String>,
-    /// Filter to specific year
     pub year: Option<String>,
 }
 
@@ -486,36 +458,10 @@ pub struct MonthlyReport {
     pub processing_time_ms: u32,
 }
 
-/// Convert pricing entries to internal PricingData
-fn build_pricing_data(entries: &[PricingEntry]) -> PricingData {
-    let mut pricing_data = PricingData::new();
-    for entry in entries {
-        pricing_data.add_model(
-            entry.model_id.clone(),
-            pricing_legacy::ModelPricing {
-                input_cost_per_token: entry.pricing.input_cost_per_token,
-                output_cost_per_token: entry.pricing.output_cost_per_token,
-                cache_read_input_token_cost: entry
-                    .pricing
-                    .cache_read_input_token_cost
-                    .unwrap_or(0.0),
-                cache_creation_input_token_cost: entry
-                    .pricing
-                    .cache_creation_input_token_cost
-                    .unwrap_or(0.0),
-            },
-        );
-    }
-    // Pre-compute sorted keys for fast lookups
-    pricing_data.finalize();
-    pricing_data
-}
-
-/// Parse all messages with pricing calculation
 fn parse_all_messages_with_pricing(
     home_dir: &str,
     sources: &[String],
-    pricing_data: &PricingData,
+    pricing: &pricing::PricingService,
 ) -> Vec<UnifiedMessage> {
     let scan_result = scanner::scan_all_sources(home_dir, sources);
     let mut all_messages: Vec<UnifiedMessage> = Vec::new();
@@ -527,7 +473,7 @@ fn parse_all_messages_with_pricing(
         .filter_map(|path| {
             let mut msg = sessions::opencode::parse_opencode_file(path)?;
             // Recalculate cost using pricing data
-            msg.cost = pricing_data.calculate_cost(
+            msg.cost = pricing.calculate_cost(
                 &msg.model_id,
                 msg.tokens.input,
                 msg.tokens.output,
@@ -548,7 +494,7 @@ fn parse_all_messages_with_pricing(
             sessions::claudecode::parse_claude_file(path)
                 .into_iter()
                 .map(|mut msg| {
-                    msg.cost = pricing_data.calculate_cost(
+                    msg.cost = pricing.calculate_cost(
                         &msg.model_id,
                         msg.tokens.input,
                         msg.tokens.output,
@@ -571,7 +517,7 @@ fn parse_all_messages_with_pricing(
             sessions::codex::parse_codex_file(path)
                 .into_iter()
                 .map(|mut msg| {
-                    msg.cost = pricing_data.calculate_cost(
+                    msg.cost = pricing.calculate_cost(
                         &msg.model_id,
                         msg.tokens.input,
                         msg.tokens.output,
@@ -595,7 +541,7 @@ fn parse_all_messages_with_pricing(
                 .into_iter()
                 .map(|mut msg| {
                     // Gemini: thoughts count as output for billing
-                    msg.cost = pricing_data.calculate_cost(
+                    msg.cost = pricing.calculate_cost(
                         &msg.model_id,
                         msg.tokens.input,
                         msg.tokens.output + msg.tokens.reasoning,
@@ -621,7 +567,7 @@ fn parse_all_messages_with_pricing(
                 .into_iter()
                 .map(|mut msg| {
                     let csv_cost = msg.cost; // Store original CSV cost
-                    let calculated_cost = pricing_data.calculate_cost(
+                    let calculated_cost = pricing.calculate_cost(
                         &msg.model_id,
                         msg.tokens.input,
                         msg.tokens.output,
@@ -653,7 +599,7 @@ fn parse_all_messages_with_pricing(
                 .into_iter()
                 .map(|mut msg| {
                     let credits = msg.cost; // Store original credits value
-                    let calculated_cost = pricing_data.calculate_cost(
+                    let calculated_cost = pricing.calculate_cost(
                         &msg.model_id,
                         msg.tokens.input,
                         msg.tokens.output,
@@ -682,7 +628,7 @@ fn parse_all_messages_with_pricing(
             sessions::droid::parse_droid_file(path)
                 .into_iter()
                 .map(|mut msg| {
-                    msg.cost = pricing_data.calculate_cost(
+                    msg.cost = pricing.calculate_cost(
                         &msg.model_id,
                         msg.tokens.input,
                         msg.tokens.output,
@@ -702,7 +648,7 @@ fn parse_all_messages_with_pricing(
 
 /// Get model usage report with pricing calculation
 #[napi]
-pub fn get_model_report(options: ReportOptions) -> napi::Result<ModelReport> {
+pub async fn get_model_report(options: ReportOptions) -> napi::Result<ModelReport> {
     let start = Instant::now();
 
     let home_dir = get_home_dir(&options.home_dir)?;
@@ -719,8 +665,10 @@ pub fn get_model_report(options: ReportOptions) -> napi::Result<ModelReport> {
         ]
     });
 
-    let pricing_data = build_pricing_data(&options.pricing);
-    let all_messages = parse_all_messages_with_pricing(&home_dir, &sources, &pricing_data);
+    let pricing = pricing::PricingService::get_or_init()
+        .await
+        .map_err(|e| napi::Error::from_reason(e))?;
+    let all_messages = parse_all_messages_with_pricing(&home_dir, &sources, &pricing);
 
     // Apply date filters
     let filtered = filter_messages_for_report(all_messages, &options);
@@ -801,7 +749,7 @@ struct MonthAggregator {
 
 /// Get monthly usage report with pricing calculation
 #[napi]
-pub fn get_monthly_report(options: ReportOptions) -> napi::Result<MonthlyReport> {
+pub async fn get_monthly_report(options: ReportOptions) -> napi::Result<MonthlyReport> {
     let start = Instant::now();
 
     let home_dir = get_home_dir(&options.home_dir)?;
@@ -818,8 +766,10 @@ pub fn get_monthly_report(options: ReportOptions) -> napi::Result<MonthlyReport>
         ]
     });
 
-    let pricing_data = build_pricing_data(&options.pricing);
-    let all_messages = parse_all_messages_with_pricing(&home_dir, &sources, &pricing_data);
+    let pricing = pricing::PricingService::get_or_init()
+        .await
+        .map_err(|e| napi::Error::from_reason(e))?;
+    let all_messages = parse_all_messages_with_pricing(&home_dir, &sources, &pricing);
 
     // Apply date filters
     let filtered = filter_messages_for_report(all_messages, &options);
@@ -875,7 +825,7 @@ pub fn get_monthly_report(options: ReportOptions) -> napi::Result<MonthlyReport>
 
 /// Generate graph data with pricing calculation
 #[napi]
-pub fn generate_graph_with_pricing(options: ReportOptions) -> napi::Result<GraphResult> {
+pub async fn generate_graph_with_pricing(options: ReportOptions) -> napi::Result<GraphResult> {
     let start = Instant::now();
 
     let home_dir = get_home_dir(&options.home_dir)?;
@@ -892,8 +842,10 @@ pub fn generate_graph_with_pricing(options: ReportOptions) -> napi::Result<Graph
         ]
     });
 
-    let pricing_data = build_pricing_data(&options.pricing);
-    let all_messages = parse_all_messages_with_pricing(&home_dir, &sources, &pricing_data);
+    let pricing = pricing::PricingService::get_or_init()
+        .await
+        .map_err(|e| napi::Error::from_reason(e))?;
+    let all_messages = parse_all_messages_with_pricing(&home_dir, &sources, &pricing);
 
     // Apply date filters
     let filtered = filter_messages_for_report(all_messages, &options);
@@ -1124,12 +1076,14 @@ fn parsed_to_unified(msg: &ParsedMessage, cost: f64) -> UnifiedMessage {
 
 /// Finalize model report: apply pricing to local messages, add Cursor, aggregate
 #[napi]
-pub fn finalize_report(options: FinalizeReportOptions) -> napi::Result<ModelReport> {
+pub async fn finalize_report(options: FinalizeReportOptions) -> napi::Result<ModelReport> {
     let start = Instant::now();
 
     let home_dir = get_home_dir(&options.home_dir)?;
 
-    let pricing_data = build_pricing_data(&options.pricing);
+    let pricing = pricing::PricingService::get_or_init()
+        .await
+        .map_err(|e| napi::Error::from_reason(e))?;
 
     // Convert local messages and apply pricing
     let mut all_messages: Vec<UnifiedMessage> = options
@@ -1137,7 +1091,7 @@ pub fn finalize_report(options: FinalizeReportOptions) -> napi::Result<ModelRepo
         .messages
         .iter()
         .map(|msg| {
-            let cost = pricing_data.calculate_cost(
+            let cost = pricing.calculate_cost(
                 &msg.model_id,
                 msg.input,
                 msg.output,
@@ -1161,7 +1115,7 @@ pub fn finalize_report(options: FinalizeReportOptions) -> napi::Result<ModelRepo
                     .into_iter()
                     .map(|mut msg| {
                         let csv_cost = msg.cost;
-                        let calculated_cost = pricing_data.calculate_cost(
+                        let calculated_cost = pricing.calculate_cost(
                             &msg.model_id,
                             msg.tokens.input,
                             msg.tokens.output,
@@ -1261,21 +1215,22 @@ pub fn finalize_report(options: FinalizeReportOptions) -> napi::Result<ModelRepo
 pub struct FinalizeMonthlyOptions {
     pub home_dir: Option<String>,
     pub local_messages: ParsedMessages,
-    pub pricing: Vec<PricingEntry>,
     pub include_cursor: bool,
     pub since: Option<String>,
     pub until: Option<String>,
     pub year: Option<String>,
 }
 
-/// Finalize monthly report with pricing
+/// Finalize monthly report
 #[napi]
-pub fn finalize_monthly_report(options: FinalizeMonthlyOptions) -> napi::Result<MonthlyReport> {
+pub async fn finalize_monthly_report(options: FinalizeMonthlyOptions) -> napi::Result<MonthlyReport> {
     let start = Instant::now();
 
     let home_dir = get_home_dir(&options.home_dir)?;
 
-    let pricing_data = build_pricing_data(&options.pricing);
+    let pricing = pricing::PricingService::get_or_init()
+        .await
+        .map_err(|e| napi::Error::from_reason(e))?;
 
     // Convert local messages and apply pricing
     let mut all_messages: Vec<UnifiedMessage> = options
@@ -1283,7 +1238,7 @@ pub fn finalize_monthly_report(options: FinalizeMonthlyOptions) -> napi::Result<
         .messages
         .iter()
         .map(|msg| {
-            let cost = pricing_data.calculate_cost(
+            let cost = pricing.calculate_cost(
                 &msg.model_id,
                 msg.input,
                 msg.output,
@@ -1307,7 +1262,7 @@ pub fn finalize_monthly_report(options: FinalizeMonthlyOptions) -> napi::Result<
                     .into_iter()
                     .map(|mut msg| {
                         let csv_cost = msg.cost;
-                        let calculated_cost = pricing_data.calculate_cost(
+                        let calculated_cost = pricing.calculate_cost(
                             &msg.model_id,
                             msg.tokens.input,
                             msg.tokens.output,
@@ -1392,21 +1347,22 @@ pub fn finalize_monthly_report(options: FinalizeMonthlyOptions) -> napi::Result<
 pub struct FinalizeGraphOptions {
     pub home_dir: Option<String>,
     pub local_messages: ParsedMessages,
-    pub pricing: Vec<PricingEntry>,
     pub include_cursor: bool,
     pub since: Option<String>,
     pub until: Option<String>,
     pub year: Option<String>,
 }
 
-/// Finalize graph with pricing
+/// Finalize graph
 #[napi]
-pub fn finalize_graph(options: FinalizeGraphOptions) -> napi::Result<GraphResult> {
+pub async fn finalize_graph(options: FinalizeGraphOptions) -> napi::Result<GraphResult> {
     let start = Instant::now();
 
     let home_dir = get_home_dir(&options.home_dir)?;
 
-    let pricing_data = build_pricing_data(&options.pricing);
+    let pricing = pricing::PricingService::get_or_init()
+        .await
+        .map_err(|e| napi::Error::from_reason(e))?;
 
     // Convert local messages and apply pricing
     let mut all_messages: Vec<UnifiedMessage> = options
@@ -1414,7 +1370,7 @@ pub fn finalize_graph(options: FinalizeGraphOptions) -> napi::Result<GraphResult
         .messages
         .iter()
         .map(|msg| {
-            let cost = pricing_data.calculate_cost(
+            let cost = pricing.calculate_cost(
                 &msg.model_id,
                 msg.input,
                 msg.output,
@@ -1438,7 +1394,7 @@ pub fn finalize_graph(options: FinalizeGraphOptions) -> napi::Result<GraphResult
                     .into_iter()
                     .map(|mut msg| {
                         let csv_cost = msg.cost;
-                        let calculated_cost = pricing_data.calculate_cost(
+                        let calculated_cost = pricing.calculate_cost(
                             &msg.model_id,
                             msg.tokens.input,
                             msg.tokens.output,

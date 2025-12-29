@@ -182,25 +182,3 @@ pub async fn fetch_all_mapped() -> HashMap<String, ModelPricing> {
     
     result
 }
-
-pub async fn fetch_missing(model_ids: &[String]) -> HashMap<String, ModelPricing> {
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .build()
-        .unwrap_or_default();
-    
-    let mut result = HashMap::new();
-    
-    for model_id in model_ids {
-        if let Some(or_id) = aliases::get_openrouter_id(model_id) {
-            let parts: Vec<&str> = or_id.split('/').collect();
-            if parts.len() == 2 {
-                if let Some(pricing) = fetch_model_endpoints(&client, parts[0], parts[1]).await {
-                    result.insert(model_id.clone(), pricing);
-                }
-            }
-        }
-    }
-    
-    result
-}
