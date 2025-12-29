@@ -6,6 +6,16 @@ const PROVIDER_PREFIXES: &[&str] = &[
     "deepseek/", "qwen/", "cohere/", "perplexity/", "x-ai/",
 ];
 
+const ORIGINAL_PROVIDER_PREFIXES: &[&str] = &[
+    "x-ai/", "xai/", "anthropic/", "openai/", "google/", "meta-llama/",
+    "mistralai/", "deepseek/", "z-ai/", "qwen/", "cohere/", "perplexity/", "moonshotai/",
+];
+
+const RESELLER_PROVIDER_PREFIXES: &[&str] = &[
+    "azure/", "azure_ai/", "bedrock/", "vertex_ai/", 
+    "together/", "together_ai/", "fireworks_ai/", "groq/", "openrouter/",
+];
+
 const FUZZY_BLOCKLIST: &[&str] = &["auto", "mini", "chat", "base"];
 
 const MIN_FUZZY_MATCH_LEN: usize = 5;
@@ -115,14 +125,34 @@ impl PricingLookup {
             return None;
         }
         
-        if let Some(result) = self.fuzzy_match_litellm(model_id) {
-            return Some(result);
-        }
-        if let Some(result) = self.fuzzy_match_openrouter(model_id) {
-            return Some(result);
-        }
+        let litellm_result = self.fuzzy_match_litellm(model_id);
+        let openrouter_result = self.fuzzy_match_openrouter(model_id);
         
-        None
+        match (&litellm_result, &openrouter_result) {
+            (Some(l), Some(o)) => {
+                let l_is_original = is_original_provider(&l.matched_key);
+                let o_is_original = is_original_provider(&o.matched_key);
+                let l_is_reseller = is_reseller_provider(&l.matched_key);
+                let o_is_reseller = is_reseller_provider(&o.matched_key);
+                
+                if o_is_original && !l_is_original {
+                    return openrouter_result;
+                }
+                if l_is_original && !o_is_original {
+                    return litellm_result;
+                }
+                if !l_is_reseller && o_is_reseller {
+                    return litellm_result;
+                }
+                if !o_is_reseller && l_is_reseller {
+                    return openrouter_result;
+                }
+                litellm_result
+            }
+            (Some(_), None) => litellm_result,
+            (None, Some(_)) => openrouter_result,
+            (None, None) => None,
+        }
     }
     
     fn lookup_litellm_only(&self, model_id: &str) -> Option<LookupResult> {
@@ -253,60 +283,56 @@ impl PricingLookup {
     
     fn fuzzy_match_litellm(&self, model_id: &str) -> Option<LookupResult> {
         let family = extract_model_family(model_id);
+        let mut family_matches_list: Vec<&String> = Vec::new();
         
         for key in &self.litellm_keys {
             let lower_key = key.to_lowercase();
             if family_matches(&lower_key, &family) && contains_model_id(&lower_key, model_id) {
-                return Some(LookupResult {
-                    pricing: self.litellm.get(key).unwrap().clone(),
-                    source: "LiteLLM".into(),
-                    matched_key: key.clone(),
-                });
+                family_matches_list.push(key);
             }
         }
         
+        if let Some(result) = select_best_match(&family_matches_list, &self.litellm, "LiteLLM") {
+            return Some(result);
+        }
+        
+        let mut all_matches: Vec<&String> = Vec::new();
         for key in &self.litellm_keys {
             let lower_key = key.to_lowercase();
             if contains_model_id(&lower_key, model_id) {
-                return Some(LookupResult {
-                    pricing: self.litellm.get(key).unwrap().clone(),
-                    source: "LiteLLM".into(),
-                    matched_key: key.clone(),
-                });
+                all_matches.push(key);
             }
         }
         
-        None
+        select_best_match(&all_matches, &self.litellm, "LiteLLM")
     }
     
     fn fuzzy_match_openrouter(&self, model_id: &str) -> Option<LookupResult> {
         let family = extract_model_family(model_id);
+        let mut family_matches_list: Vec<&String> = Vec::new();
         
         for key in &self.openrouter_keys {
             let lower_key = key.to_lowercase();
             let model_part = lower_key.split('/').last().unwrap_or(&lower_key);
             if family_matches(model_part, &family) && contains_model_id(model_part, model_id) {
-                return Some(LookupResult {
-                    pricing: self.openrouter.get(key).unwrap().clone(),
-                    source: "OpenRouter".into(),
-                    matched_key: key.clone(),
-                });
+                family_matches_list.push(key);
             }
         }
         
+        if let Some(result) = select_best_match(&family_matches_list, &self.openrouter, "OpenRouter") {
+            return Some(result);
+        }
+        
+        let mut all_matches: Vec<&String> = Vec::new();
         for key in &self.openrouter_keys {
             let lower_key = key.to_lowercase();
             let model_part = lower_key.split('/').last().unwrap_or(&lower_key);
             if contains_model_id(model_part, model_id) {
-                return Some(LookupResult {
-                    pricing: self.openrouter.get(key).unwrap().clone(),
-                    source: "OpenRouter".into(),
-                    matched_key: key.clone(),
-                });
+                all_matches.push(key);
             }
         }
         
-        None
+        select_best_match(&all_matches, &self.openrouter, "OpenRouter")
     }
     
     pub fn calculate_cost(&self, model_id: &str, input: i64, output: i64, cache_read: i64, cache_write: i64, reasoning: i64) -> f64 {
@@ -450,6 +476,45 @@ fn strip_tier_suffix(model_id: &str) -> Option<&str> {
     None
 }
 
+fn is_original_provider(key: &str) -> bool {
+    let lower = key.to_lowercase();
+    ORIGINAL_PROVIDER_PREFIXES.iter().any(|prefix| lower.starts_with(prefix))
+}
+
+fn is_reseller_provider(key: &str) -> bool {
+    let lower = key.to_lowercase();
+    RESELLER_PROVIDER_PREFIXES.iter().any(|prefix| lower.starts_with(prefix))
+}
+
+fn select_best_match<'a>(matches: &[&'a String], dataset: &HashMap<String, ModelPricing>, source: &str) -> Option<LookupResult> {
+    if matches.is_empty() {
+        return None;
+    }
+    
+    if let Some(key) = matches.iter().find(|k| is_original_provider(k)) {
+        return Some(LookupResult {
+            pricing: dataset.get(*key).unwrap().clone(),
+            source: source.into(),
+            matched_key: (*key).clone(),
+        });
+    }
+    
+    if let Some(key) = matches.iter().find(|k| !is_reseller_provider(k)) {
+        return Some(LookupResult {
+            pricing: dataset.get(*key).unwrap().clone(),
+            source: source.into(),
+            matched_key: (*key).clone(),
+        });
+    }
+    
+    let key = matches[0];
+    Some(LookupResult {
+        pricing: dataset.get(key).unwrap().clone(),
+        source: source.into(),
+        matched_key: key.clone(),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -573,6 +638,31 @@ mod tests {
             input_cost_per_token: Some(2e-7),
             output_cost_per_token: Some(0.0000015),
             cache_read_input_token_cost: Some(2e-8),
+            cache_creation_input_token_cost: None,
+        });
+        
+        m.insert("azure_ai/grok-code-fast-1".into(), ModelPricing {
+            input_cost_per_token: Some(0.0000035),
+            output_cost_per_token: Some(0.0000175),
+            cache_read_input_token_cost: None,
+            cache_creation_input_token_cost: None,
+        });
+        m.insert("bedrock/anthropic.claude-sonnet-4".into(), ModelPricing {
+            input_cost_per_token: Some(0.000003),
+            output_cost_per_token: Some(0.000015),
+            cache_read_input_token_cost: Some(3e-7),
+            cache_creation_input_token_cost: Some(0.00000375),
+        });
+        m.insert("vertex_ai/gemini-2.5-pro".into(), ModelPricing {
+            input_cost_per_token: Some(0.00000125),
+            output_cost_per_token: Some(0.000005),
+            cache_read_input_token_cost: None,
+            cache_creation_input_token_cost: None,
+        });
+        m.insert("google/gemini-2.5-pro".into(), ModelPricing {
+            input_cost_per_token: Some(0.00000125),
+            output_cost_per_token: Some(0.000005),
+            cache_read_input_token_cost: None,
             cache_creation_input_token_cost: None,
         });
         
@@ -1058,6 +1148,54 @@ mod tests {
         assert!(!is_fuzzy_eligible("abc"));
         assert!(is_fuzzy_eligible("gpt-4o"));
         assert!(is_fuzzy_eligible("claude"));
+    }
+    
+    // =========================================================================
+    // PROVIDER PREFERENCE TESTS
+    // =========================================================================
+    
+    #[test]
+    fn test_provider_preference_grok_prefers_xai_over_azure() {
+        let lookup = create_lookup();
+        let result = lookup.lookup("grok-code").unwrap();
+        assert_eq!(result.matched_key, "xai/grok-code-fast-1-0825");
+        assert_eq!(result.source, "LiteLLM");
+        assert!(!result.matched_key.starts_with("azure"));
+    }
+    
+    #[test]
+    fn test_provider_preference_gemini_prefers_google_over_vertex() {
+        let lookup = create_lookup();
+        let result = lookup.lookup("gemini-2.5-pro").unwrap();
+        assert_eq!(result.matched_key, "google/gemini-2.5-pro");
+        assert_eq!(result.source, "LiteLLM");
+        assert!(!result.matched_key.starts_with("vertex_ai"));
+    }
+    
+    #[test]
+    fn test_is_original_provider() {
+        assert!(is_original_provider("xai/grok-code"));
+        assert!(is_original_provider("anthropic/claude-3"));
+        assert!(is_original_provider("openai/gpt-4"));
+        assert!(is_original_provider("google/gemini"));
+        assert!(is_original_provider("x-ai/grok"));
+        assert!(!is_original_provider("azure_ai/grok"));
+        assert!(!is_original_provider("bedrock/anthropic"));
+        assert!(!is_original_provider("vertex_ai/gemini"));
+        assert!(!is_original_provider("unknown-provider/model"));
+    }
+    
+    #[test]
+    fn test_is_reseller_provider() {
+        assert!(is_reseller_provider("azure_ai/grok-code"));
+        assert!(is_reseller_provider("azure/openai/gpt-4"));
+        assert!(is_reseller_provider("bedrock/anthropic.claude"));
+        assert!(is_reseller_provider("vertex_ai/gemini"));
+        assert!(is_reseller_provider("together_ai/llama"));
+        assert!(is_reseller_provider("groq/llama"));
+        assert!(!is_reseller_provider("xai/grok"));
+        assert!(!is_reseller_provider("anthropic/claude"));
+        assert!(!is_reseller_provider("openai/gpt-4"));
     }
     
     // =========================================================================
