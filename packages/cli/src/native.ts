@@ -15,24 +15,6 @@ import type {
 // Types matching Rust exports
 // =============================================================================
 
-interface NativeGraphOptions {
-  homeDir?: string;
-  sources?: string[];
-  since?: string;
-  until?: string;
-  year?: string;
-  threads?: number;
-}
-
-interface NativeScanStats {
-  opencodeFiles: number;
-  claudeFiles: number;
-  codexFiles: number;
-  geminiFiles: number;
-  ampFiles: number;
-  totalFiles: number;
-}
-
 interface NativeTokenBreakdown {
   input: number;
   output: number;
@@ -194,12 +176,6 @@ interface NativeFinalizeReportOptions {
 interface NativeCore {
   version(): string;
   healthCheck(): string;
-  generateGraph(options: NativeGraphOptions): NativeGraphResult;
-  generateGraphWithPricing(options: NativeReportOptions): NativeGraphResult;
-  scanSessions(homeDir?: string, sources?: string[]): NativeScanStats;
-  getModelReport(options: NativeReportOptions): NativeModelReport;
-  getMonthlyReport(options: NativeReportOptions): NativeMonthlyReport;
-  // Two-phase processing (parallel optimization)
   parseLocalSources(options: NativeLocalParseOptions): NativeParsedMessages;
   finalizeReport(options: NativeFinalizeReportOptions): NativeModelReport;
   finalizeMonthlyReport(options: NativeFinalizeReportOptions): NativeMonthlyReport;
@@ -215,8 +191,7 @@ let loadError: Error | null = null;
 
 try {
   // Type assertion needed because dynamic import returns module namespace
-  // nativeCore is used both directly (scanSessions, generateGraph, version) and via subprocess
-  // (async functions like parseLocalSourcesAsync, finalizeReportAsync go through subprocess)
+  // nativeCore.version() is called directly, async functions go through subprocess
   nativeCore = await import("@tokscale/core").then(
     (m) => (m.default || m) as unknown as NativeCore
   );
@@ -236,44 +211,10 @@ export function isNativeAvailable(): boolean {
 }
 
 /**
- * Get native module load error (if any)
- */
-export function getNativeLoadError(): Error | null {
-  return loadError;
-}
-
-/**
  * Get native module version
  */
 export function getNativeVersion(): string | null {
   return nativeCore?.version() ?? null;
-}
-
-/**
- * Scan sessions using native module
- */
-export function scanSessionsNative(homeDir?: string, sources?: string[]): NativeScanStats | null {
-  if (!nativeCore) {
-    return null;
-  }
-  return nativeCore.scanSessions(homeDir, sources);
-}
-
-// =============================================================================
-// Graph generation
-// =============================================================================
-
-/**
- * Convert TypeScript graph options to native format
- */
-function toNativeOptions(options: TSGraphOptions): NativeGraphOptions {
-  return {
-    homeDir: undefined,
-    sources: options.sources,
-    since: options.since,
-    until: options.until,
-    year: options.year,
-  };
 }
 
 /**
@@ -340,22 +281,6 @@ function fromNativeResult(result: NativeGraphResult): TokenContributionData {
     })),
   };
 }
-
-/**
- * Generate graph data using native module (without pricing - uses embedded costs)
- * @deprecated Use generateGraphWithPricing instead
- */
-export function generateGraphNative(options: TSGraphOptions = {}): TokenContributionData {
-  if (!nativeCore) {
-    throw new Error("Native module not available: " + (loadError?.message || "unknown error"));
-  }
-
-  const nativeOptions = toNativeOptions(options);
-  const result = nativeCore.generateGraph(nativeOptions);
-  return fromNativeResult(result);
-}
-
-
 
 // =============================================================================
 // Reports
@@ -687,24 +612,5 @@ export async function finalizeGraphAsync(options: FinalizeOptions): Promise<Toke
   };
 
   const result = await runInSubprocess<NativeGraphResult>("finalizeGraph", [nativeOptions]);
-  return fromNativeResult(result);
-}
-
-export async function generateGraphWithPricingAsync(
-  options: TSGraphOptions
-): Promise<TokenContributionData> {
-  if (!isNativeAvailable()) {
-    throw new Error("Native module required. Run: bun run build:core");
-  }
-
-  const nativeOptions: NativeReportOptions = {
-    homeDir: undefined,
-    sources: options.sources,
-    since: options.since,
-    until: options.until,
-    year: options.year,
-  };
-
-  const result = await runInSubprocess<NativeGraphResult>("generateGraphWithPricing", [nativeOptions]);
   return fromNativeResult(result);
 }

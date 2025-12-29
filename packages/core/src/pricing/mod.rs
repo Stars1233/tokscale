@@ -40,11 +40,7 @@ impl PricingService {
             Self::fetch_inner().await.map(Arc::new)
         }).await.map(Arc::clone)
     }
-    
-    pub fn lookup(&self, model_id: &str) -> Option<LookupResult> {
-        self.lookup.lookup(model_id)
-    }
-    
+
     pub fn lookup_with_source(&self, model_id: &str, force_source: Option<&str>) -> Option<LookupResult> {
         self.lookup.lookup_with_source(model_id, force_source)
     }

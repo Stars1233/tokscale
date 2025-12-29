@@ -29,24 +29,6 @@ pub fn health_check() -> String {
     "tokscale-core is healthy!".to_string()
 }
 
-/// Configuration options for graph generation
-#[napi(object)]
-#[derive(Debug, Clone)]
-pub struct GraphOptions {
-    /// Home directory path (defaults to user's home)
-    pub home_dir: Option<String>,
-    /// Sources to include: "opencode", "claude", "codex", "gemini", "cursor", "amp", "droid"
-    pub sources: Option<Vec<String>>,
-    /// Start date filter (YYYY-MM-DD)
-    pub since: Option<String>,
-    /// End date filter (YYYY-MM-DD)
-    pub until: Option<String>,
-    /// Filter to specific year
-    pub year: Option<String>,
-    /// Number of parallel threads (defaults to CPU count)
-    pub threads: Option<u32>,
-}
-
 /// Token breakdown by type
 #[napi(object)]
 #[derive(Debug, Clone, Default)]
@@ -195,14 +177,13 @@ pub struct GraphResult {
 }
 
 // =============================================================================
-// Main NAPI Export: generateGraph
+// Shared Utilities
 // =============================================================================
 
 use rayon::prelude::*;
 use sessions::UnifiedMessage;
 use std::time::Instant;
 
-/// Get home directory from options or environment, returning error if not available
 fn get_home_dir(home_dir_option: &Option<String>) -> napi::Result<String> {
     home_dir_option
         .clone()
@@ -212,182 +193,6 @@ fn get_home_dir(home_dir_option: &Option<String>) -> napi::Result<String> {
                 "HOME directory not specified and HOME environment variable not set",
             )
         })
-}
-
-/// Generate graph data from all session sources
-///
-/// This is the main entry point that orchestrates:
-/// 1. Parallel file scanning
-/// 2. Parallel session parsing
-/// 3. Date filtering
-/// 4. Parallel aggregation
-#[napi]
-pub fn generate_graph(options: GraphOptions) -> napi::Result<GraphResult> {
-    let start = Instant::now();
-
-    let home_dir = get_home_dir(&options.home_dir)?;
-
-    // Get sources to scan
-    let sources = options.sources.clone().unwrap_or_else(|| {
-        vec![
-            "opencode".to_string(),
-            "claude".to_string(),
-            "codex".to_string(),
-            "gemini".to_string(),
-            "cursor".to_string(),
-            "amp".to_string(),
-            "droid".to_string(),
-        ]
-    });
-
-    // Configure thread pool if specified
-    if let Some(threads) = options.threads {
-        rayon::ThreadPoolBuilder::new()
-            .num_threads(threads as usize)
-            .build_global()
-            .ok();
-    }
-
-    // 1. Parallel file scanning
-    let scan_result = scanner::scan_all_sources(&home_dir, &sources);
-
-    // 2. Parallel session parsing
-    let mut all_messages: Vec<UnifiedMessage> = Vec::new();
-
-    // Parse OpenCode files in parallel
-    let opencode_messages: Vec<UnifiedMessage> = scan_result
-        .opencode_files
-        .par_iter()
-        .filter_map(|path| sessions::opencode::parse_opencode_file(path))
-        .collect();
-    all_messages.extend(opencode_messages);
-
-    // Parse Claude files in parallel
-    let claude_messages: Vec<UnifiedMessage> = scan_result
-        .claude_files
-        .par_iter()
-        .flat_map(|path| sessions::claudecode::parse_claude_file(path))
-        .collect();
-    all_messages.extend(claude_messages);
-
-    // Parse Codex files in parallel
-    let codex_messages: Vec<UnifiedMessage> = scan_result
-        .codex_files
-        .par_iter()
-        .flat_map(|path| sessions::codex::parse_codex_file(path))
-        .collect();
-    all_messages.extend(codex_messages);
-
-    // Parse Gemini files in parallel
-    let gemini_messages: Vec<UnifiedMessage> = scan_result
-        .gemini_files
-        .par_iter()
-        .flat_map(|path| sessions::gemini::parse_gemini_file(path))
-        .collect();
-    all_messages.extend(gemini_messages);
-
-    // Parse Cursor files in parallel
-    let cursor_messages: Vec<UnifiedMessage> = scan_result
-        .cursor_files
-        .par_iter()
-        .flat_map(|path| sessions::cursor::parse_cursor_file(path))
-        .collect();
-    all_messages.extend(cursor_messages);
-
-    // Parse Amp files in parallel
-    let amp_messages: Vec<UnifiedMessage> = scan_result
-        .amp_files
-        .par_iter()
-        .flat_map(|path| sessions::amp::parse_amp_file(path))
-        .collect();
-    all_messages.extend(amp_messages);
-
-    // Parse Droid files in parallel
-    let droid_messages: Vec<UnifiedMessage> = scan_result
-        .droid_files
-        .par_iter()
-        .flat_map(|path| sessions::droid::parse_droid_file(path))
-        .collect();
-    all_messages.extend(droid_messages);
-
-    // 3. Apply date filters
-    let filtered_messages = filter_messages(all_messages, &options);
-
-    // 4. Parallel aggregation
-    let contributions = aggregator::aggregate_by_date(filtered_messages);
-
-    // 5. Generate result
-    let processing_time_ms = start.elapsed().as_millis() as u32;
-    let result = aggregator::generate_graph_result(contributions, processing_time_ms);
-
-    Ok(result)
-}
-
-/// Filter messages by date range options
-fn filter_messages(messages: Vec<UnifiedMessage>, options: &GraphOptions) -> Vec<UnifiedMessage> {
-    let mut filtered = messages;
-
-    // Filter by year
-    if let Some(year) = &options.year {
-        let year_prefix = format!("{}-", year);
-        filtered.retain(|m| m.date.starts_with(&year_prefix));
-    }
-
-    // Filter by since date
-    if let Some(since) = &options.since {
-        filtered.retain(|m| m.date.as_str() >= since.as_str());
-    }
-
-    // Filter by until date
-    if let Some(until) = &options.until {
-        filtered.retain(|m| m.date.as_str() <= until.as_str());
-    }
-
-    filtered
-}
-
-/// Scan session files and return file counts per source
-#[napi(object)]
-pub struct ScanStats {
-    pub opencode_files: i32,
-    pub claude_files: i32,
-    pub codex_files: i32,
-    pub gemini_files: i32,
-    pub cursor_files: i32,
-    pub amp_files: i32,
-    pub droid_files: i32,
-    pub total_files: i32,
-}
-
-/// Scan for session files (for debugging/testing)
-#[napi]
-pub fn scan_sessions(home_dir: Option<String>, sources: Option<Vec<String>>) -> napi::Result<ScanStats> {
-    let home = get_home_dir(&home_dir)?;
-
-    let srcs = sources.unwrap_or_else(|| {
-        vec![
-            "opencode".to_string(),
-            "claude".to_string(),
-            "codex".to_string(),
-            "gemini".to_string(),
-            "cursor".to_string(),
-            "amp".to_string(),
-            "droid".to_string(),
-        ]
-    });
-
-    let result = scanner::scan_all_sources(&home, &srcs);
-
-    Ok(ScanStats {
-        opencode_files: result.opencode_files.len() as i32,
-        claude_files: result.claude_files.len() as i32,
-        codex_files: result.codex_files.len() as i32,
-        gemini_files: result.gemini_files.len() as i32,
-        cursor_files: result.cursor_files.len() as i32,
-        amp_files: result.amp_files.len() as i32,
-        droid_files: result.droid_files.len() as i32,
-        total_files: result.total_files() as i32,
-    })
 }
 
 // =============================================================================

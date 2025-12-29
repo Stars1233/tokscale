@@ -84,9 +84,6 @@ async function main() {
     case "finalizeGraph":
       result = await nativeCore.finalizeGraph(args[0] as Parameters<typeof nativeCore.finalizeGraph>[0]);
       break;
-    case "generateGraphWithPricing":
-      result = await nativeCore.generateGraphWithPricing(args[0] as Parameters<typeof nativeCore.generateGraphWithPricing>[0]);
-      break;
     default:
       throw new Error(`Unknown method: ${method}`);
   }
