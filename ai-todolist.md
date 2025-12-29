@@ -1210,7 +1210,7 @@ $ bunx tokscale@latest --version
 - [x] Delete `packages/cli/src/sessions/reports.ts`
 - [x] Delete `packages/cli/src/sessions/index.ts`
 - [x] Keep `packages/cli/src/sessions/types.ts`
-- [ ] Update `native.ts` - remove fallback logic
+- [x] Update `native.ts` - remove fallback logic
 - [x] Update `cli.ts` - use Rust for pricing command
 - [x] Update imports in `submit.ts`, `wrapped.ts`, `graph.ts`
 - [x] Run `tsc --noEmit`

@@ -214,7 +214,12 @@ let nativeCore: NativeCore | null = null;
 let loadError: Error | null = null;
 
 try {
-  nativeCore = await import("@tokscale/core").then((m) => m.default || m);
+  // Type assertion needed because dynamic import returns module namespace
+  // nativeCore is used both directly (scanSessions, generateGraph, version) and via subprocess
+  // (async functions like parseLocalSourcesAsync, finalizeReportAsync go through subprocess)
+  nativeCore = await import("@tokscale/core").then(
+    (m) => (m.default || m) as unknown as NativeCore
+  );
 } catch (e) {
   loadError = e as Error;
 }
