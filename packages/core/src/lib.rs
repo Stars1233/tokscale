@@ -1504,7 +1504,7 @@ pub struct PricingLookupResult {
 
 #[napi]
 pub async fn lookup_pricing(model_id: String) -> napi::Result<PricingLookupResult> {
-    let service = pricing::PricingService::fetch()
+    let service = pricing::PricingService::get_or_init()
         .await
         .map_err(|e| napi::Error::from_reason(e))?;
 

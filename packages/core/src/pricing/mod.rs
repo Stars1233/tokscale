@@ -6,8 +6,12 @@ pub mod openrouter;
 
 use lookup::{PricingLookup, LookupResult};
 use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::OnceCell;
 
 pub use litellm::ModelPricing;
+
+static PRICING_SERVICE: OnceCell<Arc<PricingService>> = OnceCell::const_new();
 
 pub struct PricingService {
     lookup: PricingLookup,
@@ -20,7 +24,7 @@ impl PricingService {
         }
     }
     
-    pub async fn fetch() -> Result<Self, String> {
+    async fn fetch_inner() -> Result<Self, String> {
         let (litellm_result, openrouter_data) = tokio::join!(
             litellm::fetch(),
             openrouter::fetch_all_mapped()
@@ -29,6 +33,16 @@ impl PricingService {
         let litellm_data = litellm_result.map_err(|e| e.to_string())?;
         
         Ok(Self::new(litellm_data, openrouter_data))
+    }
+    
+    pub async fn fetch() -> Result<Self, String> {
+        Self::fetch_inner().await
+    }
+    
+    pub async fn get_or_init() -> Result<Arc<PricingService>, String> {
+        PRICING_SERVICE.get_or_try_init(|| async {
+            Self::fetch_inner().await.map(Arc::new)
+        }).await.map(Arc::clone)
     }
     
     pub fn lookup(&self, model_id: &str) -> Option<LookupResult> {
