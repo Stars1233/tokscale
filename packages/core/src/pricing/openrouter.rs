@@ -11,9 +11,7 @@ const MAX_RETRIES: u32 = 3;
 const INITIAL_BACKOFF_MS: u64 = 200;
 const MAX_CONCURRENT_REQUESTS: usize = 10;
 
-// =============================================================================
-// Structs for /api/v1/models endpoint (list all models)
-// =============================================================================
+/// Structs for `/api/v1/models` endpoint (list all models).
 
 #[derive(Deserialize)]
 struct ModelListItem {
@@ -25,9 +23,7 @@ struct ModelsListResponse {
     data: Vec<ModelListItem>,
 }
 
-// =============================================================================
-// Structs for /api/v1/models/{id}/endpoints endpoint (author pricing)
-// =============================================================================
+/// Structs for `/api/v1/models/{id}/endpoints` endpoint (author pricing).
 
 #[derive(Deserialize)]
 struct EndpointPricing {
@@ -57,11 +53,10 @@ struct EndpointsResponse {
     data: EndpointData,
 }
 
-// =============================================================================
-// Mapping from model ID prefix to author provider name
-// =============================================================================
-
-/// Maps the model ID prefix (e.g., "z-ai") to the provider_name in endpoints API (e.g., "Z.AI")
+/// Model ID prefix to provider name mapping.
+///
+/// Translates model ID prefixes like `z-ai` to their corresponding
+/// provider names in the endpoints API, such as `Z.AI`.
 fn get_author_provider_name(model_id: &str) -> Option<&'static str> {
     let prefix = model_id.split('/').next()?;
     
@@ -77,7 +72,7 @@ fn get_author_provider_name(model_id: &str) -> Option<&'static str> {
         "qwen" => Some("Alibaba"),
         "cohere" => Some("Cohere"),
         "perplexity" => Some("Perplexity"),
-        "moonshotai" => Some("Moonshot"),
+        "moonshotai" => Some("Moonshot AI"),
         _ => None,
     }
 }
