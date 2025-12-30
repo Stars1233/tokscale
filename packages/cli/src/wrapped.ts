@@ -6,8 +6,7 @@ import * as os from "node:os";
 import pc from "picocolors";
 import {
   parseLocalSourcesAsync,
-  finalizeReportAsync,
-  finalizeGraphAsync,
+  finalizeReportAndGraphAsync,
   type ParsedMessages,
 } from "./native.js";
 import { syncCursorCache, loadCursorCredentials } from "./cursor.js";
@@ -243,32 +242,13 @@ async function loadWrappedData(options: WrappedOptions): Promise<WrappedData> {
     processingTimeMs: 0,
   };
 
-  const [reportResult, graphResult] = await Promise.allSettled([
-    finalizeReportAsync({
-      localMessages: localMessages || emptyMessages,
-      includeCursor: includeCursor && cursorSync.synced,
-      since,
-      until,
-      year,
-    }),
-    finalizeGraphAsync({
-      localMessages: localMessages || emptyMessages,
-      includeCursor: includeCursor && cursorSync.synced,
-      since,
-      until,
-      year,
-    }),
-  ]);
-
-  if (reportResult.status === "rejected") {
-    throw new Error(`Failed to generate report: ${reportResult.reason}`);
-  }
-  if (graphResult.status === "rejected") {
-    throw new Error(`Failed to generate graph: ${graphResult.reason}`);
-  }
-
-  const report = reportResult.value;
-  const graph = graphResult.value;
+  const { report, graph } = await finalizeReportAndGraphAsync({
+    localMessages: localMessages || emptyMessages,
+    includeCursor: includeCursor && cursorSync.synced,
+    since,
+    until,
+    year,
+  });
 
   const modelMap = new Map<string, { cost: number; tokens: number }>();
   for (const entry of report.entries) {

@@ -16,8 +16,7 @@ import type {
 } from "../types/index.js";
 import {
   parseLocalSourcesAsync,
-  finalizeReportAsync,
-  finalizeGraphAsync,
+  finalizeReportAndGraphAsync,
   type ParsedMessages,
 } from "../../native.js";
 
@@ -182,32 +181,14 @@ async function loadData(
   };
 
   setPhase?.("finalizing-report");
-  const phase2Results = await Promise.allSettled([
-    finalizeReportAsync({
-      localMessages: localMessages || emptyMessages,
-      includeCursor: includeCursor && cursorSync.synced,
-      since,
-      until,
-      year,
-    }),
-    finalizeGraphAsync({
-      localMessages: localMessages || emptyMessages,
-      includeCursor: includeCursor && cursorSync.synced,
-      since,
-      until,
-      year,
-    }),
-  ]);
-
-  if (phase2Results[0].status === "rejected") {
-    throw new Error(`Failed to finalize report: ${phase2Results[0].reason}`);
-  }
-  if (phase2Results[1].status === "rejected") {
-    throw new Error(`Failed to finalize graph: ${phase2Results[1].reason}`);
-  }
-
-  const report = phase2Results[0].value;
-  const graph = phase2Results[1].value;
+  // Single call ensures consistent pricing between report and graph
+  const { report, graph } = await finalizeReportAndGraphAsync({
+    localMessages: localMessages || emptyMessages,
+    includeCursor: includeCursor && cursorSync.synced,
+    since,
+    until,
+    year,
+  });
 
   const settings = loadSettings();
   const allModelEntries: ModelEntry[] = report.entries.map(e => ({
