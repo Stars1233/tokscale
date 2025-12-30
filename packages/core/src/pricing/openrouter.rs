@@ -102,21 +102,39 @@ async fn fetch_author_pricing(
     
     let url = format!("https://openrouter.ai/api/v1/models/{}/endpoints", model_id);
     
-    let response = client.get(&url)
+    let response = match client.get(&url)
         .header("Content-Type", "application/json")
         .send()
-        .await
-        .ok()?;
+        .await {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("[tokscale] endpoints fetch failed for {}: {}", model_id, e);
+                return None;
+            }
+        };
     
     if !response.status().is_success() {
+        eprintln!("[tokscale] endpoints API returned {} for {}", response.status(), model_id);
         return None;
     }
     
-    let data: EndpointsResponse = response.json().await.ok()?;
+    let data: EndpointsResponse = match response.json().await {
+        Ok(d) => d,
+        Err(e) => {
+            eprintln!("[tokscale] endpoints JSON parse failed for {}: {}", model_id, e);
+            return None;
+        }
+    };
     
     // Find the endpoint from the author provider
-    let author_endpoint = data.data.endpoints.iter()
-        .find(|e| e.provider_name == author_name)?;
+    let author_endpoint = match data.data.endpoints.iter()
+        .find(|e| e.provider_name == author_name) {
+            Some(ep) => ep,
+            None => {
+                eprintln!("[tokscale] author provider '{}' not found for {}", author_name, model_id);
+                return None;
+            }
+        };
     
     let input_cost = parse_price(&author_endpoint.pricing.prompt)?;
     let output_cost = parse_price(&author_endpoint.pricing.completion)?;
