@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useCallback, useState } from "react";
+import { useRef, useEffect, useCallback, useState, useMemo } from "react";
 import styled, { keyframes } from "styled-components";
 import type { DailyContribution, GraphColorPalette, TooltipPosition } from "@/lib/types";
 import { getGradeColor } from "@/lib/themes";
@@ -119,7 +119,7 @@ interface TokenGraph3DProps {
   contributions: DailyContribution[];
   palette: GraphColorPalette;
   year: string;
-  maxCost: number;
+  maxTokens: number;
   totalCost: number;
   totalTokens: number;
   activeDays: number;
@@ -135,7 +135,7 @@ export function TokenGraph3D({
   contributions,
   palette,
   year,
-  maxCost,
+  maxTokens,
   totalCost,
   totalTokens,
   activeDays,
@@ -151,7 +151,7 @@ export function TokenGraph3D({
   const [obeliskLoaded, setObeliskLoaded] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const obeliskRef = useRef<any>(null);
-  const weeksData = groupByWeek(contributions, year);
+  const weeksData = useMemo(() => groupByWeek(contributions, year), [contributions, year]);
   const isDark = useSystemDarkMode();
 
   useEffect(() => {
@@ -202,8 +202,8 @@ export function TokenGraph3D({
         offsetY += 13;
 
         let cubeHeight = MIN_CUBE_HEIGHT;
-        if (day && maxCost > 0) {
-          cubeHeight = MIN_CUBE_HEIGHT + Math.floor((MAX_CUBE_HEIGHT / maxCost) * day.totals.cost);
+        if (day && maxTokens > 0) {
+          cubeHeight = MIN_CUBE_HEIGHT + Math.floor((MAX_CUBE_HEIGHT / maxTokens) * day.totals.tokens);
         }
 
         const intensity = day?.intensity ?? 0;
@@ -221,7 +221,7 @@ export function TokenGraph3D({
         pixelView.renderObject(cube, p3d);
       }
     }
-  }, [obeliskLoaded, contributions, palette, year, maxCost, weeksData]);
+  }, [obeliskLoaded, palette, year, maxTokens, weeksData, isDark]);
 
   const getDayAtPosition = useCallback(
     (clientX: number, clientY: number): { day: DailyContribution | null; position: TooltipPosition } | null => {

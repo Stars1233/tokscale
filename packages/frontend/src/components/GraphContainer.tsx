@@ -74,17 +74,17 @@ export function GraphContainer({ data }: GraphContainerProps) {
     return recalculateIntensity(filtered);
   }, [filteredBySource.contributions, selectedYear]);
 
-  const maxCost = useMemo(() => Math.max(...yearContributions.map((c) => c.totals.cost), 0), [yearContributions]);
+  const maxTokens = useMemo(() => Math.max(...yearContributions.map((c) => c.totals.tokens), 0), [yearContributions]);
   const totalCost = useMemo(() => yearContributions.reduce((sum, c) => sum + c.totals.cost, 0), [yearContributions]);
   const totalTokens = useMemo(() => yearContributions.reduce((sum, c) => sum + c.totals.tokens, 0), [yearContributions]);
-  const activeDays = useMemo(() => yearContributions.filter((c) => c.totals.cost > 0).length, [yearContributions]);
+  const activeDays = useMemo(() => yearContributions.filter((c) => c.totals.tokens > 0).length, [yearContributions]);
   const bestDay = useMemo(() => findBestDay(yearContributions), [yearContributions]);
   const currentStreak = useMemo(() => calculateCurrentStreak(yearContributions), [yearContributions]);
   const longestStreak = useMemo(() => calculateLongestStreak(yearContributions), [yearContributions]);
 
   const dateRange = useMemo(() => {
     if (yearContributions.length === 0) return { start: "", end: "" };
-    const dates = yearContributions.filter((c) => c.totals.cost > 0).map((c) => c.date).sort();
+    const dates = yearContributions.filter((c) => c.totals.tokens > 0).map((c) => c.date).sort();
     return {
       start: dates[0]?.split("-").slice(1).join("/") || "",
       end: dates[dates.length - 1]?.split("-").slice(1).join("/") || "",
@@ -94,9 +94,9 @@ export function GraphContainer({ data }: GraphContainerProps) {
 
   useEffect(() => {
     if (!initializedRef.current && yearContributions.length > 0) {
-      const activeDaysWithCost = yearContributions.filter((c) => c.totals.cost > 0);
-      if (activeDaysWithCost.length > 0) {
-        const latestDay = activeDaysWithCost[activeDaysWithCost.length - 1];
+      const activeDaysWithTokens = yearContributions.filter((c) => c.totals.tokens > 0);
+      if (activeDaysWithTokens.length > 0) {
+        const latestDay = activeDaysWithTokens[activeDaysWithTokens.length - 1];
         // Intentional one-time initialization on first data load
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectedDay(latestDay);
@@ -148,7 +148,7 @@ export function GraphContainer({ data }: GraphContainerProps) {
               contributions={yearContributions}
               palette={palette}
               year={selectedYear}
-              maxCost={maxCost}
+              maxTokens={maxTokens}
               totalCost={totalCost}
               totalTokens={totalTokens}
               activeDays={activeDays}
