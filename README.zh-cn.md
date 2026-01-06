@@ -576,14 +576,50 @@ cd packages/core && bun run bench
 
 | 平台 | 架构 | 状态 |
 |----------|--------------|--------|
-| macOS | x86_64 | 支持 |
-| macOS | aarch64（Apple Silicon） | 支持 |
-| Linux | x86_64（glibc） | 支持 |
-| Linux | aarch64（glibc） | 支持 |
-| Linux | x86_64（musl） | 支持 |
-| Linux | aarch64（musl） | 支持 |
-| Windows | x86_64 | 支持 |
-| Windows | aarch64 | 支持 |
+| macOS | x86_64 | ✅ 支持 |
+| macOS | aarch64（Apple Silicon） | ✅ 支持 |
+| Linux | x86_64（glibc） | ✅ 支持 |
+| Linux | aarch64（glibc） | ✅ 支持 |
+| Linux | x86_64（musl） | ✅ 支持 |
+| Linux | aarch64（musl） | ✅ 支持 |
+| Windows | x86_64 | ✅ 支持 |
+| Windows | aarch64 | ✅ 支持 |
+
+### Windows 支持
+
+Tokscale 完全支持 Windows。TUI 和 CLI 的工作方式与 macOS/Linux 相同。
+
+**Windows 安装：**
+```powershell
+# 安装 Bun（PowerShell）
+powershell -c "irm bun.sh/install.ps1 | iex"
+
+# 运行 tokscale
+bunx tokscale@latest
+```
+
+#### Windows 上的数据位置
+
+AI 编程工具将会话数据存储在跨平台位置。大多数工具在所有平台上使用相同的相对路径：
+
+| 工具 | Unix 路径 | Windows 路径 | 来源 |
+|------|-----------|--------------|--------|
+| OpenCode | `~/.local/share/opencode/` | `%USERPROFILE%\.local\share\opencode\` | 使用 [`xdg-basedir`](https://github.com/sindresorhus/xdg-basedir) 实现跨平台一致性（[源码](https://github.com/sst/opencode/blob/main/packages/opencode/src/global/index.ts)） |
+| Claude Code | `~/.claude/` | `%USERPROFILE%\.claude\` | 所有平台使用相同路径 |
+| Codex CLI | `~/.codex/` | `%USERPROFILE%\.codex\` | 可通过 `CODEX_HOME` 环境变量配置（[源码](https://github.com/openai/codex)） |
+| Gemini CLI | `~/.gemini/` | `%USERPROFILE%\.gemini\` | 所有平台使用相同路径 |
+| Amp | `~/.local/share/amp/` | `%USERPROFILE%\.local\share\amp\` | 与 OpenCode 一样使用 `xdg-basedir` |
+| Cursor | API 同步 | API 同步 | 通过 API 获取数据，缓存在 `%USERPROFILE%\.config\tokscale\cursor-cache\` |
+| Droid | `~/.factory/` | `%USERPROFILE%\.factory\` | 所有平台使用相同路径 |
+
+> **注意**：在 Windows 上，`~` 扩展为 `%USERPROFILE%`（例如 `C:\Users\用户名`）。这些工具故意使用 Unix 风格的路径（如 `.local/share`）而不是 Windows 原生路径（如 `%APPDATA%`），以实现跨平台一致性。
+
+#### Windows 特定配置
+
+Tokscale 将配置存储在：
+- **配置**: `%USERPROFILE%\.config\tokscale\settings.json`
+- **缓存**: `%USERPROFILE%\.cache\tokscale\`
+- **Cursor 凭据**: `%USERPROFILE%\.config\tokscale\cursor-credentials.json`
 
 ## 会话数据保留
 

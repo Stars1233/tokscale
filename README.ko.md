@@ -575,14 +575,50 @@ cd packages/core && bun run bench
 
 | 플랫폼 | 아키텍처 | 상태 |
 |----------|--------------|--------|
-| macOS | x86_64 | 지원 |
-| macOS | aarch64 (Apple Silicon) | 지원 |
-| Linux | x86_64 (glibc) | 지원 |
-| Linux | aarch64 (glibc) | 지원 |
-| Linux | x86_64 (musl) | 지원 |
-| Linux | aarch64 (musl) | 지원 |
-| Windows | x86_64 | 지원 |
-| Windows | aarch64 | 지원 |
+| macOS | x86_64 | ✅ 지원 |
+| macOS | aarch64 (Apple Silicon) | ✅ 지원 |
+| Linux | x86_64 (glibc) | ✅ 지원 |
+| Linux | aarch64 (glibc) | ✅ 지원 |
+| Linux | x86_64 (musl) | ✅ 지원 |
+| Linux | aarch64 (musl) | ✅ 지원 |
+| Windows | x86_64 | ✅ 지원 |
+| Windows | aarch64 | ✅ 지원 |
+
+### Windows 지원
+
+Tokscale은 Windows를 완벽하게 지원합니다. TUI와 CLI는 macOS/Linux와 동일하게 작동합니다.
+
+**Windows 설치:**
+```powershell
+# Bun 설치 (PowerShell)
+powershell -c "irm bun.sh/install.ps1 | iex"
+
+# tokscale 실행
+bunx tokscale@latest
+```
+
+#### Windows에서의 데이터 위치
+
+AI 코딩 도구들은 크로스 플랫폼 위치에 세션 데이터를 저장합니다. 대부분의 도구는 모든 플랫폼에서 동일한 상대 경로를 사용합니다:
+
+| 도구 | Unix 경로 | Windows 경로 | 출처 |
+|------|-----------|--------------|--------|
+| OpenCode | `~/.local/share/opencode/` | `%USERPROFILE%\.local\share\opencode\` | 크로스 플랫폼 일관성을 위해 [`xdg-basedir`](https://github.com/sindresorhus/xdg-basedir) 사용 ([소스](https://github.com/sst/opencode/blob/main/packages/opencode/src/global/index.ts)) |
+| Claude Code | `~/.claude/` | `%USERPROFILE%\.claude\` | 모든 플랫폼에서 동일한 경로 |
+| Codex CLI | `~/.codex/` | `%USERPROFILE%\.codex\` | `CODEX_HOME` 환경변수로 설정 가능 ([소스](https://github.com/openai/codex)) |
+| Gemini CLI | `~/.gemini/` | `%USERPROFILE%\.gemini\` | 모든 플랫폼에서 동일한 경로 |
+| Amp | `~/.local/share/amp/` | `%USERPROFILE%\.local\share\amp\` | OpenCode와 동일하게 `xdg-basedir` 사용 |
+| Cursor | API 동기화 | API 동기화 | API를 통해 데이터 가져오기, `%USERPROFILE%\.config\tokscale\cursor-cache\`에 캐시 |
+| Droid | `~/.factory/` | `%USERPROFILE%\.factory\` | 모든 플랫폼에서 동일한 경로 |
+
+> **참고**: Windows에서 `~`는 `%USERPROFILE%`로 확장됩니다 (예: `C:\Users\사용자이름`). 이러한 도구들은 `%APPDATA%`와 같은 Windows 기본 경로 대신 크로스 플랫폼 일관성을 위해 의도적으로 Unix 스타일 경로(`.local/share` 등)를 사용합니다.
+
+#### Windows 전용 설정
+
+Tokscale은 다음 위치에 설정을 저장합니다:
+- **설정**: `%USERPROFILE%\.config\tokscale\settings.json`
+- **캐시**: `%USERPROFILE%\.cache\tokscale\`
+- **Cursor 자격 증명**: `%USERPROFILE%\.config\tokscale\cursor-credentials.json`
 
 ## 세션 데이터 보존
 

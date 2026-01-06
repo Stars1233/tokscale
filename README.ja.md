@@ -576,14 +576,50 @@ cd packages/core && bun run bench
 
 | プラットフォーム | アーキテクチャ | ステータス |
 |----------|--------------|--------|
-| macOS | x86_64 | サポート |
-| macOS | aarch64（Apple Silicon） | サポート |
-| Linux | x86_64（glibc） | サポート |
-| Linux | aarch64（glibc） | サポート |
-| Linux | x86_64（musl） | サポート |
-| Linux | aarch64（musl） | サポート |
-| Windows | x86_64 | サポート |
-| Windows | aarch64 | サポート |
+| macOS | x86_64 | ✅ サポート |
+| macOS | aarch64（Apple Silicon） | ✅ サポート |
+| Linux | x86_64（glibc） | ✅ サポート |
+| Linux | aarch64（glibc） | ✅ サポート |
+| Linux | x86_64（musl） | ✅ サポート |
+| Linux | aarch64（musl） | ✅ サポート |
+| Windows | x86_64 | ✅ サポート |
+| Windows | aarch64 | ✅ サポート |
+
+### Windowsサポート
+
+TokscaleはWindowsを完全にサポートしています。TUIとCLIはmacOS/Linuxと同様に動作します。
+
+**Windowsでのインストール：**
+```powershell
+# Bunのインストール（PowerShell）
+powershell -c "irm bun.sh/install.ps1 | iex"
+
+# tokscaleの実行
+bunx tokscale@latest
+```
+
+#### Windowsでのデータ保存場所
+
+AIコーディングツールはクロスプラットフォームの場所にセッションデータを保存します。ほとんどのツールはすべてのプラットフォームで同じ相対パスを使用します：
+
+| ツール | Unixパス | Windowsパス | ソース |
+|------|-----------|--------------|--------|
+| OpenCode | `~/.local/share/opencode/` | `%USERPROFILE%\.local\share\opencode\` | クロスプラットフォームの一貫性のため[`xdg-basedir`](https://github.com/sindresorhus/xdg-basedir)を使用（[ソース](https://github.com/sst/opencode/blob/main/packages/opencode/src/global/index.ts)） |
+| Claude Code | `~/.claude/` | `%USERPROFILE%\.claude\` | すべてのプラットフォームで同じパス |
+| Codex CLI | `~/.codex/` | `%USERPROFILE%\.codex\` | `CODEX_HOME`環境変数で設定可能（[ソース](https://github.com/openai/codex)） |
+| Gemini CLI | `~/.gemini/` | `%USERPROFILE%\.gemini\` | すべてのプラットフォームで同じパス |
+| Amp | `~/.local/share/amp/` | `%USERPROFILE%\.local\share\amp\` | OpenCodeと同様に`xdg-basedir`を使用 |
+| Cursor | API同期 | API同期 | APIでデータを取得、`%USERPROFILE%\.config\tokscale\cursor-cache\`にキャッシュ |
+| Droid | `~/.factory/` | `%USERPROFILE%\.factory\` | すべてのプラットフォームで同じパス |
+
+> **注**: Windowsでは`~`は`%USERPROFILE%`に展開されます（例：`C:\Users\ユーザー名`）。これらのツールは`%APPDATA%`のようなWindowsネイティブパスではなく、クロスプラットフォームの一貫性のためにUnixスタイルのパス（`.local/share`など）を意図的に使用しています。
+
+#### Windows固有の設定
+
+Tokscaleは以下の場所に設定を保存します：
+- **設定**: `%USERPROFILE%\.config\tokscale\settings.json`
+- **キャッシュ**: `%USERPROFILE%\.cache\tokscale\`
+- **Cursor認証情報**: `%USERPROFILE%\.config\tokscale\cursor-credentials.json`
 
 ## セッションデータ保持
 

@@ -633,14 +633,50 @@ cd packages/core && bun run bench
 
 | Platform | Architecture | Status |
 |----------|--------------|--------|
-| macOS | x86_64 | Supported |
-| macOS | aarch64 (Apple Silicon) | Supported |
-| Linux | x86_64 (glibc) | Supported |
-| Linux | aarch64 (glibc) | Supported |
-| Linux | x86_64 (musl) | Supported |
-| Linux | aarch64 (musl) | Supported |
-| Windows | x86_64 | Supported |
-| Windows | aarch64 | Supported |
+| macOS | x86_64 | ✅ Supported |
+| macOS | aarch64 (Apple Silicon) | ✅ Supported |
+| Linux | x86_64 (glibc) | ✅ Supported |
+| Linux | aarch64 (glibc) | ✅ Supported |
+| Linux | x86_64 (musl) | ✅ Supported |
+| Linux | aarch64 (musl) | ✅ Supported |
+| Windows | x86_64 | ✅ Supported |
+| Windows | aarch64 | ✅ Supported |
+
+### Windows Support
+
+Tokscale fully supports Windows. The TUI and CLI work the same as on macOS/Linux.
+
+**Installation on Windows:**
+```powershell
+# Install Bun (PowerShell)
+powershell -c "irm bun.sh/install.ps1 | iex"
+
+# Run tokscale
+bunx tokscale@latest
+```
+
+#### Data Locations on Windows
+
+AI coding tools store their session data in cross-platform locations. Most tools use the same relative paths on all platforms:
+
+| Tool | Unix Path | Windows Path | Source |
+|------|-----------|--------------|--------|
+| OpenCode | `~/.local/share/opencode/` | `%USERPROFILE%\.local\share\opencode\` | Uses [`xdg-basedir`](https://github.com/sindresorhus/xdg-basedir) for cross-platform consistency ([source](https://github.com/sst/opencode/blob/main/packages/opencode/src/global/index.ts)) |
+| Claude Code | `~/.claude/` | `%USERPROFILE%\.claude\` | Same path on all platforms |
+| Codex CLI | `~/.codex/` | `%USERPROFILE%\.codex\` | Configurable via `CODEX_HOME` env var ([source](https://github.com/openai/codex)) |
+| Gemini CLI | `~/.gemini/` | `%USERPROFILE%\.gemini\` | Same path on all platforms |
+| Amp | `~/.local/share/amp/` | `%USERPROFILE%\.local\share\amp\` | Uses `xdg-basedir` like OpenCode |
+| Cursor | API sync | API sync | Data fetched via API, cached in `%USERPROFILE%\.config\tokscale\cursor-cache\` |
+| Droid | `~/.factory/` | `%USERPROFILE%\.factory\` | Same path on all platforms |
+
+> **Note**: On Windows, `~` expands to `%USERPROFILE%` (e.g., `C:\Users\YourName`). These tools intentionally use Unix-style paths (like `.local/share`) even on Windows for cross-platform consistency, rather than Windows-native paths like `%APPDATA%`.
+
+#### Windows-Specific Configuration
+
+Tokscale stores its configuration in:
+- **Config**: `%USERPROFILE%\.config\tokscale\settings.json`
+- **Cache**: `%USERPROFILE%\.cache\tokscale\`
+- **Cursor credentials**: `%USERPROFILE%\.config\tokscale\cursor-credentials.json`
 
 ## Session Data Retention
 
