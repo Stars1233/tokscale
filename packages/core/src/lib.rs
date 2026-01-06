@@ -188,9 +188,10 @@ fn get_home_dir(home_dir_option: &Option<String>) -> napi::Result<String> {
     home_dir_option
         .clone()
         .or_else(|| std::env::var("HOME").ok())
+        .or_else(|| dirs::home_dir().map(|p| p.to_string_lossy().into_owned()))
         .ok_or_else(|| {
             napi::Error::from_reason(
-                "HOME directory not specified and HOME environment variable not set",
+                "HOME directory not specified and could not determine home directory",
             )
         })
 }
