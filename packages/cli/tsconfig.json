@@ -15,7 +15,8 @@
     "resolveJsonModule": true,
     "jsx": "react-jsx",
     "jsxImportSource": "@opentui/solid",
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "customConditions": ["browser"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

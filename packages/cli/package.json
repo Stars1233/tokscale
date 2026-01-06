@@ -21,9 +21,9 @@
   "scripts": {
     "build": "tsc && bun run build:tui",
     "build:tui": "echo 'TUI bundling skipped - OpenTUI requires Bun runtime'",
-    "dev": "bun src/cli.ts",
-    "tui": "bun src/cli.ts tui",
-    "start": "bun dist/cli.js",
+    "dev": "bun run --conditions=browser src/cli.ts",
+    "tui": "bun run --conditions=browser src/cli.ts tui",
+    "start": "bun run --conditions=browser dist/cli.js",
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
