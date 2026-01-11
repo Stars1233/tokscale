@@ -160,13 +160,37 @@ const TableHeaderCell = styled.th`
 
 const TableBody = styled.tbody``;
 
-const TableRow = styled.tr`
+const TableRow = styled.tr<{ $isCurrentUser?: boolean }>`
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  position: relative;
   
   &:hover {
-    background-color: rgba(20, 26, 33, 0.6);
+    background-color: ${props => props.$isCurrentUser ? 'rgba(0, 115, 255, 0.12)' : 'rgba(20, 26, 33, 0.6)'};
   }
+
+  ${props => props.$isCurrentUser && `
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: #0073FF;
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border: 2px solid #0073FF;
+      border-radius: 4px;
+      pointer-events: none;
+    }
+
+    background: rgba(0, 115, 255, 0.05);
+  `}
 `;
 
 const TableCell = styled.td`
@@ -480,6 +504,97 @@ const CopyIconButton = styled.button`
   }
 `;
 
+const CurrentUserCard = styled.div`
+  margin-bottom: 24px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 2px solid #0073FF;
+  background: rgba(0, 115, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+
+  @media (max-width: 640px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+`;
+
+const CurrentUserInfo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+`;
+
+const CurrentUserDetails = styled.div`
+  min-width: 0;
+  flex: 1;
+`;
+
+const CurrentUserName = styled.p`
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--color-fg-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const CurrentUserUsername = styled.p`
+  font-size: 14px;
+  color: var(--color-fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const CurrentUserStats = styled.div`
+  display: flex;
+  gap: 24px;
+  align-items: center;
+
+  @media (max-width: 640px) {
+    justify-content: space-between;
+  }
+`;
+
+const CurrentUserStat = styled.div`
+  text-align: right;
+
+  @media (max-width: 640px) {
+    text-align: left;
+  }
+`;
+
+const CurrentUserStatLabel = styled.p`
+  font-size: 12px;
+  color: var(--color-fg-muted);
+  margin-bottom: 4px;
+`;
+
+const CurrentUserStatValue = styled.p`
+  font-size: 16px;
+  font-weight: 600;
+  color: #0073FF;
+`;
+
+const ErrorBanner = styled.div`
+  margin-bottom: 24px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #F85149;
+  background: rgba(248, 81, 73, 0.1);
+  color: #F85149;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
 export type Period = "all" | "month" | "week";
 
 export interface LeaderboardUser {
@@ -515,6 +630,7 @@ export interface LeaderboardData {
 
 interface LeaderboardClientProps {
   initialData: LeaderboardData;
+  currentUser: { id: string; username: string; displayName: string | null; avatarUrl: string | null } | null;
 }
 
 function isValidLeaderboardData(data: unknown): data is LeaderboardData {
@@ -528,7 +644,7 @@ function isValidLeaderboardData(data: unknown): data is LeaderboardData {
   );
 }
 
-export default function LeaderboardClient({ initialData }: LeaderboardClientProps) {
+export default function LeaderboardClient({ initialData, currentUser }: LeaderboardClientProps) {
   const router = useRouter();
   const [data, setData] = useState<LeaderboardData>(initialData);
   const [isLoading, setIsLoading] = useState(false);
@@ -536,8 +652,41 @@ export default function LeaderboardClient({ initialData }: LeaderboardClientProp
   const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
   const [period, setPeriod] = useState<Period>(initialData.period);
   const [page, setPage] = useState(initialData.pagination.page);
+  const [currentUserRank, setCurrentUserRank] = useState<LeaderboardUser | null>(null);
+  const [currentUserRankError, setCurrentUserRankError] = useState(false);
 
   const isFirstMount = useRef(true);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setCurrentUserRank(null);
+      setCurrentUserRankError(false);
+      return;
+    }
+
+    const abortController = new AbortController();
+    setCurrentUserRankError(false);
+
+    fetch(`/api/leaderboard/user/${currentUser.username}?period=${period}`, {
+      signal: abortController.signal,
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((userData) => {
+        setCurrentUserRank(userData);
+        setCurrentUserRankError(false);
+      })
+      .catch((err) => {
+        if (err.name !== "AbortError") {
+          setCurrentUserRank(null);
+          setCurrentUserRankError(true);
+        }
+      });
+
+    return () => abortController.abort();
+  }, [currentUser, period]);
 
   const fetchData = (targetPeriod: Period, targetPage: number, signal?: AbortSignal) => {
     setIsLoading(true);
@@ -634,6 +783,51 @@ export default function LeaderboardClient({ initialData }: LeaderboardClientProp
           </StatCard>
         </StatsGrid>
       </Section>
+
+      {currentUser && currentUserRankError && (
+        <ErrorBanner>
+          <span>⚠️</span>
+          <span>Unable to load your ranking. Please refresh the page.</span>
+        </ErrorBanner>
+      )}
+
+      {currentUser && currentUserRank && (
+        <CurrentUserCard>
+          <CurrentUserInfo>
+            <Avatar
+              src={currentUser.avatarUrl || `https://github.com/${currentUser.username}.png`}
+              alt={currentUser.username}
+              size={48}
+            />
+            <CurrentUserDetails>
+              <CurrentUserName>
+                {currentUser.displayName || currentUser.username}
+              </CurrentUserName>
+              <CurrentUserUsername>
+                @{currentUser.username}
+              </CurrentUserUsername>
+            </CurrentUserDetails>
+          </CurrentUserInfo>
+          <CurrentUserStats>
+            <CurrentUserStat>
+              <CurrentUserStatLabel>Your Rank</CurrentUserStatLabel>
+              <CurrentUserStatValue>#{currentUserRank.rank}</CurrentUserStatValue>
+            </CurrentUserStat>
+            <CurrentUserStat>
+              <CurrentUserStatLabel>Tokens</CurrentUserStatLabel>
+              <CurrentUserStatValue title={currentUserRank.totalTokens.toLocaleString('en-US')}>
+                {formatNumber(currentUserRank.totalTokens)}
+              </CurrentUserStatValue>
+            </CurrentUserStat>
+            <CurrentUserStat>
+              <CurrentUserStatLabel>Cost</CurrentUserStatLabel>
+              <CurrentUserStatValue title={currentUserRank.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 })}>
+                {formatCurrency(currentUserRank.totalCost)}
+              </CurrentUserStatValue>
+            </CurrentUserStat>
+          </CurrentUserStats>
+        </CurrentUserCard>
+      )}
 
       <TabSection>
         <TabBar
@@ -737,14 +931,17 @@ export default function LeaderboardClient({ initialData }: LeaderboardClientProp
                     </tr>
                   </TableHead>
                   <TableBody>
-                    {data.users.map((user, index) => (
-                      <TableRow
-                        key={user.userId}
-                        onClick={() => router.push(`/u/${user.username}`)}
-                        style={{
-                          borderBottom: index < data.users.length - 1 ? "1px solid var(--color-border-default)" : "none",
-                        }}
-                      >
+                    {data.users.map((user, index) => {
+                      const isCurrentUser = !!(currentUser && user.username === currentUser.username);
+                      return (
+                        <TableRow
+                          key={user.userId}
+                          onClick={() => router.push(`/u/${user.username}`)}
+                          $isCurrentUser={isCurrentUser}
+                          style={{
+                            borderBottom: index < data.users.length - 1 ? "1px solid var(--color-border-default)" : "none",
+                          }}
+                        >
                         <TableCell className="rank-cell">
                           <RankBadge
                             style={{
@@ -809,7 +1006,8 @@ export default function LeaderboardClient({ initialData }: LeaderboardClientProp
                           <span style={{ color: "var(--color-fg-muted)" }}>{user.submissionCount}</span>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </TableWrapper>

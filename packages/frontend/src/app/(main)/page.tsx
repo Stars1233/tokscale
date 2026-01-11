@@ -2,12 +2,16 @@ import { Navigation } from "@/components/layout/Navigation";
 import { Footer } from "@/components/layout/Footer";
 import { BlackholeHero } from "@/components/BlackholeHero";
 import { getLeaderboardData } from "@/lib/leaderboard/getLeaderboard";
+import { getSession } from "@/lib/auth/session";
 import LeaderboardClient from "./LeaderboardClient";
 
 export const revalidate = 60;
 
 export default async function LeaderboardPage() {
-  const initialData = await getLeaderboardData("all", 1, 50);
+  const [initialData, session] = await Promise.all([
+    getLeaderboardData("all", 1, 50),
+    getSession(),
+  ]);
 
   return (
     <div
@@ -22,7 +26,7 @@ export default async function LeaderboardPage() {
 
       <main className="main-container">
         <BlackholeHero />
-        <LeaderboardClient initialData={initialData} />
+        <LeaderboardClient initialData={initialData} currentUser={session} />
       </main>
 
       <Footer />
