@@ -4,11 +4,17 @@
  */
 
 import pc from "picocolors";
-import { loadCredentials, getApiBaseUrl } from "./credentials.js";
+import * as readline from "node:readline/promises";
+import { stdin as input, stdout as output } from "node:process";
+import { exec } from "node:child_process";
+import { promisify } from "node:util";
+import { loadCredentials, getApiBaseUrl, loadStarCache, saveStarCache } from "./credentials.js";
 import { parseLocalSourcesAsync, finalizeReportAndGraphAsync, type ParsedMessages } from "./native.js";
 import { syncCursorCache, loadCursorCredentials } from "./cursor.js";
 import type { TokenContributionData } from "./graph-types.js";
 import { formatCurrency } from "./table.js";
+
+const execAsync = promisify(exec);
 
 interface SubmitOptions {
   opencode?: boolean;
@@ -45,17 +51,113 @@ interface SubmitResponse {
 
 type SourceType = "opencode" | "claude" | "codex" | "gemini" | "cursor" | "amp" | "droid";
 
-/**
- * Submit command - sends usage data to the platform
- */
+async function checkGhCliExists(): Promise<boolean> {
+  try {
+    await execAsync("gh --version");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function checkGitHubStarStatus(): Promise<boolean> {
+  try {
+    const { stdout, stderr } = await execAsync("gh api /user/starred/junhoyeo/tokscale");
+    return true;
+  } catch (error: any) {
+    if (error.code === 1 || error.stderr?.includes("404")) {
+      return false;
+    }
+    throw error;
+  }
+}
+
+async function attemptToStarRepo(): Promise<boolean> {
+  try {
+    await execAsync("gh repo star junhoyeo/tokscale");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function promptUserToStar(): Promise<'star' | 'decline'> {
+  const rl = readline.createInterface({ input, output });
+  try {
+    const answer = await rl.question(pc.white("  ⭐ Would you like to star tokscale? (Y/n): "));
+    const normalized = answer.trim().toLowerCase();
+    return normalized === 'n' ? 'decline' : 'star';
+  } finally {
+    rl.close();
+  }
+}
+
+async function handleStarPrompt(username: string): Promise<void> {
+  const starCache = loadStarCache(username);
+  if (starCache?.hasStarred) {
+    return;
+  }
+
+  try {
+    const hasStarred = await checkGitHubStarStatus();
+    if (hasStarred) {
+      saveStarCache({
+        username,
+        hasStarred: true,
+        checkedAt: new Date().toISOString(),
+      });
+      return;
+    }
+  } catch {
+    return;
+  }
+
+  console.log();
+  console.log(pc.cyan("  Help us grow! ⭐"));
+  console.log(pc.gray("  Starring tokscale helps others discover the project.\n"));
+
+  const userChoice = await promptUserToStar();
+
+  if (userChoice === 'decline') {
+    console.log();
+    return;
+  }
+
+  const ghExists = await checkGhCliExists();
+  if (!ghExists) {
+    console.log();
+    console.log(pc.yellow("  GitHub CLI (gh) not found."));
+    console.log(pc.white("  Please star the repo manually:"));
+    console.log(pc.cyan("  https://github.com/junhoyeo/tokscale\n"));
+    console.log(pc.gray("  Then run 'tokscale submit' again.\n"));
+    process.exit(0);
+  }
+
+  console.log(pc.gray("  Starring repository..."));
+  const starred = await attemptToStarRepo();
+
+  if (starred) {
+    console.log(pc.green("  ✓ Starred! Thank you for your support.\n"));
+    saveStarCache({
+      username,
+      hasStarred: true,
+      checkedAt: new Date().toISOString(),
+    });
+  } else {
+    console.log(pc.yellow("  Failed to star via gh CLI."));
+    console.log(pc.gray("  Continuing to submit...\n"));
+  }
+}
+
 export async function submit(options: SubmitOptions = {}): Promise<void> {
-  // Step 1: Check if logged in
   const credentials = loadCredentials();
   if (!credentials) {
     console.log(pc.yellow("\n  Not logged in."));
     console.log(pc.gray("  Run 'tokscale login' first.\n"));
     process.exit(1);
   }
+
+  await handleStarPrompt(credentials.username);
 
   console.log(pc.cyan("\n  Tokscale - Submit Usage Data\n"));
 

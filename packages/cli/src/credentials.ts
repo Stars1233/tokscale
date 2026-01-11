@@ -14,10 +14,17 @@ export interface Credentials {
   createdAt: string;
 }
 
+export interface StarCache {
+  username: string;
+  hasStarred: boolean;
+  checkedAt: string;
+}
+
 const OLD_CONFIG_DIR = path.join(os.homedir(), ".tokscale");
 const CONFIG_DIR = path.join(os.homedir(), ".config", "tokscale");
 const OLD_CREDENTIALS_FILE = path.join(OLD_CONFIG_DIR, "credentials.json");
 const CREDENTIALS_FILE = path.join(CONFIG_DIR, "credentials.json");
+const STAR_CACHE_FILE = path.join(CONFIG_DIR, "star-cache.json");
 
 /**
  * Ensure the config directory exists
@@ -121,3 +128,45 @@ export function getApiBaseUrl(): string {
 export function getCredentialsPath(): string {
   return CREDENTIALS_FILE;
 }
+
+/**
+ * Load star cache for a specific username
+ * Returns null if no cache exists or file is invalid
+ */
+export function loadStarCache(username: string): StarCache | null {
+  try {
+    if (!fs.existsSync(STAR_CACHE_FILE)) {
+      return null;
+    }
+    const data = fs.readFileSync(STAR_CACHE_FILE, "utf-8");
+    const parsed = JSON.parse(data);
+
+    if (!parsed.username || typeof parsed.hasStarred !== "boolean" || !parsed.checkedAt) {
+      return null;
+    }
+
+    if (parsed.username !== username) {
+      return null;
+    }
+
+    if (!parsed.hasStarred) {
+      return null;
+    }
+
+    return parsed as StarCache;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Save star cache to disk
+ */
+export function saveStarCache(cache: StarCache): void {
+  ensureConfigDir();
+  fs.writeFileSync(STAR_CACHE_FILE, JSON.stringify(cache, null, 2), {
+    encoding: "utf-8",
+    mode: 0o600,
+  });
+}
+
