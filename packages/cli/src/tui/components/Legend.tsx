@@ -28,8 +28,9 @@ export function Legend(props: LegendProps) {
               <text fg={getModelColor(modelId)}>●</text>
               <text>{` ${truncateModelName(modelId)}`}</text>
               <Show when={i() < models().length - 1}>
-                <text dim>{isVeryNarrowTerminal() ? " " : "  ·"}</text>
+                {() => <text dim>{isVeryNarrowTerminal() ? " " : "  ·"}</text>}
               </Show>
+
             </box>
           )}
         </For>
