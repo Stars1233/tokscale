@@ -47,22 +47,17 @@ const FUZZY_BLOCKLIST: &[&str] = &["auto", "mini", "chat", "base"];
 
 const MIN_FUZZY_MATCH_LEN: usize = 5;
 
-/// Quality/speed tier suffixes that should be stripped for pricing lookup
-/// These indicate provider-specific routing but don't affect the base model pricing
-/// Note: OpenCode Zen uses -xhigh suffix for extra-high quality tier
-const TIER_SUFFIXES: &[&str] = &[
-    "-xhigh", "-low", "-high", "-medium", "-free", ":low", ":high", ":medium", ":free",
-];
+/// Minimum length for a model name candidate after prefix/suffix stripping.
+/// Prevents false positives like "pro" or "flash" being matched alone.
+const MIN_MODEL_NAME_LEN: usize = 5;
 
-/// Routing/quota prefixes that should be stripped for pricing lookup.
-/// These indicate third-party routing systems (e.g., antigravity-auth plugin) but don't affect base model pricing.
-/// Configurable: Add new prefixes here as they emerge from community plugins.
-const STRIPPED_PREFIXES: &[&str] = &["antigravity-"];
+/// Maximum number of leading segments that can be treated as a routing prefix.
+/// Limits how aggressively we strip (e.g., "a-b-claude-3" strips at most "a-b-").
+const MAX_PREFIX_STRIP_SEGMENTS: usize = 2;
 
-/// Model variant suffixes that can be stripped as a fallback when pricing isn't found.
-/// These represent model variants that typically share pricing with their base model.
-/// Order matters: suffixes are tried in order, and only the first match is used.
-const FALLBACK_SUFFIXES: &[&str] = &["-codex", "-codex-max"];
+/// Maximum number of trailing segments that can be treated as a routing suffix.
+/// Handles tier suffixes (-high, -low) and variant suffixes (-thinking, -codex, -codex-max-xhigh).
+const MAX_SUFFIX_STRIP_SEGMENTS: usize = 4;
 
 #[derive(Clone)]
 struct CachedResult {
@@ -163,8 +158,7 @@ impl PricingLookup {
         model_id: &str,
         force_source: Option<&str>,
     ) -> Option<LookupResult> {
-        let prefix_stripped = strip_routing_prefix(model_id);
-        let canonical = aliases::resolve_alias(prefix_stripped).unwrap_or(prefix_stripped);
+        let canonical = aliases::resolve_alias(model_id).unwrap_or(model_id);
         let lower = canonical.to_lowercase();
 
         // Helper to perform lookup with the given source constraint
@@ -174,35 +168,20 @@ impl PricingLookup {
             _ => self.lookup_auto(id),
         };
 
-        // Try direct lookup
+        // 1. Try direct lookup
         if let Some(result) = do_lookup(&lower) {
             return Some(result);
         }
 
-        // Try stripping tier suffix (e.g., -high, -low)
-        if let Some(tier_stripped) = strip_tier_suffix(&lower) {
-            if let Some(result) = do_lookup(tier_stripped) {
-                return Some(result);
-            }
-            // Try fallback suffix on the tier-stripped version (e.g., gpt-5-codex-high -> gpt-5-codex -> gpt-5)
-            if let Some(fallback_stripped) = strip_fallback_suffix(tier_stripped) {
-                if let Some(result) = do_lookup(fallback_stripped) {
-                    return Some(result);
-                }
-            }
+        // 2. Try stripping unknown suffixes (e.g., -thinking, -high, -codex)
+        if let Some(result) = try_strip_unknown_suffix(&lower, do_lookup) {
+            return Some(result);
         }
 
-        // Try stripping fallback suffixes (e.g., -codex variants falling back to base model)
-        if let Some(fallback_stripped) = strip_fallback_suffix(&lower) {
-            if let Some(result) = do_lookup(fallback_stripped) {
-                return Some(result);
-            }
-            // Also try tier suffix on the fallback-stripped version
-            if let Some(tier_stripped) = strip_tier_suffix(fallback_stripped) {
-                if let Some(result) = do_lookup(tier_stripped) {
-                    return Some(result);
-                }
-            }
+        // 3. Try stripping unknown prefixes (e.g., antigravity-, myplugin-)
+        //    For each prefix candidate, also try suffix stripping
+        if let Some(result) = try_strip_unknown_prefix(&lower, do_lookup) {
+            return Some(result);
         }
 
         None
@@ -645,40 +624,66 @@ fn is_fuzzy_eligible(model_id: &str) -> bool {
     !FUZZY_BLOCKLIST.iter().any(|blocked| model_id == *blocked)
 }
 
-fn strip_tier_suffix(model_id: &str) -> Option<&str> {
-    for suffix in TIER_SUFFIXES {
-        if model_id.ends_with(suffix) {
-            return Some(&model_id[..model_id.len() - suffix.len()]);
+/// Attempts to find a model by progressively stripping trailing segments.
+/// Handles arbitrary suffixes (e.g., "claude-sonnet-4-5-thinking" → "claude-sonnet-4-5").
+/// This replaces the hardcoded TIER_SUFFIXES and FALLBACK_SUFFIXES approach.
+fn try_strip_unknown_suffix<F>(model_id: &str, do_lookup: F) -> Option<LookupResult>
+where
+    F: Fn(&str) -> Option<LookupResult>,
+{
+    let parts: Vec<&str> = model_id.split('-').collect();
+
+    if parts.len() < 2 {
+        return None;
+    }
+
+    let max_strip = std::cmp::min(parts.len() - 1, MAX_SUFFIX_STRIP_SEGMENTS);
+
+    for strip in 1..=max_strip {
+        let candidate: String = parts[..parts.len() - strip].join("-");
+
+        if candidate.len() >= MIN_MODEL_NAME_LEN {
+            if let Some(result) = do_lookup(&candidate) {
+                return Some(result);
+            }
         }
     }
+
     None
 }
 
-/// Strips fallback suffixes from model IDs for pricing lookup.
-/// Returns the base model ID if a fallback suffix is found, None otherwise.
-/// Longer suffixes are checked first to handle cases like "-codex-max" before "-codex".
-fn strip_fallback_suffix(model_id: &str) -> Option<&str> {
-    // FALLBACK_SUFFIXES should be ordered with longer suffixes first,
-    // but we sort by length descending to be safe
-    let mut suffixes: Vec<&str> = FALLBACK_SUFFIXES.to_vec();
-    suffixes.sort_by(|a, b| b.len().cmp(&a.len()));
+/// Attempts to find a model by progressively stripping leading segments.
+/// Handles arbitrary routing prefixes (e.g., "myplugin-claude-3.5-sonnet" → "claude-3.5-sonnet").
+/// This replaces the hardcoded STRIPPED_PREFIXES approach.
+fn try_strip_unknown_prefix<F>(model_id: &str, do_lookup: F) -> Option<LookupResult>
+where
+    F: Fn(&str) -> Option<LookupResult>,
+{
+    let parts: Vec<&str> = model_id.split('-').collect();
 
-    for suffix in suffixes {
-        if model_id.ends_with(suffix) {
-            return Some(&model_id[..model_id.len() - suffix.len()]);
+    if parts.len() < 2 {
+        return None;
+    }
+
+    let max_skip = std::cmp::min(parts.len() - 1, MAX_PREFIX_STRIP_SEGMENTS);
+
+    for skip in 1..=max_skip {
+        let candidate: String = parts[skip..].join("-");
+
+        if candidate.len() >= MIN_MODEL_NAME_LEN {
+            // Try candidate directly
+            if let Some(result) = do_lookup(&candidate) {
+                return Some(result);
+            }
+
+            // Try candidate with suffix stripping
+            if let Some(result) = try_strip_unknown_suffix(&candidate, &do_lookup) {
+                return Some(result);
+            }
         }
     }
+
     None
-}
-
-fn strip_routing_prefix(model_id: &str) -> &str {
-    let lower = model_id.to_lowercase();
-    for prefix in STRIPPED_PREFIXES {
-        if lower.starts_with(prefix) {
-            return &model_id[prefix.len()..];
-        }
-    }
-    model_id
 }
 
 fn is_original_provider(key: &str) -> bool {
@@ -743,6 +748,15 @@ mod tests {
                 input_cost_per_token: Some(0.0000025),
                 output_cost_per_token: Some(0.00001),
                 cache_read_input_token_cost: Some(0.00000125),
+                cache_creation_input_token_cost: None,
+            },
+        );
+        m.insert(
+            "gpt-4o-mini".into(),
+            ModelPricing {
+                input_cost_per_token: Some(0.00000015),
+                output_cost_per_token: Some(0.0000006),
+                cache_read_input_token_cost: Some(0.000000075),
                 cache_creation_input_token_cost: None,
             },
         );
@@ -1416,45 +1430,6 @@ mod tests {
     }
 
     #[test]
-    fn test_strip_tier_suffix_fn() {
-        assert_eq!(strip_tier_suffix("gpt-4o-low"), Some("gpt-4o"));
-        assert_eq!(strip_tier_suffix("model-high"), Some("model"));
-        assert_eq!(strip_tier_suffix("model-medium"), Some("model"));
-        assert_eq!(strip_tier_suffix("model-free"), Some("model"));
-        assert_eq!(strip_tier_suffix("model:low"), Some("model"));
-        assert_eq!(strip_tier_suffix("model:high"), Some("model"));
-        assert_eq!(strip_tier_suffix("gpt-5.2-xhigh"), Some("gpt-5.2"));
-        assert_eq!(
-            strip_tier_suffix("gpt-5.1-codex-max-xhigh"),
-            Some("gpt-5.1-codex-max")
-        );
-        assert_eq!(strip_tier_suffix("gpt-4o"), None);
-        assert_eq!(strip_tier_suffix("claude-3-5-sonnet"), None);
-    }
-
-    #[test]
-    fn test_strip_fallback_suffix_fn() {
-        // Basic -codex suffix stripping
-        assert_eq!(strip_fallback_suffix("gpt-5-codex"), Some("gpt-5"));
-        assert_eq!(strip_fallback_suffix("gpt-5.1-codex"), Some("gpt-5.1"));
-        assert_eq!(
-            strip_fallback_suffix("some-model-codex"),
-            Some("some-model")
-        );
-
-        // -codex-max should be stripped before -codex (longer suffix first)
-        assert_eq!(strip_fallback_suffix("gpt-5.1-codex-max"), Some("gpt-5.1"));
-
-        // No fallback suffix present
-        assert_eq!(strip_fallback_suffix("gpt-5"), None);
-        assert_eq!(strip_fallback_suffix("claude-3-5-sonnet"), None);
-        assert_eq!(strip_fallback_suffix("gpt-4o"), None);
-
-        // Suffix in middle doesn't match (must be at end)
-        assert_eq!(strip_fallback_suffix("codex-model"), None);
-    }
-
-    #[test]
     fn test_fallback_suffix_lookup() {
         // Create a lookup with only the base model (no -codex variant)
         let mut litellm = HashMap::new();
@@ -1728,24 +1703,8 @@ mod tests {
     }
 
     // =========================================================================
-    // ROUTING PREFIX TESTS (e.g., antigravity-auth plugin)
+    // INTELLIGENT PREFIX/SUFFIX STRIPPING TESTS
     // =========================================================================
-
-    #[test]
-    fn test_strip_routing_prefix_fn() {
-        assert_eq!(
-            strip_routing_prefix("antigravity-gemini-3-flash"),
-            "gemini-3-flash"
-        );
-        assert_eq!(
-            strip_routing_prefix("antigravity-claude-sonnet-4-5"),
-            "claude-sonnet-4-5"
-        );
-        assert_eq!(strip_routing_prefix("Antigravity-gpt-4o"), "gpt-4o");
-        assert_eq!(strip_routing_prefix("ANTIGRAVITY-gpt-4o"), "gpt-4o");
-        assert_eq!(strip_routing_prefix("gemini-3-flash"), "gemini-3-flash");
-        assert_eq!(strip_routing_prefix("gpt-4o"), "gpt-4o");
-    }
 
     #[test]
     fn test_antigravity_prefix_gemini_3_flash() {
@@ -1801,5 +1760,85 @@ mod tests {
         let cost_without_prefix = lookup.calculate_cost("gpt-5.2", 1_000_000, 500_000, 0, 0, 0);
         assert!((cost_with_prefix - cost_without_prefix).abs() < 0.001);
         assert!(cost_with_prefix > 0.0);
+    }
+
+    // New tests for intelligent detection
+
+    #[test]
+    fn test_unknown_prefix_generic() {
+        let lookup = create_lookup();
+        let result = lookup.lookup("myplugin-gpt-4o").unwrap();
+        assert_eq!(result.matched_key, "gpt-4o");
+    }
+
+    #[test]
+    fn test_unknown_prefix_two_segments() {
+        let lookup = create_lookup();
+        let result = lookup.lookup("router-v2-claude-sonnet-4-5").unwrap();
+        assert_eq!(result.matched_key, "claude-sonnet-4-5");
+    }
+
+    #[test]
+    fn test_unknown_suffix_thinking() {
+        let lookup = create_lookup();
+        let result = lookup.lookup("claude-sonnet-4-5-thinking").unwrap();
+        assert_eq!(result.matched_key, "claude-sonnet-4-5");
+    }
+
+    #[test]
+    fn test_unknown_suffix_two_segments() {
+        let lookup = create_lookup();
+        let result = lookup.lookup("claude-opus-4-5-thinking-pro").unwrap();
+        assert_eq!(result.matched_key, "claude-opus-4-5");
+    }
+
+    #[test]
+    fn test_prefix_and_suffix_combined() {
+        let lookup = create_lookup();
+        let result = lookup.lookup("antigravity-claude-opus-4-5-thinking").unwrap();
+        assert_eq!(result.matched_key, "claude-opus-4-5");
+    }
+
+    #[test]
+    fn test_prefix_and_suffix_with_tier() {
+        let lookup = create_lookup();
+        let result = lookup.lookup("antigravity-claude-opus-4-5-thinking-high").unwrap();
+        assert_eq!(result.matched_key, "claude-opus-4-5");
+    }
+
+    #[test]
+    fn test_no_false_positive_valid_model() {
+        let lookup = create_lookup();
+        // gpt-4o-mini is a valid model, should NOT strip "gpt"
+        let result = lookup.lookup("gpt-4o-mini").unwrap();
+        assert_eq!(result.matched_key, "gpt-4o-mini");
+    }
+
+    #[test]
+    fn test_suffix_strip_high() {
+        let lookup = create_lookup();
+        let result = lookup.lookup("claude-sonnet-4-5-high").unwrap();
+        assert_eq!(result.matched_key, "claude-sonnet-4-5");
+    }
+
+    #[test]
+    fn test_suffix_strip_xhigh() {
+        let lookup = create_lookup();
+        let result = lookup.lookup("claude-sonnet-4-5-xhigh").unwrap();
+        assert_eq!(result.matched_key, "claude-sonnet-4-5");
+    }
+
+    #[test]
+    fn test_suffix_strip_low() {
+        let lookup = create_lookup();
+        let result = lookup.lookup("gpt-4o-low").unwrap();
+        assert_eq!(result.matched_key, "gpt-4o");
+    }
+
+    #[test]
+    fn test_suffix_strip_codex() {
+        let lookup = create_lookup();
+        let result = lookup.lookup("gpt-5.2-codex").unwrap();
+        assert_eq!(result.matched_key, "gpt-5.2");
     }
 }
