@@ -380,6 +380,55 @@ TOKSCALE_MAX_OUTPUT_BYTES=104857600 tokscale --json > report.json
 
 > **참고**: 이러한 제한은 중단 및 메모리 문제를 방지하기 위한 안전 조치입니다. 대부분의 사용자는 변경할 필요가 없습니다.
 
+### Headless 모드
+
+Tokscale은 자동화, CI/CD 파이프라인 및 배치 처리를 위한 **headless/비대화형 CLI 출력**의 토큰 사용량을 집계할 수 있습니다.
+
+**Headless 모드란?**
+
+AI 코딩 도구를 JSON 출력 플래그와 함께 실행할 때(예: \`codex exec --json\`, \`claude --output-format json\`), 일반 세션 디렉토리에 저장하는 대신 사용량 데이터를 stdout으로 출력합니다. Headless 모드를 사용하면 이러한 사용량을 캡처하고 추적할 수 있습니다.
+
+**저장 위치:** \`~/.config/tokscale/headless/\`
+
+Tokscale은 다음 디렉토리 구조를 자동으로 스캔합니다:
+\`\`\`
+~/.config/tokscale/headless/
+├── claude/      # Claude Code JSON 출력
+├── codex/       # Codex CLI JSONL 출력
+└── gemini/      # Gemini CLI JSON/JSONL 출력
+\`\`\`
+
+**환경 변수:** \`TOKSCALE_HEADLESS_DIR\`을 설정하여 headless 로그 디렉토리를 커스터마이징할 수 있습니다:
+\`\`\`bash
+export TOKSCALE_HEADLESS_DIR="$HOME/my-custom-logs"
+\`\`\`
+
+**사용 예시:**
+
+| 도구 | 명령어 예시 |
+|------|-------------|
+| **Codex CLI** | \`codex exec --json "implement feature" > ~/.config/tokscale/headless/codex/ci-run.jsonl\` |
+| **Claude Code** | \`claude --output-format json "fix bugs" > ~/.config/tokscale/headless/claude/automation.json\` |
+| **Claude Code (스트리밍)** | \`claude --output-format stream-json "task" > ~/.config/tokscale/headless/claude/stream.jsonl\` |
+| **Gemini CLI** | *(지원되는 경우)* \`gemini --json "analyze" > ~/.config/tokscale/headless/gemini/batch.json\` |
+
+**CI/CD 통합 예시:**
+
+\`\`\`bash
+# GitHub Actions 워크플로우에서
+- name: Run AI automation
+  run: |
+    mkdir -p ~/.config/tokscale/headless/claude
+    claude --output-format json "review code changes" \\
+      > ~/.config/tokscale/headless/claude/pr-\${{ github.event.pull_request.number }}.json
+
+# 나중에 사용량 추적
+- name: Report token usage
+  run: tokscale --json
+\`\`\`
+
+> **참고**: 도구들은 JSON 출력을 자동으로 파일에 저장하지 않습니다. 위와 같이 stdout을 headless 디렉토리로 리다이렉트해야 합니다.
+
 ## 프론트엔드 시각화
 
 프론트엔드는 GitHub 스타일의 기여 그래프 시각화를 제공합니다:
