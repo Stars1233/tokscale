@@ -54,6 +54,10 @@ function normalizeSubmissionData(data: unknown): void {
  * Body: TokenContributionData JSON
  */
 export async function POST(request: Request) {
+  const t: Record<string, number> = {};
+  const mark = (label: string, start: number) => { t[label] = performance.now() - start; };
+  const t0 = performance.now();
+
   try {
     // ========================================
     // STEP 1: Authentication
@@ -68,6 +72,7 @@ export async function POST(request: Request) {
 
     const token = authHeader.slice(7);
 
+    let tStep = performance.now();
     const [tokenRecord] = await db
       .select({
         tokenId: apiTokens.id,
@@ -79,6 +84,7 @@ export async function POST(request: Request) {
       .innerJoin(users, eq(apiTokens.userId, users.id))
       .where(eq(apiTokens.token, token))
       .limit(1);
+    mark("auth-query", tStep);
 
     if (!tokenRecord) {
       return NextResponse.json({ error: "Invalid API token" }, { status: 401 });
@@ -91,16 +97,23 @@ export async function POST(request: Request) {
     // ========================================
     // STEP 2: Parse and Validate
     // ========================================
+    tStep = performance.now();
     let rawData: unknown;
     try {
       rawData = await request.json();
     } catch {
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
+    mark("json-parse", tStep);
 
+    tStep = performance.now();
     normalizeSubmissionData(rawData);
+    mark("normalize", tStep);
 
+    tStep = performance.now();
     const validation = validateSubmission(rawData);
+    mark("validation", tStep);
+
     if (!validation.valid || !validation.data) {
       return NextResponse.json(
         { error: "Validation failed", details: validation.errors },
@@ -108,10 +121,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Use validated and parsed data
     const data = validation.data;
 
-    // Reject empty submissions
     if (data.contributions.length === 0) {
       return NextResponse.json(
         { error: "No contribution data to submit" },
@@ -124,8 +135,8 @@ export async function POST(request: Request) {
     // ========================================
     // STEP 3: DATABASE OPERATIONS IN TRANSACTION
     // ========================================
+    const txStart = performance.now();
     const result = await db.transaction(async (tx) => {
-      // Update token last used timestamp
       await tx
         .update(apiTokens)
         .set({ lastUsedAt: new Date() })
@@ -133,16 +144,15 @@ export async function POST(request: Request) {
 
       // ------------------------------------------
       // STEP 3a: Get or create user's submission
-      // NOTE: .for('update') locks the row to prevent race conditions
       // ------------------------------------------
+      tStep = performance.now();
       let [existingSubmission] = await tx
-        .select({
-          id: submissions.id,
-        })
+        .select({ id: submissions.id })
         .from(submissions)
         .where(eq(submissions.userId, tokenRecord.userId))
         .for('update')
         .limit(1);
+      mark("tx:get-submission", tStep);
 
       let submissionId: string;
       let isNewSubmission = false;
@@ -150,7 +160,6 @@ export async function POST(request: Request) {
       if (existingSubmission) {
         submissionId = existingSubmission.id;
       } else {
-        // First submission - create placeholder (totals will be calculated later)
         isNewSubmission = true;
         const [newSubmission] = await tx
           .insert(submissions)
@@ -177,8 +186,8 @@ export async function POST(request: Request) {
 
       // ------------------------------------------
       // STEP 3b: Fetch existing daily breakdown for merge
-      // NOTE: .for('update') locks rows to prevent concurrent modification
       // ------------------------------------------
+      tStep = performance.now();
       const existingDays = await tx
         .select({
           id: dailyBreakdown.id,
@@ -188,15 +197,38 @@ export async function POST(request: Request) {
         .from(dailyBreakdown)
         .where(eq(dailyBreakdown.submissionId, submissionId))
         .for('update');
+      mark("tx:fetch-existing-days", tStep);
 
-      // Build lookup map: date -> existing record
       const existingDaysMap = new Map(
         existingDays.map((d) => [d.date, d])
       );
 
       // ------------------------------------------
-      // STEP 3c: Process each incoming day
+      // STEP 3c: Compute merge results in memory, then batch write
       // ------------------------------------------
+      tStep = performance.now();
+
+      const toInsert: Array<{
+        submissionId: string;
+        date: string;
+        tokens: number;
+        cost: string;
+        inputTokens: number;
+        outputTokens: number;
+        sourceBreakdown: Record<string, SourceBreakdownData>;
+        modelBreakdown: Record<string, number>;
+      }> = [];
+
+      const toUpdate: Array<{
+        id: string;
+        tokens: number;
+        cost: string;
+        inputTokens: number;
+        outputTokens: number;
+        sourceBreakdown: Record<string, SourceBreakdownData>;
+        modelBreakdown: Record<string, number>;
+      }> = [];
+
       for (const incomingDay of data.contributions) {
         const incomingSourceBreakdown: Record<string, SourceBreakdownData> = {};
         for (const source of incomingDay.sources) {
@@ -235,54 +267,78 @@ export async function POST(request: Request) {
         const existingDay = existingDaysMap.get(incomingDay.date);
 
         if (existingDay) {
-          // ---- MERGE: Day exists, merge sources ----
           const existingSourceBreakdown = (existingDay.sourceBreakdown || {}) as Record<string, SourceBreakdownData>;
-
           const mergedSourceBreakdown = mergeSourceBreakdowns(
             existingSourceBreakdown,
             incomingSourceBreakdown,
             submittedSources
           );
-
-          // Recalculate day totals from merged data
           const dayTotals = recalculateDayTotals(mergedSourceBreakdown);
-
-          // Build modelBreakdown from merged sources
           const modelBreakdown = buildModelBreakdown(mergedSourceBreakdown);
 
-          // UPDATE existing daily breakdown
-          await tx
-            .update(dailyBreakdown)
-            .set({
-              tokens: dayTotals.tokens,
-              cost: dayTotals.cost.toFixed(4),
-              inputTokens: dayTotals.inputTokens,
-              outputTokens: dayTotals.outputTokens,
-              sourceBreakdown: mergedSourceBreakdown,
-              modelBreakdown: modelBreakdown,
-            })
-            .where(eq(dailyBreakdown.id, existingDay.id));
+          toUpdate.push({
+            id: existingDay.id,
+            tokens: dayTotals.tokens,
+            cost: dayTotals.cost.toFixed(4),
+            inputTokens: dayTotals.inputTokens,
+            outputTokens: dayTotals.outputTokens,
+            sourceBreakdown: mergedSourceBreakdown,
+            modelBreakdown,
+          });
         } else {
-          // ---- INSERT: New day ----
           const dayTotals = recalculateDayTotals(incomingSourceBreakdown);
           const modelBreakdown = buildModelBreakdown(incomingSourceBreakdown);
 
-          await tx.insert(dailyBreakdown).values({
-            submissionId: submissionId,
+          toInsert.push({
+            submissionId,
             date: incomingDay.date,
             tokens: dayTotals.tokens,
             cost: dayTotals.cost.toFixed(4),
             inputTokens: dayTotals.inputTokens,
             outputTokens: dayTotals.outputTokens,
             sourceBreakdown: incomingSourceBreakdown,
-            modelBreakdown: modelBreakdown,
+            modelBreakdown,
           });
         }
       }
+      mark(`tx:compute-merge(${toUpdate.length}upd+${toInsert.length}ins)`, tStep);
+
+      // Batch INSERT new days
+      tStep = performance.now();
+      if (toInsert.length > 0) {
+        await tx.insert(dailyBreakdown).values(toInsert);
+      }
+      mark("tx:batch-insert", tStep);
+
+      // Batch UPDATE existing days via raw SQL VALUES list
+      tStep = performance.now();
+      if (toUpdate.length > 0) {
+        const valuesClauses = toUpdate.map(
+          (row) =>
+            sql`(${row.id}::uuid, ${row.tokens}::bigint, ${row.cost}::numeric(10,4), ${row.inputTokens}::bigint, ${row.outputTokens}::bigint, ${JSON.stringify(row.sourceBreakdown)}::jsonb, ${JSON.stringify(row.modelBreakdown)}::jsonb)`
+        );
+
+        const valuesList = sql.join(valuesClauses, sql`, `);
+
+        await tx.execute(sql`
+          UPDATE daily_breakdown AS d SET
+            tokens = batch.tokens,
+            cost = batch.cost,
+            input_tokens = batch.input_tokens,
+            output_tokens = batch.output_tokens,
+            source_breakdown = batch.source_breakdown,
+            model_breakdown = batch.model_breakdown
+          FROM (VALUES ${valuesList})
+            AS batch(id, tokens, cost, input_tokens, output_tokens, source_breakdown, model_breakdown)
+          WHERE d.id = batch.id
+        `);
+      }
+      mark("tx:batch-update", tStep);
 
       // ------------------------------------------
       // STEP 3d: Recalculate submission totals from ALL daily breakdown
       // ------------------------------------------
+      tStep = performance.now();
       const [aggregates] = await tx
         .select({
           totalTokens: sql<number>`COALESCE(SUM(${dailyBreakdown.tokens}), 0)::bigint`,
@@ -296,8 +352,9 @@ export async function POST(request: Request) {
         })
         .from(dailyBreakdown)
         .where(eq(dailyBreakdown.submissionId, submissionId));
+      mark("tx:aggregate-totals", tStep);
 
-      // Collect all unique sources and models from ALL daily breakdown records
+      tStep = performance.now();
       const allDays = await tx
         .select({
           sourceBreakdown: dailyBreakdown.sourceBreakdown,
@@ -329,10 +386,12 @@ export async function POST(request: Request) {
           }
         }
       }
+      mark("tx:collect-sources-models", tStep);
 
       // ------------------------------------------
       // STEP 3e: Update submission record
       // ------------------------------------------
+      tStep = performance.now();
       await tx
         .update(submissions)
         .set({
@@ -353,6 +412,7 @@ export async function POST(request: Request) {
           updatedAt: new Date(),
         })
         .where(eq(submissions.id, submissionId));
+      mark("tx:update-submission", tStep);
 
       return {
         submissionId,
@@ -369,13 +429,23 @@ export async function POST(request: Request) {
         },
       };
     });
+    mark("tx:total", txStart);
 
+    tStep = performance.now();
     try {
       revalidateTag("leaderboard", "max");
       revalidateTag(`user:${tokenRecord.username}`, "max");
     } catch (e) {
       console.error("Cache invalidation failed:", e);
     }
+    mark("cache-revalidate", tStep);
+
+    mark("total", t0);
+
+    console.log(
+      `[submit] user=${tokenRecord.username} days=${data.contributions.length} | `
+      + Object.entries(t).map(([k, v]) => `${k}=${v < 1000 ? v.toFixed(0) + "ms" : (v/1000).toFixed(2) + "s"}`).join(" ")
+    );
 
     return NextResponse.json({
       success: true,
