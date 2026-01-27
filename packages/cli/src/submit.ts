@@ -179,9 +179,6 @@ async function handleStarPrompt(username: string): Promise<void> {
 }
 
 export async function submit(options: SubmitOptions = {}): Promise<void> {
-  const submitStart = performance.now();
-  const timing: Record<string, number> = {};
-
   const credentials = loadCredentials();
   if (!credentials) {
     console.log(pc.yellow("\n  Not logged in."));
@@ -189,9 +186,7 @@ export async function submit(options: SubmitOptions = {}): Promise<void> {
     process.exit(1);
   }
 
-  let t0 = performance.now();
   await handleStarPrompt(credentials.username);
-  timing["star-prompt"] = performance.now() - t0;
 
   console.log(pc.cyan("\n  Tokscale - Submit Usage Data\n"));
 
@@ -219,7 +214,6 @@ export async function submit(options: SubmitOptions = {}): Promise<void> {
   try {
     // Two-phase processing (same as TUI) for consistency:
     // Phase 1: Parse local sources + sync cursor in parallel
-    t0 = performance.now();
     const [localMessages, cursorSync] = await Promise.all([
       parseLocalSourcesAsync({
         sources: localSources,
@@ -231,7 +225,6 @@ export async function submit(options: SubmitOptions = {}): Promise<void> {
         ? syncCursorCache()
         : Promise.resolve({ synced: false, rows: 0, error: undefined }),
     ]);
-    timing["parse-local+cursor-sync"] = performance.now() - t0;
 
     if (includeCursor && cursorSync.error && (cursorSync.synced || hasCursorUsageCache())) {
       const prefix = cursorSync.synced ? "Cursor sync warning" : "Cursor sync failed; using cached data";
@@ -240,7 +233,6 @@ export async function submit(options: SubmitOptions = {}): Promise<void> {
 
     // Phase 2: Finalize with pricing (combines local + cursor)
     // Single subprocess call ensures consistent pricing for both report and graph
-    t0 = performance.now();
     const { report, graph } = await finalizeReportAndGraphAsync({
       localMessages,
       includeCursor: includeCursor && (cursorSync.synced || hasCursorUsageCache()),
@@ -248,7 +240,6 @@ export async function submit(options: SubmitOptions = {}): Promise<void> {
       until: options.until,
       year: options.year,
     });
-    timing["finalize-report+graph"] = performance.now() - t0;
 
     // Use graph structure for submission, report's cost for display
     data = graph;
@@ -266,8 +257,6 @@ export async function submit(options: SubmitOptions = {}): Promise<void> {
   console.log(pc.gray(`    Total cost: ${formatCurrency(data.summary.totalCost)}`));
   console.log(pc.gray(`    Sources: ${data.summary.sources.join(", ")}`));
   console.log(pc.gray(`    Models: ${data.summary.models.length} models`));
-  console.log(pc.gray(`    Contributions: ${data.contributions.length} days`));
-  console.log(pc.gray(`    Payload size: ${(JSON.stringify(data).length / 1024).toFixed(1)} KB`));
   console.log();
 
   if (data.summary.totalTokens === 0) {
@@ -287,22 +276,16 @@ export async function submit(options: SubmitOptions = {}): Promise<void> {
   const baseUrl = getApiBaseUrl();
 
   try {
-    t0 = performance.now();
-    const body = JSON.stringify(data);
-    timing["json-serialize"] = performance.now() - t0;
-
-    t0 = performance.now();
     const response = await fetch(`${baseUrl}/api/submit`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${credentials.token}`,
       },
-      body,
+      body: JSON.stringify(data),
     });
 
     const result: SubmitResponse = await response.json();
-    timing["server-roundtrip"] = performance.now() - t0;
 
     if (!response.ok) {
       console.error(pc.red(`\n  Error: ${result.error || "Submission failed"}`));
@@ -339,14 +322,4 @@ export async function submit(options: SubmitOptions = {}): Promise<void> {
     console.error(pc.gray(`  ${(error as Error).message}\n`));
     process.exit(1);
   }
-
-  // Timing summary
-  timing["total"] = performance.now() - submitStart;
-  console.log(pc.gray("  ⏱ Timing breakdown:"));
-  for (const [label, ms] of Object.entries(timing)) {
-    const formatted = ms < 1000 ? `${ms.toFixed(0)}ms` : `${(ms / 1000).toFixed(2)}s`;
-    const bar = "█".repeat(Math.max(1, Math.round(ms / timing["total"] * 20)));
-    console.log(pc.gray(`    ${label.padEnd(24)} ${formatted.padStart(8)}  ${bar}`));
-  }
-  console.log();
 }
