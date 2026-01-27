@@ -227,14 +227,6 @@ function normalizeHeadlessSource(source: string): HeadlessSource | null {
     : null;
 }
 
-function findFlagValue(args: string[], flag: string): string | undefined {
-  const index = args.indexOf(flag);
-  if (index >= 0 && index < args.length - 1) {
-    return args[index + 1];
-  }
-  return undefined;
-}
-
 function resolveHeadlessFormat(
   source: HeadlessSource,
   args: string[],
@@ -623,7 +615,7 @@ async function main() {
   program
     .command("headless")
     .description("Run a CLI in headless mode and capture stdout")
-    .argument("<source>", "codex")
+    .argument("<source>", "Source CLI to capture (currently only 'codex' is supported)")
     .argument("[args...]", "Arguments passed to the CLI");
 
   program

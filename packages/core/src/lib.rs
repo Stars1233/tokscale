@@ -740,9 +740,7 @@ pub fn parse_local_sources(options: LocalParseOptions) -> napi::Result<ParsedMes
         .opencode_files
         .par_iter()
         .filter_map(|path| {
-            let mut msg = sessions::opencode::parse_opencode_file(path)?;
-            let is_headless = is_headless_path(path, &headless_roots);
-            apply_headless_agent(&mut msg, is_headless);
+            let msg = sessions::opencode::parse_opencode_file(path)?;
             Some(unified_to_parsed(&msg))
         })
         .collect();
@@ -754,11 +752,9 @@ pub fn parse_local_sources(options: LocalParseOptions) -> napi::Result<ParsedMes
         .claude_files
         .par_iter()
         .flat_map(|path| {
-            let is_headless = is_headless_path(path, &headless_roots);
             sessions::claudecode::parse_claude_file(path)
                 .into_iter()
-                .map(|mut msg| {
-                    apply_headless_agent(&mut msg, is_headless);
+                .map(|msg| {
                     let dedup_key = msg.dedup_key.clone().unwrap_or_default();
                     (dedup_key, unified_to_parsed(&msg))
                 })
@@ -799,13 +795,9 @@ pub fn parse_local_sources(options: LocalParseOptions) -> napi::Result<ParsedMes
         .gemini_files
         .par_iter()
         .flat_map(|path| {
-            let is_headless = is_headless_path(path, &headless_roots);
             sessions::gemini::parse_gemini_file(path)
                 .into_iter()
-                .map(|mut msg| {
-                    apply_headless_agent(&mut msg, is_headless);
-                    unified_to_parsed(&msg)
-                })
+                .map(|msg| unified_to_parsed(&msg))
                 .collect::<Vec<_>>()
         })
         .collect();
