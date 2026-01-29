@@ -29,6 +29,8 @@ pub struct CodexPayload {
     pub model: Option<String>,
     pub model_name: Option<String>,
     pub info: Option<CodexInfo>,
+    pub originator: Option<String>,
+    pub source: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -85,13 +87,9 @@ pub fn parse_codex_file(path: &Path) -> Vec<UnifiedMessage> {
         let mut bytes = trimmed.as_bytes().to_vec();
         if let Ok(entry) = simd_json::from_slice::<CodexEntry>(&mut bytes) {
             if entry.entry_type == "session_meta" {
-                if let Ok(value) = serde_json::from_str::<Value>(trimmed) {
-                    if let Some(payload) = value.get("payload") {
-                        let originator = payload.get("originator").and_then(|v| v.as_str());
-                        let source = payload.get("source").and_then(|v| v.as_str());
-                        if originator == Some("codex_exec") || source == Some("exec") {
-                            session_is_headless = true;
-                        }
+                if let Some(payload) = entry.payload.as_ref() {
+                    if payload.source.as_deref() == Some("exec") {
+                        session_is_headless = true;
                     }
                 }
                 handled = true;
