@@ -402,20 +402,20 @@ TOKSCALE_MAX_OUTPUT_BYTES=104857600 tokscale --json > report.json
 
 ### Headless 모드
 
-Tokscale은 자동화, CI/CD 파이프라인 및 배치 처리를 위한 **headless/비대화형 CLI 출력**의 토큰 사용량을 집계할 수 있습니다.
+Tokscale은 자동화, CI/CD 파이프라인 및 배치 처리를 위한 **Codex CLI headless 출력**의 토큰 사용량을 집계할 수 있습니다.
 
 **Headless 모드란?**
 
-AI 코딩 도구를 JSON 출력 플래그와 함께 실행할 때(예: \`codex exec --json\`, \`claude --output-format json\`), 일반 세션 디렉토리에 저장하는 대신 사용량 데이터를 stdout으로 출력합니다. Headless 모드를 사용하면 이러한 사용량을 캡처하고 추적할 수 있습니다.
+Codex CLI를 JSON 출력 플래그와 함께 실행할 때(예: \`codex exec --json\`), 일반 세션 디렉토리에 저장하는 대신 사용량 데이터를 stdout으로 출력합니다. Headless 모드를 사용하면 이러한 사용량을 캡처하고 추적할 수 있습니다.
 
 **저장 위치:** \`~/.config/tokscale/headless/\`
+
+macOS에서는 \`TOKSCALE_HEADLESS_DIR\`이 설정되지 않은 경우 Tokscale이 \`~/Library/Application Support/tokscale/headless/\`도 스캔합니다.
 
 Tokscale은 다음 디렉토리 구조를 자동으로 스캔합니다:
 \`\`\`
 ~/.config/tokscale/headless/
-├── claude/      # Claude Code JSON 출력
-├── codex/       # Codex CLI JSONL 출력
-└── gemini/      # Gemini CLI JSON/JSONL 출력
+└── codex/       # Codex CLI JSONL 출력
 \`\`\`
 
 **환경 변수:** \`TOKSCALE_HEADLESS_DIR\`을 설정하여 headless 로그 디렉토리를 커스터마이징할 수 있습니다:
@@ -423,14 +423,25 @@ Tokscale은 다음 디렉토리 구조를 자동으로 스캔합니다:
 export TOKSCALE_HEADLESS_DIR="$HOME/my-custom-logs"
 \`\`\`
 
-**사용 예시:**
+**권장 (자동 캡처):**
+
+| 도구 | 명령어 예시 |
+|------|-------------|
+| **Codex CLI** | \`tokscale headless codex exec -m gpt-5 "implement feature"\` |
+
+**수동 리다이렉트 (선택사항):**
 
 | 도구 | 명령어 예시 |
 |------|-------------|
 | **Codex CLI** | \`codex exec --json "implement feature" > ~/.config/tokscale/headless/codex/ci-run.jsonl\` |
-| **Claude Code** | \`claude --output-format json "fix bugs" > ~/.config/tokscale/headless/claude/automation.json\` |
-| **Claude Code (스트리밍)** | \`claude --output-format stream-json "task" > ~/.config/tokscale/headless/claude/stream.jsonl\` |
-| **Gemini CLI** | *(지원되는 경우)* \`gemini --json "analyze" > ~/.config/tokscale/headless/gemini/batch.json\` |
+
+**진단:**
+
+\`\`\`bash
+# 스캔 위치 및 headless 카운트 표시
+tokscale sources
+tokscale sources --json
+\`\`\`
 
 **CI/CD 통합 예시:**
 
@@ -438,16 +449,16 @@ export TOKSCALE_HEADLESS_DIR="$HOME/my-custom-logs"
 # GitHub Actions 워크플로우에서
 - name: Run AI automation
   run: |
-    mkdir -p ~/.config/tokscale/headless/claude
-    claude --output-format json "review code changes" \\
-      > ~/.config/tokscale/headless/claude/pr-\${{ github.event.pull_request.number }}.json
+    mkdir -p ~/.config/tokscale/headless/codex
+    codex exec --json "review code changes" \\
+      > ~/.config/tokscale/headless/codex/pr-\${{ github.event.pull_request.number }}.jsonl
 
 # 나중에 사용량 추적
 - name: Report token usage
   run: tokscale --json
 \`\`\`
 
-> **참고**: 도구들은 JSON 출력을 자동으로 파일에 저장하지 않습니다. 위와 같이 stdout을 headless 디렉토리로 리다이렉트해야 합니다.
+> **참고**: Headless 캡처는 Codex CLI만 지원됩니다. Codex를 직접 실행하는 경우 위와 같이 stdout을 headless 디렉토리로 리다이렉트해야 합니다.
 
 ## 프론트엔드 시각화
 

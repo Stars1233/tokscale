@@ -403,20 +403,20 @@ TOKSCALE_MAX_OUTPUT_BYTES=104857600 tokscale --json > report.json
 
 ### Headless 模式
 
-Tokscale 可以聚合来自**无头/非交互式 CLI 输出**的令牌使用情况，用于自动化、CI/CD 流水线和批处理。
+Tokscale 可以聚合来自 **Codex CLI 无头输出**的令牌使用情况，用于自动化、CI/CD 流水线和批处理。
 
 **什么是 Headless 模式？**
 
-当您使用 JSON 输出标志运行 AI 编码工具时（例如 \`codex exec --json\`、\`claude --output-format json\`），它们会将使用数据输出到 stdout，而不是存储在常规会话目录中。Headless 模式允许您捕获和跟踪这些使用情况。
+当您使用 JSON 输出标志运行 Codex CLI 时（例如 \`codex exec --json\`），它会将使用数据输出到 stdout，而不是存储在常规会话目录中。Headless 模式允许您捕获和跟踪这些使用情况。
 
 **存储位置：** \`~/.config/tokscale/headless/\`
+
+在 macOS 上，当未设置 \`TOKSCALE_HEADLESS_DIR\` 时，Tokscale 也会扫描 \`~/Library/Application Support/tokscale/headless/\`。
 
 Tokscale 会自动扫描此目录结构：
 \`\`\`
 ~/.config/tokscale/headless/
-├── claude/      # Claude Code JSON 输出
-├── codex/       # Codex CLI JSONL 输出
-└── gemini/      # Gemini CLI JSON/JSONL 输出
+└── codex/       # Codex CLI JSONL 输出
 \`\`\`
 
 **环境变量：** 设置 \`TOKSCALE_HEADLESS_DIR\` 以自定义无头日志目录：
@@ -424,14 +424,25 @@ Tokscale 会自动扫描此目录结构：
 export TOKSCALE_HEADLESS_DIR="$HOME/my-custom-logs"
 \`\`\`
 
-**使用示例：**
+**推荐（自动捕获）：**
+
+| 工具 | 命令示例 |
+|------|----------|
+| **Codex CLI** | \`tokscale headless codex exec -m gpt-5 "implement feature"\` |
+
+**手动重定向（可选）：**
 
 | 工具 | 命令示例 |
 |------|----------|
 | **Codex CLI** | \`codex exec --json "implement feature" > ~/.config/tokscale/headless/codex/ci-run.jsonl\` |
-| **Claude Code** | \`claude --output-format json "fix bugs" > ~/.config/tokscale/headless/claude/automation.json\` |
-| **Claude Code (流式)** | \`claude --output-format stream-json "task" > ~/.config/tokscale/headless/claude/stream.jsonl\` |
-| **Gemini CLI** | *（如果支持）* \`gemini --json "analyze" > ~/.config/tokscale/headless/gemini/batch.json\` |
+
+**诊断：**
+
+\`\`\`bash
+# 显示扫描位置和无头计数
+tokscale sources
+tokscale sources --json
+\`\`\`
 
 **CI/CD 集成示例：**
 
@@ -439,16 +450,16 @@ export TOKSCALE_HEADLESS_DIR="$HOME/my-custom-logs"
 # 在 GitHub Actions 工作流中
 - name: Run AI automation
   run: |
-    mkdir -p ~/.config/tokscale/headless/claude
-    claude --output-format json "review code changes" \\
-      > ~/.config/tokscale/headless/claude/pr-\${{ github.event.pull_request.number }}.json
+    mkdir -p ~/.config/tokscale/headless/codex
+    codex exec --json "review code changes" \\
+      > ~/.config/tokscale/headless/codex/pr-\${{ github.event.pull_request.number }}.jsonl
 
 # 稍后跟踪使用情况
 - name: Report token usage
   run: tokscale --json
 \`\`\`
 
-> **注意**：这些工具不会自动将 JSON 输出保存到文件。您必须如上所示将 stdout 重定向到 headless 目录。
+> **注意**：无头捕获仅支持 Codex CLI。如果直接运行 Codex，必须如上所示将 stdout 重定向到 headless 目录。
 
 ## 前端可视化
 

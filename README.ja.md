@@ -403,20 +403,20 @@ TOKSCALE_MAX_OUTPUT_BYTES=104857600 tokscale --json > report.json
 
 ### ヘッドレスモード
 
-Tokscaleは、自動化、CI/CDパイプライン、バッチ処理のための**ヘッドレス/非対話型CLI出力**からトークン使用量を集計できます。
+Tokscaleは、自動化、CI/CDパイプライン、バッチ処理のための**Codex CLIヘッドレス出力**からトークン使用量を集計できます。
 
 **ヘッドレスモードとは？**
 
-AIコーディングツールをJSON出力フラグ付きで実行すると（例：\`codex exec --json\`、\`claude --output-format json\`）、通常のセッションディレクトリに保存する代わりに、使用量データをstdoutに出力します。ヘッドレスモードを使用すると、この使用量をキャプチャして追跡できます。
+Codex CLIをJSON出力フラグ付きで実行すると（例：\`codex exec --json\`）、通常のセッションディレクトリに保存する代わりに、使用量データをstdoutに出力します。ヘッドレスモードを使用すると、この使用量をキャプチャして追跡できます。
 
 **保存場所:** \`~/.config/tokscale/headless/\`
+
+macOSでは、\`TOKSCALE_HEADLESS_DIR\`が設定されていない場合、Tokscaleは\`~/Library/Application Support/tokscale/headless/\`もスキャンします。
 
 Tokscaleは次のディレクトリ構造を自動的にスキャンします:
 \`\`\`
 ~/.config/tokscale/headless/
-├── claude/      # Claude Code JSON出力
-├── codex/       # Codex CLI JSONL出力
-└── gemini/      # Gemini CLI JSON/JSONL出力
+└── codex/       # Codex CLI JSONL出力
 \`\`\`
 
 **環境変数:** \`TOKSCALE_HEADLESS_DIR\`を設定してヘッドレスログディレクトリをカスタマイズできます:
@@ -424,14 +424,25 @@ Tokscaleは次のディレクトリ構造を自動的にスキャンします:
 export TOKSCALE_HEADLESS_DIR="$HOME/my-custom-logs"
 \`\`\`
 
-**使用例:**
+**推奨（自動キャプチャ）:**
+
+| ツール | コマンド例 |
+|--------|-----------|
+| **Codex CLI** | \`tokscale headless codex exec -m gpt-5 "implement feature"\` |
+
+**手動リダイレクト（オプション）:**
 
 | ツール | コマンド例 |
 |--------|-----------|
 | **Codex CLI** | \`codex exec --json "implement feature" > ~/.config/tokscale/headless/codex/ci-run.jsonl\` |
-| **Claude Code** | \`claude --output-format json "fix bugs" > ~/.config/tokscale/headless/claude/automation.json\` |
-| **Claude Code (ストリーミング)** | \`claude --output-format stream-json "task" > ~/.config/tokscale/headless/claude/stream.jsonl\` |
-| **Gemini CLI** | *(サポートされている場合)* \`gemini --json "analyze" > ~/.config/tokscale/headless/gemini/batch.json\` |
+
+**診断:**
+
+\`\`\`bash
+# スキャン場所とヘッドレスカウントを表示
+tokscale sources
+tokscale sources --json
+\`\`\`
 
 **CI/CD統合例:**
 
@@ -439,16 +450,16 @@ export TOKSCALE_HEADLESS_DIR="$HOME/my-custom-logs"
 # GitHub Actionsワークフローで
 - name: Run AI automation
   run: |
-    mkdir -p ~/.config/tokscale/headless/claude
-    claude --output-format json "review code changes" \\
-      > ~/.config/tokscale/headless/claude/pr-\${{ github.event.pull_request.number }}.json
+    mkdir -p ~/.config/tokscale/headless/codex
+    codex exec --json "review code changes" \\
+      > ~/.config/tokscale/headless/codex/pr-\${{ github.event.pull_request.number }}.jsonl
 
 # 後で使用量を追跡
 - name: Report token usage
   run: tokscale --json
 \`\`\`
 
-> **注**: ツールはJSON出力を自動的にファイルに保存しません。上記のようにstdoutをヘッドレスディレクトリにリダイレクトする必要があります。
+> **注**: ヘッドレスキャプチャはCodex CLIのみサポートしています。Codexを直接実行する場合は、上記のようにstdoutをヘッドレスディレクトリにリダイレクトしてください。
 
 ## フロントエンド可視化
 

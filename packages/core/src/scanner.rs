@@ -255,16 +255,10 @@ pub fn scan_all_sources(home_dir: &str, sources: &[String]) -> ScanResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use std::fs::{self, File};
     use std::io::Write;
-    use std::sync::{Mutex, OnceLock};
     use tempfile::TempDir;
-
-    static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-
-    fn env_lock() -> std::sync::MutexGuard<'static, ()> {
-        ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap()
-    }
 
     fn restore_env(var: &str, previous: Option<String>) {
         match previous {
@@ -446,8 +440,8 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_headless_roots_default() {
-        let _guard = env_lock();
         let previous = std::env::var("TOKSCALE_HEADLESS_DIR").ok();
         std::env::remove_var("TOKSCALE_HEADLESS_DIR");
 
@@ -467,8 +461,8 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_headless_roots_override() {
-        let _guard = env_lock();
         let previous = std::env::var("TOKSCALE_HEADLESS_DIR").ok();
         std::env::set_var("TOKSCALE_HEADLESS_DIR", "/custom/headless");
 
@@ -479,7 +473,10 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_scan_all_sources_opencode() {
+        let previous_xdg = std::env::var("XDG_DATA_HOME").ok();
+
         let dir = TempDir::new().unwrap();
         let home = dir.path();
         setup_mock_opencode_dir(home);
@@ -492,6 +489,8 @@ mod tests {
         assert!(result.claude_files.is_empty());
         assert!(result.codex_files.is_empty());
         assert!(result.gemini_files.is_empty());
+
+        restore_env("XDG_DATA_HOME", previous_xdg);
     }
 
     #[test]
@@ -536,18 +535,14 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_scan_all_sources_headless_paths() {
-        let _guard = env_lock();
-        let previous = std::env::var("TOKSCALE_HEADLESS_DIR").ok();
+        let previous_headless = std::env::var("TOKSCALE_HEADLESS_DIR").ok();
         std::env::remove_var("TOKSCALE_HEADLESS_DIR");
 
         let dir = TempDir::new().unwrap();
         let home = dir.path();
 
-        let config_root = home
-            .join(".config")
-            .join("tokscale")
-            .join("headless");
         let mac_root = home
             .join("Library")
             .join("Application Support")
@@ -570,11 +565,14 @@ mod tests {
         assert_eq!(result.codex_files.len(), 1);
         assert!(result.gemini_files.is_empty());
 
-        restore_env("TOKSCALE_HEADLESS_DIR", previous);
+        restore_env("TOKSCALE_HEADLESS_DIR", previous_headless);
     }
 
     #[test]
+    #[serial]
     fn test_scan_all_sources_codex_with_env() {
+        let previous_codex = std::env::var("CODEX_HOME").ok();
+
         let dir = TempDir::new().unwrap();
         let home = dir.path();
         setup_mock_codex_dir(home);
@@ -584,5 +582,7 @@ mod tests {
 
         let result = scan_all_sources(home.to_str().unwrap(), &["codex".to_string()]);
         assert_eq!(result.codex_files.len(), 1);
+
+        restore_env("CODEX_HOME", previous_codex);
     }
 }
