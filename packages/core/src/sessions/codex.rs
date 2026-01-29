@@ -29,7 +29,6 @@ pub struct CodexPayload {
     pub model: Option<String>,
     pub model_name: Option<String>,
     pub info: Option<CodexInfo>,
-    pub originator: Option<String>,
     pub source: Option<String>,
 }
 
