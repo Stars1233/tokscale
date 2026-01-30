@@ -65,6 +65,7 @@ export function Switch({ checked, onChange, leftLabel, rightLabel, className }: 
         {leftLabel}
       </Label>
       <Track
+        type="button"
         role="switch"
         aria-checked={checked}
         aria-label={`Sort by ${checked ? rightLabel : leftLabel}`}

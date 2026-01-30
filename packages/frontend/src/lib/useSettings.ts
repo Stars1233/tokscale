@@ -18,6 +18,12 @@ const DEFAULT_SETTINGS: Settings = {
 
 const STORAGE_KEY = "tokscale-settings";
 
+const VALID_SORT_BY: LeaderboardSortBy[] = ['tokens', 'cost'];
+
+function isValidSortBy(value: unknown): value is LeaderboardSortBy {
+  return typeof value === 'string' && VALID_SORT_BY.includes(value as LeaderboardSortBy);
+}
+
 function getStoredSettings(): Settings {
   if (typeof window === "undefined") return DEFAULT_SETTINGS;
 
@@ -27,7 +33,9 @@ function getStoredSettings(): Settings {
       const parsed = JSON.parse(stored);
       return {
         paletteName: parsed.paletteName || DEFAULT_SETTINGS.paletteName,
-        leaderboardSortBy: parsed.leaderboardSortBy || DEFAULT_SETTINGS.leaderboardSortBy,
+        leaderboardSortBy: isValidSortBy(parsed.leaderboardSortBy) 
+          ? parsed.leaderboardSortBy 
+          : DEFAULT_SETTINGS.leaderboardSortBy,
       };
     }
   } catch {
