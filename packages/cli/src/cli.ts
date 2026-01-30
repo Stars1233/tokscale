@@ -120,6 +120,7 @@ interface FilterOptions {
   cursor?: boolean;
   amp?: boolean;
   droid?: boolean;
+  openclaw?: boolean;
 }
 
 interface DateFilterOptions {
@@ -444,6 +445,7 @@ async function main() {
     .option("--cursor", "Show only Cursor IDE usage")
     .option("--amp", "Show only Amp usage")
     .option("--droid", "Show only Factory Droid usage")
+    .option("--openclaw", "Show only OpenClaw usage")
     .option("--today", "Show only today's usage")
     .option("--week", "Show last 7 days")
     .option("--month", "Show current month")
@@ -480,6 +482,7 @@ async function main() {
     .option("--cursor", "Show only Cursor IDE usage")
     .option("--amp", "Show only Amp usage")
     .option("--droid", "Show only Factory Droid usage")
+    .option("--openclaw", "Show only OpenClaw usage")
     .option("--today", "Show only today's usage")
     .option("--week", "Show last 7 days")
     .option("--month", "Show current month")
@@ -506,22 +509,28 @@ async function main() {
 
   program
     .command("sources")
-    .description("Show local scan locations and Codex headless paths")
+    .description("Show local scan locations and session counts")
     .option("--json", "Output as JSON (for scripting)")
     .action(async (options) => {
       const homeDir = os.homedir();
       const headlessRoots = getHeadlessRoots(homeDir);
 
+      // Define all session paths
+      const opencodeSessions = path.join(homeDir, ".local", "share", "opencode", "storage", "message");
       const claudeSessions = path.join(homeDir, ".claude", "projects");
       const codexHome = process.env.CODEX_HOME || path.join(homeDir, ".codex");
       const codexSessions = path.join(codexHome, "sessions");
       const geminiSessions = path.join(homeDir, ".gemini", "tmp");
+      const ampSessions = path.join(homeDir, ".local", "share", "amp", "threads");
+      const droidSessions = path.join(homeDir, ".factory", "sessions");
+      const openclawSessions = path.join(homeDir, ".openclaw", "agents");
+      const clawdbotSessions = path.join(homeDir, ".clawdbot", "agents");
 
       let localMessages: ParsedMessages | null = null;
       try {
         localMessages = await parseLocalSourcesAsync({
           homeDir,
-          sources: ["claude", "codex", "gemini"],
+          sources: ["opencode", "claude", "codex", "gemini", "amp", "droid", "openclaw"],
         });
       } catch (e) {
         console.error(`Error: ${(e as Error).message}`);
@@ -539,14 +548,24 @@ async function main() {
       }
 
       const sourceRows: Array<{
-        source: "claude" | "codex" | "gemini";
+        source: SourceType;
         label: string;
         sessionsPath: string;
+        altSessionsPath?: string;
         messageCount: number;
         headlessSupported: boolean;
         headlessPaths: string[];
         headlessMessageCount: number;
       }> = [
+        {
+          source: "opencode",
+          label: "OpenCode",
+          sessionsPath: opencodeSessions,
+          messageCount: localMessages.opencodeCount,
+          headlessSupported: false,
+          headlessPaths: [],
+          headlessMessageCount: 0,
+        },
         {
           source: "claude",
           label: "Claude Code",
@@ -570,6 +589,43 @@ async function main() {
           label: "Gemini CLI",
           sessionsPath: geminiSessions,
           messageCount: localMessages.geminiCount,
+          headlessSupported: false,
+          headlessPaths: [],
+          headlessMessageCount: 0,
+        },
+        {
+          source: "cursor",
+          label: "Cursor IDE",
+          sessionsPath: path.join(homeDir, ".config", "tokscale", "cursor-cache"),
+          messageCount: 0, // Cursor uses API sync, not local sessions
+          headlessSupported: false,
+          headlessPaths: [],
+          headlessMessageCount: 0,
+        },
+        {
+          source: "amp",
+          label: "Amp",
+          sessionsPath: ampSessions,
+          messageCount: localMessages.ampCount,
+          headlessSupported: false,
+          headlessPaths: [],
+          headlessMessageCount: 0,
+        },
+        {
+          source: "droid",
+          label: "Droid",
+          sessionsPath: droidSessions,
+          messageCount: localMessages.droidCount,
+          headlessSupported: false,
+          headlessPaths: [],
+          headlessMessageCount: 0,
+        },
+        {
+          source: "openclaw",
+          label: "OpenClaw",
+          sessionsPath: openclawSessions,
+          altSessionsPath: clawdbotSessions,
+          messageCount: localMessages.openclawCount,
           headlessSupported: false,
           headlessPaths: [],
           headlessMessageCount: 0,
@@ -600,7 +656,7 @@ async function main() {
         return;
       }
 
-      console.log(pc.cyan("\n  Local sources & Codex headless capture"));
+      console.log(pc.cyan("\n  Local sources & session counts"));
       console.log(pc.gray(`  Headless roots: ${headlessRoots.join(", ")}`));
       console.log();
 
@@ -651,6 +707,7 @@ async function main() {
     .option("--cursor", "Include only Cursor IDE data")
     .option("--amp", "Include only Amp data")
     .option("--droid", "Include only Factory Droid data")
+    .option("--openclaw", "Include only OpenClaw data")
     .option("--today", "Show only today's usage")
     .option("--week", "Show last 7 days")
     .option("--month", "Show current month")
@@ -675,6 +732,7 @@ async function main() {
     .option("--cursor", "Include only Cursor IDE data")
     .option("--amp", "Include only Amp data")
     .option("--droid", "Include only Factory Droid data")
+    .option("--openclaw", "Include only OpenClaw data")
     .option("--no-spinner", "Disable loading spinner (for scripting)")
     .option("--short", "Display total tokens in abbreviated format (e.g., 7.14B)")
     .addOption(new Option("--agents", "Show Top OpenCode Agents (default)").conflicts("clients"))
@@ -719,6 +777,7 @@ async function main() {
     .option("--cursor", "Include only Cursor IDE data")
     .option("--amp", "Include only Amp data")
     .option("--droid", "Include only Factory Droid data")
+    .option("--openclaw", "Include only OpenClaw data")
     .option("--since <date>", "Start date (YYYY-MM-DD)")
     .option("--until <date>", "End date (YYYY-MM-DD)")
     .option("--year <year>", "Filter to specific year")
@@ -753,6 +812,7 @@ async function main() {
     .option("--cursor", "Show only Cursor IDE usage")
     .option("--amp", "Show only Amp usage")
     .option("--droid", "Show only Factory Droid usage")
+    .option("--openclaw", "Show only OpenClaw usage")
     .option("--today", "Show only today's usage")
     .option("--week", "Show last 7 days")
     .option("--month", "Show current month")
@@ -879,6 +939,8 @@ async function main() {
       .option("--gemini", "Show only Gemini CLI usage")
       .option("--cursor", "Show only Cursor IDE usage")
       .option("--amp", "Show only Amp usage")
+      .option("--droid", "Show only Factory Droid usage")
+      .option("--openclaw", "Show only OpenClaw usage")
       .option("--today", "Show only today's usage")
       .option("--week", "Show last 7 days")
       .option("--month", "Show current month")
@@ -907,7 +969,7 @@ async function main() {
 }
 
 function getEnabledSources(options: FilterOptions): SourceType[] | undefined {
-  const hasFilter = options.opencode || options.claude || options.codex || options.gemini || options.cursor || options.amp || options.droid;
+  const hasFilter = options.opencode || options.claude || options.codex || options.gemini || options.cursor || options.amp || options.droid || options.openclaw;
   if (!hasFilter) return undefined; // All sources
 
   const sources: SourceType[] = [];
@@ -918,6 +980,7 @@ function getEnabledSources(options: FilterOptions): SourceType[] | undefined {
   if (options.cursor) sources.push("cursor");
   if (options.amp) sources.push("amp");
   if (options.droid) sources.push("droid");
+  if (options.openclaw) sources.push("openclaw");
   return sources;
 }
 
@@ -1007,7 +1070,7 @@ async function showModelReport(options: FilterOptions & DateFilterOptions & { be
   const useSpinner = extraOptions?.spinner !== false;
   const spinner = useSpinner ? createSpinner({ color: "cyan" }) : null;
 
-  const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid'])
+  const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid', 'openclaw'])
     .filter(s => s !== 'cursor');
 
   spinner?.start(pc.gray("Scanning session data..."));
@@ -1037,7 +1100,7 @@ async function showModelReport(options: FilterOptions & DateFilterOptions & { be
 
   let report: ModelReport;
   try {
-    const emptyMessages: ParsedMessages = { messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, ampCount: 0, droidCount: 0, processingTimeMs: 0 };
+    const emptyMessages: ParsedMessages = { messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, ampCount: 0, droidCount: 0, openclawCount: 0, processingTimeMs: 0 };
     report = await finalizeReportAsync({
       localMessages: localMessages || emptyMessages,
       includeCursor: includeCursor && (cursorSync.synced || hasCursorUsageCache()),
@@ -1144,7 +1207,7 @@ async function showMonthlyReport(options: FilterOptions & DateFilterOptions & { 
 
   const dateFilters = getDateFilters(options);
   const enabledSources = getEnabledSources(options);
-  const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid'])
+  const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid', 'openclaw'])
     .filter(s => s !== 'cursor');
   const includeCursor = !enabledSources || enabledSources.includes('cursor');
 
@@ -1253,7 +1316,7 @@ async function outputJsonReport(
   const enabledSources = getEnabledSources(options);
   const onlyCursor = enabledSources?.length === 1 && enabledSources[0] === 'cursor';
   const includeCursor = !enabledSources || enabledSources.includes('cursor');
-  const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid'])
+  const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid', 'openclaw'])
     .filter(s => s !== 'cursor');
 
   const { cursorSync, localMessages } = await loadDataSourcesParallel(
@@ -1266,7 +1329,7 @@ async function outputJsonReport(
     process.exit(1);
   }
 
-  const emptyMessages: ParsedMessages = { messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, ampCount: 0, droidCount: 0, processingTimeMs: 0 };
+  const emptyMessages: ParsedMessages = { messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, ampCount: 0, droidCount: 0, openclawCount: 0, processingTimeMs: 0 };
 
   if (reportType === "models") {
     const report = await finalizeReportAsync({
@@ -1301,7 +1364,7 @@ async function handleGraphCommand(options: GraphCommandOptions) {
 
   const dateFilters = getDateFilters(options);
   const enabledSources = getEnabledSources(options);
-  const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid'])
+  const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid', 'openclaw'])
     .filter(s => s !== 'cursor');
   const includeCursor = !enabledSources || enabledSources.includes('cursor');
 

@@ -135,7 +135,8 @@ pub fn parse_codex_file(path: &Path) -> Vec<UnifiedMessage> {
                             last.output_tokens.unwrap_or(0),
                             cached,
                         )
-                    } else if let (Some(total), Some(prev)) = (&info.total_token_usage, &previous_totals)
+                    } else if let (Some(total), Some(prev)) =
+                        (&info.total_token_usage, &previous_totals)
                     {
                         let curr_input = total.input_tokens.unwrap_or(0);
                         let curr_output = total.output_tokens.unwrap_or(0);
@@ -214,12 +215,9 @@ pub fn parse_codex_file(path: &Path) -> Vec<UnifiedMessage> {
             continue;
         }
 
-        if let Some(msg) = parse_codex_headless_line(
-            trimmed,
-            &session_id,
-            &mut current_model,
-            fallback_timestamp,
-        ) {
+        if let Some(msg) =
+            parse_codex_headless_line(trimmed, &session_id, &mut current_model, fallback_timestamp)
+        {
             let mut msg = msg;
             if session_is_headless && msg.agent.is_none() {
                 msg.agent = Some("headless".to_string());
@@ -326,9 +324,21 @@ fn extract_headless_usage(value: &Value) -> Option<CodexHeadlessUsage> {
 fn extract_model_from_value(value: &Value) -> Option<String> {
     extract_string(value.get("model"))
         .or_else(|| extract_string(value.get("model_name")))
-        .or_else(|| value.get("data").and_then(|data| extract_string(data.get("model"))))
-        .or_else(|| value.get("data").and_then(|data| extract_string(data.get("model_name"))))
-        .or_else(|| value.get("response").and_then(|data| extract_string(data.get("model"))))
+        .or_else(|| {
+            value
+                .get("data")
+                .and_then(|data| extract_string(data.get("model")))
+        })
+        .or_else(|| {
+            value
+                .get("data")
+                .and_then(|data| extract_string(data.get("model_name")))
+        })
+        .or_else(|| {
+            value
+                .get("response")
+                .and_then(|data| extract_string(data.get("model")))
+        })
 }
 
 fn extract_timestamp_from_value(value: &Value) -> Option<i64> {

@@ -72,6 +72,7 @@ pub struct ParsedMessages {
     pub gemini_count: i32,
     pub amp_count: i32,
     pub droid_count: i32,
+    pub openclaw_count: i32,
     pub processing_time_ms: u32,
 }
 
@@ -450,6 +451,29 @@ fn parse_all_messages_with_pricing(
         .collect();
     all_messages.extend(droid_messages);
 
+    // Parse OpenClaw index files
+    let openclaw_messages: Vec<UnifiedMessage> = scan_result
+        .openclaw_files
+        .par_iter()
+        .flat_map(|path| {
+            sessions::openclaw::parse_openclaw_index(path)
+                .into_iter()
+                .map(|mut msg| {
+                    msg.cost = pricing.calculate_cost(
+                        &msg.model_id,
+                        msg.tokens.input,
+                        msg.tokens.output,
+                        msg.tokens.cache_read,
+                        msg.tokens.cache_write,
+                        msg.tokens.reasoning,
+                    );
+                    msg
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    all_messages.extend(openclaw_messages);
+
     all_messages
 }
 
@@ -469,6 +493,7 @@ pub async fn get_model_report(options: ReportOptions) -> napi::Result<ModelRepor
             "cursor".to_string(),
             "amp".to_string(),
             "droid".to_string(),
+            "openclaw".to_string(),
         ]
     });
 
@@ -570,6 +595,7 @@ pub async fn get_monthly_report(options: ReportOptions) -> napi::Result<MonthlyR
             "cursor".to_string(),
             "amp".to_string(),
             "droid".to_string(),
+            "openclaw".to_string(),
         ]
     });
 
@@ -646,6 +672,7 @@ pub async fn generate_graph_with_pricing(options: ReportOptions) -> napi::Result
             "cursor".to_string(),
             "amp".to_string(),
             "droid".to_string(),
+            "openclaw".to_string(),
         ]
     });
 
@@ -724,6 +751,7 @@ pub fn parse_local_sources(options: LocalParseOptions) -> napi::Result<ParsedMes
             "gemini".to_string(),
             "amp".to_string(),
             "droid".to_string(),
+            "openclaw".to_string(),
         ]
     });
 
@@ -832,6 +860,20 @@ pub fn parse_local_sources(options: LocalParseOptions) -> napi::Result<ParsedMes
     let droid_count = droid_msgs.len() as i32;
     messages.extend(droid_msgs);
 
+    // Parse OpenClaw index files (each index points to session files)
+    let openclaw_msgs: Vec<ParsedMessage> = scan_result
+        .openclaw_files
+        .par_iter()
+        .flat_map(|path| {
+            sessions::openclaw::parse_openclaw_index(path)
+                .into_iter()
+                .map(|msg| unified_to_parsed(&msg))
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    let openclaw_count = openclaw_msgs.len() as i32;
+    messages.extend(openclaw_msgs);
+
     // Apply date filters
     let filtered = filter_parsed_messages(messages, &options);
 
@@ -843,6 +885,7 @@ pub fn parse_local_sources(options: LocalParseOptions) -> napi::Result<ParsedMes
         gemini_count,
         amp_count,
         droid_count,
+        openclaw_count,
         processing_time_ms: start.elapsed().as_millis() as u32,
     })
 }

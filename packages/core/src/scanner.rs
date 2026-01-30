@@ -16,6 +16,7 @@ pub enum SessionType {
     Cursor,
     Amp,
     Droid,
+    OpenClaw,
 }
 
 /// Result of scanning all session directories
@@ -28,6 +29,7 @@ pub struct ScanResult {
     pub cursor_files: Vec<PathBuf>,
     pub amp_files: Vec<PathBuf>,
     pub droid_files: Vec<PathBuf>,
+    pub openclaw_files: Vec<PathBuf>,
 }
 
 impl ScanResult {
@@ -40,6 +42,7 @@ impl ScanResult {
             + self.cursor_files.len()
             + self.amp_files.len()
             + self.droid_files.len()
+            + self.openclaw_files.len()
     }
 
     /// Get all files as a single vector
@@ -66,6 +69,9 @@ impl ScanResult {
         }
         for path in &self.droid_files {
             result.push((SessionType::Droid, path.clone()));
+        }
+        for path in &self.openclaw_files {
+            result.push((SessionType::OpenClaw, path.clone()));
         }
 
         result
@@ -146,6 +152,7 @@ pub fn scan_directory(root: &str, pattern: &str) -> Vec<PathBuf> {
                 }
                 "T-*.json" => file_name.starts_with("T-") && file_name.ends_with(".json"),
                 "*.settings.json" => file_name.ends_with(".settings.json"),
+                "sessions.json" => file_name == "sessions.json",
                 _ => false,
             }
         })
@@ -165,6 +172,7 @@ pub fn scan_all_sources(home_dir: &str, sources: &[String]) -> ScanResult {
     let include_cursor = include_all || sources.iter().any(|s| s == "cursor");
     let include_amp = include_all || sources.iter().any(|s| s == "amp");
     let include_droid = include_all || sources.iter().any(|s| s == "droid");
+    let include_openclaw = include_all || sources.iter().any(|s| s == "openclaw");
 
     let headless_roots = headless_roots(home_dir);
 
@@ -227,6 +235,13 @@ pub fn scan_all_sources(home_dir: &str, sources: &[String]) -> ScanResult {
         tasks.push((SessionType::Droid, droid_path, "*.settings.json"));
     }
 
+    if include_openclaw {
+        let openclaw_path = format!("{}/.openclaw/agents", home_dir);
+        tasks.push((SessionType::OpenClaw, openclaw_path, "sessions.json"));
+        let clawdbot_path = format!("{}/.clawdbot/agents", home_dir);
+        tasks.push((SessionType::OpenClaw, clawdbot_path, "sessions.json"));
+    }
+
     // Execute scans in parallel
     let scan_results: Vec<(SessionType, Vec<PathBuf>)> = tasks
         .into_par_iter()
@@ -246,6 +261,7 @@ pub fn scan_all_sources(home_dir: &str, sources: &[String]) -> ScanResult {
             SessionType::Cursor => result.cursor_files.extend(files),
             SessionType::Amp => result.amp_files.extend(files),
             SessionType::Droid => result.droid_files.extend(files),
+            SessionType::OpenClaw => result.openclaw_files.extend(files),
         }
     }
 
@@ -277,6 +293,7 @@ mod tests {
             cursor_files: vec![],
             amp_files: vec![],
             droid_files: vec![],
+            openclaw_files: vec![],
         };
         assert_eq!(result.total_files(), 4);
     }
@@ -291,6 +308,7 @@ mod tests {
             cursor_files: vec![PathBuf::from("e.csv")],
             amp_files: vec![],
             droid_files: vec![],
+            openclaw_files: vec![],
         };
 
         let all = result.all_files();
