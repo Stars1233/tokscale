@@ -3,8 +3,10 @@ import { db, users, submissions } from "@/lib/db";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 
 type Period = "all" | "month" | "week";
+type SortBy = "tokens" | "cost";
 
 const VALID_PERIODS: Period[] = ["all", "month", "week"];
+const VALID_SORT_BY: SortBy[] = ["tokens", "cost"];
 
 function getDateFilter(period: Period) {
   const now = new Date();
@@ -50,6 +52,11 @@ export async function GET(
       ? (periodParam as Period)
       : "all";
     
+    const sortByParam = searchParams.get("sortBy") || "tokens";
+    const sortBy: SortBy = VALID_SORT_BY.includes(sortByParam as SortBy)
+      ? (sortByParam as SortBy)
+      : "tokens";
+    
     const dateFilter = getDateFilter(period);
 
     const userResult = await db
@@ -80,6 +87,13 @@ export async function GET(
 
     const userStats = userStatsResult[0];
     const userTotalTokens = Number(userStats.totalTokens);
+    const userTotalCost = userStats.totalCost != null ? Number(userStats.totalCost) : 0;
+
+    // Calculate rank based on sortBy parameter
+    const userCompareValue = sortBy === "cost" ? userTotalCost : userTotalTokens;
+    const havingClause = sortBy === "cost"
+      ? sql`HAVING SUM(CAST(total_cost AS DECIMAL(12,4))) > ${userCompareValue}`
+      : sql`HAVING SUM(total_tokens) > ${userCompareValue}`;
 
     const higherRankedResult = await db
       .select({
@@ -93,7 +107,7 @@ export async function GET(
             SELECT user_id FROM submissions
             ${dateFilter ? sql`WHERE ${dateFilter}` : sql``}
             GROUP BY user_id
-            HAVING SUM(total_tokens) > ${userTotalTokens}
+            ${havingClause}
           )`
         )
       );

@@ -634,6 +634,7 @@ export interface LeaderboardData {
     uniqueUsers: number;
   };
   period: Period;
+  sortBy?: 'tokens' | 'cost';
 }
 
 interface LeaderboardClientProps {
@@ -747,7 +748,7 @@ export default function LeaderboardClient({ initialData, currentUser }: Leaderbo
     const abortController = new AbortController();
     setCurrentUserRankError(false);
 
-    fetch(`/api/leaderboard/user/${currentUser.username}?period=${period}`, {
+    fetch(`/api/leaderboard/user/${currentUser.username}?period=${period}&sortBy=${leaderboardSortBy}`, {
       signal: abortController.signal,
     })
       .then((res) => {
@@ -766,12 +767,12 @@ export default function LeaderboardClient({ initialData, currentUser }: Leaderbo
       });
 
     return () => abortController.abort();
-  }, [currentUser, period]);
+  }, [currentUser, period, leaderboardSortBy]);
 
-  const fetchData = (targetPeriod: Period, targetPage: number, signal?: AbortSignal) => {
+  const fetchData = (targetPeriod: Period, targetPage: number, targetSortBy: 'tokens' | 'cost', signal?: AbortSignal) => {
     setIsLoading(true);
     setError(null);
-    fetch(`/api/leaderboard?period=${targetPeriod}&page=${targetPage}&limit=50`, { signal })
+    fetch(`/api/leaderboard?period=${targetPeriod}&page=${targetPage}&limit=50&sortBy=${targetSortBy}`, { signal })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
@@ -798,9 +799,9 @@ export default function LeaderboardClient({ initialData, currentUser }: Leaderbo
     }
 
     const abortController = new AbortController();
-    fetchData(period, page, abortController.signal);
+    fetchData(period, page, leaderboardSortBy, abortController.signal);
     return () => abortController.abort();
-  }, [period, page]);
+  }, [period, page, leaderboardSortBy]);
 
   useEffect(() => {
     if (data.pagination.totalPages > 0 && page > data.pagination.totalPages) {
@@ -808,20 +809,7 @@ export default function LeaderboardClient({ initialData, currentUser }: Leaderbo
     }
   }, [data.pagination.totalPages, page]);
 
-  const sortedUsers = useMemo(() => {
-    if (!data.users) return [];
-    
-    if (leaderboardSortBy === 'cost') {
-      return [...data.users]
-        .sort((a, b) => b.totalCost - a.totalCost)
-        .map((user, index) => ({
-          ...user,
-          rank: (data.pagination.page - 1) * data.pagination.limit + index + 1,
-        }));
-    }
-    
-    return data.users;
-  }, [data.users, data.pagination.page, data.pagination.limit, leaderboardSortBy]);
+  const sortedUsers = data.users || [];
 
   const handleCopyCommand = (command: string) => {
     navigator.clipboard.writeText(command);
@@ -967,7 +955,7 @@ export default function LeaderboardClient({ initialData, currentUser }: Leaderbo
               {error}
             </EmptyHint>
             <button
-              onClick={() => fetchData(period, page)}
+              onClick={() => fetchData(period, page, leaderboardSortBy)}
               style={{
                 marginTop: 16,
                 padding: "8px 16px",

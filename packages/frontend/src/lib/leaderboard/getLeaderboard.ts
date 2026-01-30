@@ -3,6 +3,7 @@ import { db, users, submissions } from "@/lib/db";
 import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
 
 export type Period = "all" | "month" | "week";
+export type SortBy = "tokens" | "cost";
 
 export interface LeaderboardUser {
   rank: number;
@@ -33,6 +34,7 @@ export interface LeaderboardData {
     uniqueUsers: number;
   };
   period: Period;
+  sortBy: SortBy;
 }
 
 function getDateFilter(period: Period) {
@@ -62,14 +64,19 @@ function getDateFilter(period: Period) {
 async function fetchLeaderboardData(
   period: Period,
   page: number,
-  limit: number
+  limit: number,
+  sortBy: SortBy = "tokens"
 ): Promise<LeaderboardData> {
   const offset = (page - 1) * limit;
   const dateFilter = getDateFilter(period);
 
+  const orderByColumn = sortBy === "cost"
+    ? sql`SUM(CAST(${submissions.totalCost} AS DECIMAL(12,4)))`
+    : sql`SUM(${submissions.totalTokens})`;
+
   const leaderboardQuery = db
     .select({
-      rank: sql<number>`ROW_NUMBER() OVER (ORDER BY SUM(${submissions.totalTokens}) DESC)`.as("rank"),
+      rank: sql<number>`ROW_NUMBER() OVER (ORDER BY ${orderByColumn} DESC)`.as("rank"),
       userId: users.id,
       username: users.username,
       displayName: users.displayName,
@@ -83,7 +90,7 @@ async function fetchLeaderboardData(
     .innerJoin(users, eq(submissions.userId, users.id))
     .where(dateFilter)
     .groupBy(users.id, users.username, users.displayName, users.avatarUrl)
-    .orderBy(desc(sql`SUM(${submissions.totalTokens})`))
+    .orderBy(desc(orderByColumn))
     .limit(limit)
     .offset(offset);
 
@@ -130,17 +137,19 @@ async function fetchLeaderboardData(
       uniqueUsers: Number(globalStats[0]?.uniqueUsers) || 0,
     },
     period,
+    sortBy,
   };
 }
 
 export function getLeaderboardData(
   period: Period = "all",
   page: number = 1,
-  limit: number = 50
+  limit: number = 50,
+  sortBy: SortBy = "tokens"
 ): Promise<LeaderboardData> {
   return unstable_cache(
-    () => fetchLeaderboardData(period, page, limit),
-    [`leaderboard:${period}:${page}:${limit}`],
+    () => fetchLeaderboardData(period, page, limit, sortBy),
+    [`leaderboard:${period}:${page}:${limit}:${sortBy}`],
     {
       tags: ["leaderboard", `leaderboard:${period}`],
       revalidate: 60,

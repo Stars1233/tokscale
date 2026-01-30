@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { getLeaderboardData, type Period } from "@/lib/leaderboard/getLeaderboard";
+import { getLeaderboardData, type Period, type SortBy } from "@/lib/leaderboard/getLeaderboard";
 
 export const revalidate = 60;
 
 const VALID_PERIODS: Period[] = ["all", "month", "week"];
+const VALID_SORT_BY: SortBy[] = ["tokens", "cost"];
 
 function parseIntSafe(value: string | null, defaultValue: number): number {
   if (!value) return defaultValue;
@@ -20,10 +21,15 @@ export async function GET(request: Request) {
       ? (periodParam as Period)
       : "all";
 
+    const sortByParam = searchParams.get("sortBy") || "tokens";
+    const sortBy: SortBy = VALID_SORT_BY.includes(sortByParam as SortBy)
+      ? (sortByParam as SortBy)
+      : "tokens";
+
     const page = Math.max(1, parseIntSafe(searchParams.get("page"), 1));
     const limit = Math.min(100, Math.max(1, parseIntSafe(searchParams.get("limit"), 50)));
 
-    const data = await getLeaderboardData(period, page, limit);
+    const data = await getLeaderboardData(period, page, limit, sortBy);
 
     return NextResponse.json(data);
   } catch (error) {
