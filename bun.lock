@@ -17,7 +17,7 @@
     },
     "packages/cli": {
       "name": "@tokscale/cli",
-      "version": "1.0.24",
+      "version": "1.1.2",
       "dependencies": {
         "@napi-rs/canvas": "^0.1.68",
         "@opentui/core": "0.1.60",
@@ -40,7 +40,7 @@
     },
     "packages/core": {
       "name": "@tokscale/core",
-      "version": "1.0.24",
+      "version": "1.1.2",
       "devDependencies": {
         "@napi-rs/cli": "^3.4.1",
         "ava": "^6.1.0",
@@ -54,6 +54,7 @@
         "@primer/octicons-react": "^19.21.1",
         "@primer/primitives": "^11.3.1",
         "@primer/react": "^38.3.0",
+        "@tanstack/react-virtual": "^3.13.18",
         "@vercel/analytics": "^1.6.1",
         "date-fns": "^4.1.0",
         "drizzle-orm": "^0.38.3",
@@ -83,7 +84,7 @@
     },
     "packages/tokscale": {
       "name": "tokscale",
-      "version": "1.0.24",
+      "version": "1.1.2",
       "bin": {
         "tokscale": "./bin.js",
       },
@@ -712,6 +713,10 @@
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
     "@swc/helpers": ["@swc/helpers@0.5.15", "", { "dependencies": { "tslib": "^2.8.0" } }, "sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g=="],
+
+    "@tanstack/react-virtual": ["@tanstack/react-virtual@3.13.18", "", { "dependencies": { "@tanstack/virtual-core": "3.13.18" }, "peerDependencies": { "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-dZkhyfahpvlaV0rIKnvQiVoWPyURppl6w4m9IwMDpuIjcJ1sD9YGWrt0wISvgU7ewACXx2Ct46WPgI6qAD4v6A=="],
+
+    "@tanstack/virtual-core": ["@tanstack/virtual-core@3.13.18", "", {}, "sha512-Mx86Hqu1k39icq2Zusq+Ey2J6dDWTjDvEv43PJtRCoEYTLyfaPnxIQ6iy7YAOK0NV/qOEmZQ/uCufrppZxTgcg=="],
 
     "@tokenizer/token": ["@tokenizer/token@0.3.0", "", {}, "sha512-OvjF+z51L3ov0OyAU0duzsYuvO01PH7x4t6DJx+guahgTnBHkhJdG7soQeTSFLWN3efnHyibZ4Z8l2EuWwJN3A=="],
 

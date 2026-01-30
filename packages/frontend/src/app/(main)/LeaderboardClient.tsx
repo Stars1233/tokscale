@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, memo, useCallback } from "react";
 import { useRouter } from "nextjs-toploader/app";
 import styled from "styled-components";
 import { Pagination, Avatar } from "@primer/react";
@@ -162,20 +162,24 @@ const TableHeaderCell = styled.th`
 
 const TableBody = styled.tbody``;
 
-const TableRow = styled.tr<{ $isCurrentUser?: boolean }>`
+const TableRow = styled.tr`
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
   
   &:hover {
-    background-color: ${props => props.$isCurrentUser ? 'rgba(0, 115, 255, 0.12)' : 'rgba(20, 26, 33, 0.6)'};
+    background-color: rgba(20, 26, 33, 0.6);
   }
 
-  ${props => props.$isCurrentUser && `
+  &[data-current-user="true"] {
     background: rgba(0, 115, 255, 0.05);
     box-shadow: inset 4px 0 0 #0073FF, inset 0 0 0 2px #0073FF;
     border-radius: 4px;
-  `}
+    
+    &:hover {
+      background-color: rgba(0, 115, 255, 0.12);
+    }
+  }
 `;
 
 const TableCell = styled.td`
@@ -234,6 +238,11 @@ const TableCell = styled.td`
 const RankBadge = styled.span`
   font-size: 16px;
   font-weight: bold;
+  color: var(--color-fg-muted);
+  
+  &[data-rank="1"] { color: #EAB308; }
+  &[data-rank="2"] { color: #9CA3AF; }
+  &[data-rank="3"] { color: #D97706; }
   
   @media (max-width: 480px) {
     font-size: 14px;
@@ -643,6 +652,76 @@ function isValidLeaderboardData(data: unknown): data is LeaderboardData {
   );
 }
 
+interface LeaderboardRowProps {
+  user: LeaderboardUser;
+  isCurrentUser: boolean;
+  isLastRow: boolean;
+  onRowClick: (username: string) => void;
+}
+
+const LeaderboardRow = memo(function LeaderboardRow({
+  user,
+  isCurrentUser,
+  isLastRow,
+  onRowClick,
+}: LeaderboardRowProps) {
+  const formattedTokens = useMemo(() => user.totalTokens.toLocaleString('en-US'), [user.totalTokens]);
+  const formattedCost = useMemo(() => user.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }), [user.totalCost]);
+  
+  return (
+    <TableRow
+      onClick={() => onRowClick(user.username)}
+      data-current-user={isCurrentUser}
+      style={isLastRow ? undefined : { borderBottom: "1px solid var(--color-border-default)" }}
+    >
+      <TableCell className="rank-cell">
+        <RankBadge data-rank={user.rank <= 3 ? user.rank : undefined}>
+          #{user.rank}
+        </RankBadge>
+      </TableCell>
+      <TableCell>
+        <UserContainer>
+          <Avatar
+            src={user.avatarUrl || `https://github.com/${user.username}.png`}
+            alt={user.username}
+            size={40}
+          />
+          <UserInfo>
+            <UserDisplayName style={{ color: "var(--color-fg-default)" }}>
+              {user.displayName || user.username}
+            </UserDisplayName>
+            <Username style={{ color: "var(--color-fg-muted)" }}>
+              @{user.username}
+            </Username>
+          </UserInfo>
+        </UserContainer>
+      </TableCell>
+      <TableCell className="text-right hidden-cost-mobile">
+        <StatSpan
+          style={{ color: "var(--color-fg-default)", textDecoration: "none" }}
+          title={formattedCost}
+        >
+          {formatCurrency(user.totalCost)}
+        </StatSpan>
+      </TableCell>
+      <TableCell className="text-right">
+        <CombinedValueContainer>
+          <TokenValue title={formattedTokens}>
+            <TokenValueFull>{formattedTokens}</TokenValueFull>
+            <TokenValueAbbrev>{formatNumber(user.totalTokens)}</TokenValueAbbrev>
+          </TokenValue>
+          <CostValue title={formattedCost}>
+            {formatCurrency(user.totalCost)}
+          </CostValue>
+        </CombinedValueContainer>
+      </TableCell>
+      <TableCell className="text-right hidden-mobile w-24">
+        <span style={{ color: "var(--color-fg-muted)" }}>{user.submissionCount}</span>
+      </TableCell>
+    </TableRow>
+  );
+});
+
 export default function LeaderboardClient({ initialData, currentUser }: LeaderboardClientProps) {
   const router = useRouter();
   const [data, setData] = useState<LeaderboardData>(initialData);
@@ -749,6 +828,10 @@ export default function LeaderboardClient({ initialData, currentUser }: Leaderbo
     setCopiedCommand(command);
     setTimeout(() => setCopiedCommand(null), 2000);
   };
+
+  const handleRowClick = useCallback((username: string) => {
+    router.push(`/u/${username}`);
+  }, [router]);
 
   return (
     <>
@@ -957,83 +1040,15 @@ export default function LeaderboardClient({ initialData, currentUser }: Leaderbo
                     </tr>
                   </TableHead>
                   <TableBody>
-                    {sortedUsers.map((user, index) => {
-                      const isCurrentUser = !!(currentUser && user.username === currentUser.username);
-                      return (
-                        <TableRow
-                          key={user.userId}
-                          onClick={() => router.push(`/u/${user.username}`)}
-                          $isCurrentUser={isCurrentUser}
-                          style={{
-                            borderBottom: index < sortedUsers.length - 1 ? "1px solid var(--color-border-default)" : "none",
-                          }}
-                        >
-                        <TableCell className="rank-cell">
-                          <RankBadge
-                            style={{
-                              color:
-                                user.rank === 1
-                                  ? "#EAB308"
-                                  : user.rank === 2
-                                  ? "#9CA3AF"
-                                  : user.rank === 3
-                                  ? "#D97706"
-                                  : "var(--color-fg-muted)",
-                            }}
-                          >
-                            #{user.rank}
-                          </RankBadge>
-                        </TableCell>
-                        <TableCell>
-                          <UserContainer>
-                            <Avatar
-                              src={user.avatarUrl || `https://github.com/${user.username}.png`}
-                              alt={user.username}
-                              size={40}
-                            />
-                            <UserInfo>
-                              <UserDisplayName
-                                style={{ color: "var(--color-fg-default)" }}
-                              >
-                                {user.displayName || user.username}
-                              </UserDisplayName>
-                              <Username
-                                style={{ color: "var(--color-fg-muted)" }}
-                              >
-                                @{user.username}
-                              </Username>
-                            </UserInfo>
-                          </UserContainer>
-                        </TableCell>
-                        <TableCell className="text-right hidden-cost-mobile">
-                          <StatSpan
-                            style={{ color: "var(--color-fg-default)", textDecoration: "none" }}
-                            title={user.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 })}
-                          >
-                            {formatCurrency(user.totalCost)}
-                          </StatSpan>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <CombinedValueContainer>
-                            <TokenValue
-                              title={user.totalTokens.toLocaleString('en-US')}
-                            >
-                              <TokenValueFull>{user.totalTokens.toLocaleString('en-US')}</TokenValueFull>
-                              <TokenValueAbbrev>{formatNumber(user.totalTokens)}</TokenValueAbbrev>
-                            </TokenValue>
-                            <CostValue
-                              title={user.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 })}
-                            >
-                              {formatCurrency(user.totalCost)}
-                            </CostValue>
-                          </CombinedValueContainer>
-                        </TableCell>
-                        <TableCell className="text-right hidden-mobile w-24">
-                          <span style={{ color: "var(--color-fg-muted)" }}>{user.submissionCount}</span>
-                        </TableCell>
-                      </TableRow>
-                      );
-                    })}
+                    {sortedUsers.map((user, index) => (
+                      <LeaderboardRow
+                        key={user.userId}
+                        user={user}
+                        isCurrentUser={!!(currentUser && user.username === currentUser.username)}
+                        isLastRow={index === sortedUsers.length - 1}
+                        onRowClick={handleRowClick}
+                      />
+                    ))}
                   </TableBody>
                 </Table>
               </TableWrapper>
