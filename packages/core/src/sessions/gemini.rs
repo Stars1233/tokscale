@@ -169,11 +169,9 @@ fn parse_gemini_headless_jsonl(path: &Path, fallback_timestamp: i64) -> Vec<Unif
             if let Some(model) = extract_string(value.get("model")) {
                 current_model = Some(model);
             }
-            if let Some(id) = extract_string(
-                value
-                    .get("session_id")
-                    .or_else(|| value.get("sessionId")),
-            ) {
+            if let Some(id) =
+                extract_string(value.get("session_id").or_else(|| value.get("sessionId")))
+            {
                 session_id = id;
             }
             continue;
@@ -391,7 +389,10 @@ mod tests {
     fn test_parse_headless_stream_jsonl() {
         let content = r#"{"type":"init","model":"gemini-2.5-pro","session_id":"session-1"}
 {"type":"result","stats":{"input_tokens":10,"output_tokens":20}}"#;
-        let mut file = tempfile::Builder::new().suffix(".jsonl").tempfile().unwrap();
+        let mut file = tempfile::Builder::new()
+            .suffix(".jsonl")
+            .tempfile()
+            .unwrap();
         file.write_all(content.as_bytes()).unwrap();
         file.flush().unwrap();
 

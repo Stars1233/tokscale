@@ -100,15 +100,12 @@ pub fn parse_amp_file(path: &Path) -> Vec<UnifiedMessage> {
         Err(_) => return Vec::new(),
     };
 
-    let thread_id = thread
-        .id
-        .clone()
-        .unwrap_or_else(|| {
-            path.file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or("unknown")
-                .to_string()
-        });
+    let thread_id = thread.id.clone().unwrap_or_else(|| {
+        path.file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("unknown")
+            .to_string()
+    });
 
     let mut messages = Vec::new();
 

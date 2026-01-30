@@ -60,6 +60,7 @@ export const SOURCE_COLORS: Record<SourceType, string> = {
   gemini: "#06b6d4",
   amp: "#EC4899",
   droid: "#10b981",
+  openclaw: "#ef4444",
 };
 
 export function getSourceColor(source: SourceType | string): string {
@@ -68,5 +69,6 @@ export function getSourceColor(source: SourceType | string): string {
 
 export function getSourceDisplayName(source: string): string {
   if (source === "droid") return "Droid";
+  if (source === "openclaw") return "OpenClaw";
   return source.charAt(0).toUpperCase() + source.slice(1);
 }

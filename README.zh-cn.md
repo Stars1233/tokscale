@@ -51,6 +51,7 @@
 | <img width="48px" src=".github/assets/client-cursor.jpg" alt="Cursor" /> | [Cursor IDE](https://cursor.com/) | 通过 `~/.config/tokscale/cursor-cache/` API 同步 | ✅ 支持 |
 | <img width="48px" src=".github/assets/client-amp.png" alt="Amp" /> | [Amp (AmpCode)](https://ampcode.com/) | `~/.local/share/amp/threads/` | ✅ 支持 |
 | <img width="48px" src=".github/assets/client-droid.png" alt="Droid" /> | [Droid (Factory Droid)](https://factory.ai/) | `~/.factory/sessions/` | ✅ 支持 |
+| <img width="48px" src=".github/assets/client-openclaw.jpg" alt="OpenClaw" /> | [OpenClaw](https://openclaw.ai/) | `~/.openclaw/agents/` (+ 旧版: `.clawdbot`, `.moltbot`, `.moldbot`) | ✅ 支持 |
 
 使用 [🚅 LiteLLM 的价格数据](https://github.com/BerriAI/litellm)提供实时价格计算，支持分层定价模型和缓存 Token 折扣。
 
@@ -112,7 +113,7 @@
   - 9 种颜色主题的 GitHub 风格贡献图
   - 实时筛选和排序
   - 零闪烁渲染（原生 Zig 引擎）
-- **多平台支持** - 跟踪 OpenCode、Claude Code、Codex CLI、Cursor IDE 和 Gemini CLI 的使用情况
+- **多平台支持** - 跟踪 OpenCode、Claude Code、Codex CLI、Cursor IDE、Gemini CLI、Amp、Droid 和 OpenClaw 的使用情况
 - **实时定价** - 从 LiteLLM 获取当前价格，带 1 小时磁盘缓存
 - **详细分解** - 输入、输出、缓存读写和推理 Token 跟踪
 - **原生 Rust 核心** - 所有解析和聚合在 Rust 中完成，处理速度提升 10 倍
@@ -215,7 +216,7 @@ tokscale models --json > report.json   # 保存到文件
   - `1-4` 或 `←/→/Tab`：切换视图
   - `↑/↓`：导航列表
   - `c/n/t`：按成本/名称/Token 排序
-  - `1-5`：切换来源（OpenCode/Claude/Codex/Cursor/Gemini）
+  - `1-8`：切换来源（OpenCode/Claude/Codex/Cursor/Gemini/Amp/Droid/OpenClaw）
   - `p`：循环 9 种颜色主题
   - `r`：刷新数据
   - `e`：导出为 JSON
@@ -735,6 +736,7 @@ AI 编程工具将会话数据存储在跨平台位置。大多数工具在所�
 | Amp | `~/.local/share/amp/` | `%USERPROFILE%\.local\share\amp\` | 与 OpenCode 一样使用 `xdg-basedir` |
 | Cursor | API 同步 | API 同步 | 通过 API 获取数据，缓存在 `%USERPROFILE%\.config\tokscale\cursor-cache\` |
 | Droid | `~/.factory/` | `%USERPROFILE%\.factory\` | 所有平台使用相同路径 |
+| OpenClaw | `~/.openclaw/` (+ 旧版: `.clawdbot`, `.moltbot`, `.moldbot`) | `%USERPROFILE%\.openclaw\` (+ 旧版路径) | 所有平台使用相同路径 |
 
 > **注意**：在 Windows 上，`~` 扩展为 `%USERPROFILE%`（例如 `C:\Users\用户名`）。这些工具故意使用 Unix 风格的路径（如 `.local/share`）而不是 Windows 原生路径（如 `%APPDATA%`），以实现跨平台一致性。
 
@@ -874,6 +876,26 @@ OpenCode 没有内置会话清理。`~/.local/share/opencode/storage/` 中的会
 位置：`~/.config/tokscale/cursor-cache/`（通过 Cursor API 同步）
 
 Cursor 数据使用您的会话令牌从 Cursor API 获取并本地缓存。运行 `tokscale cursor login` 进行认证。设置说明请参阅 [Cursor IDE 命令](#cursor-ide-命令)。
+
+### OpenClaw
+
+位置：`~/.openclaw/agents/*/sessions/sessions.json`（也扫描旧版路径：`~/.clawdbot/`、`~/.moltbot/`、`~/.moldbot/`）
+
+指向 JSONL 会话文件的索引文件：
+```json
+{
+  "agent:main:main": {
+    "sessionId": "uuid",
+    "sessionFile": "/path/to/session.jsonl"
+  }
+}
+```
+
+包含 model_change 事件和助手消息的会话 JSONL 格式：
+```json
+{"type":"model_change","provider":"openai-codex","modelId":"gpt-5.2"}
+{"type":"message","message":{"role":"assistant","usage":{"input":1660,"output":55,"cacheRead":108928,"cost":{"total":0.02}},"timestamp":1769753935279}}
+```
 
 ## 定价
 

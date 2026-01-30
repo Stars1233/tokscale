@@ -8,6 +8,7 @@ pub mod codex;
 pub mod cursor;
 pub mod droid;
 pub mod gemini;
+pub mod openclaw;
 pub mod opencode;
 pub(crate) mod utils;
 
@@ -54,7 +55,17 @@ impl UnifiedMessage {
         tokens: TokenBreakdown,
         cost: f64,
     ) -> Self {
-        Self::new_full(source, model_id, provider_id, session_id, timestamp, tokens, cost, None, None)
+        Self::new_full(
+            source,
+            model_id,
+            provider_id,
+            session_id,
+            timestamp,
+            tokens,
+            cost,
+            None,
+            None,
+        )
     }
 
     pub fn new_with_agent(
@@ -67,7 +78,17 @@ impl UnifiedMessage {
         cost: f64,
         agent: Option<String>,
     ) -> Self {
-        Self::new_full(source, model_id, provider_id, session_id, timestamp, tokens, cost, agent, None)
+        Self::new_full(
+            source,
+            model_id,
+            provider_id,
+            session_id,
+            timestamp,
+            tokens,
+            cost,
+            agent,
+            None,
+        )
     }
 
     pub fn new_with_dedup(
@@ -80,7 +101,17 @@ impl UnifiedMessage {
         cost: f64,
         dedup_key: Option<String>,
     ) -> Self {
-        Self::new_full(source, model_id, provider_id, session_id, timestamp, tokens, cost, None, dedup_key)
+        Self::new_full(
+            source,
+            model_id,
+            provider_id,
+            session_id,
+            timestamp,
+            tokens,
+            cost,
+            None,
+            dedup_key,
+        )
     }
 
     fn new_full(

@@ -192,10 +192,9 @@ pub fn parse_droid_file(path: &Path) -> Vec<UnifiedMessage> {
         .replace(".settings", "");
 
     // Get model and provider
-    let provider = settings
-        .provider_lock
-        .clone()
-        .unwrap_or_else(|| get_provider_from_model(settings.model.as_deref().unwrap_or("")).to_string());
+    let provider = settings.provider_lock.clone().unwrap_or_else(|| {
+        get_provider_from_model(settings.model.as_deref().unwrap_or("")).to_string()
+    });
 
     let model = if let Some(m) = settings.model {
         normalize_model_name(&m)
@@ -207,7 +206,8 @@ pub fn parse_droid_file(path: &Path) -> Vec<UnifiedMessage> {
             .map(std::path::PathBuf::from);
 
         if let Some(ref jsonl) = jsonl_path {
-            extract_model_from_jsonl(jsonl).unwrap_or_else(|| get_default_model_from_provider(&provider))
+            extract_model_from_jsonl(jsonl)
+                .unwrap_or_else(|| get_default_model_from_provider(&provider))
         } else {
             get_default_model_from_provider(&provider)
         }
@@ -295,7 +295,10 @@ mod tests {
 
     #[test]
     fn test_get_default_model_from_provider() {
-        assert_eq!(get_default_model_from_provider("anthropic"), "claude-unknown");
+        assert_eq!(
+            get_default_model_from_provider("anthropic"),
+            "claude-unknown"
+        );
         assert_eq!(get_default_model_from_provider("openai"), "gpt-unknown");
         assert_eq!(get_default_model_from_provider("google"), "gemini-unknown");
         assert_eq!(get_default_model_from_provider("xai"), "grok-unknown");

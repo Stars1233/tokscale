@@ -51,6 +51,7 @@
 | <img width="48px" src=".github/assets/client-cursor.jpg" alt="Cursor" /> | [Cursor IDE](https://cursor.com/) | API sync via `~/.config/tokscale/cursor-cache/` | ✅ Yes |
 | <img width="48px" src=".github/assets/client-amp.png" alt="Amp" /> | [Amp (AmpCode)](https://ampcode.com/) | `~/.local/share/amp/threads/` | ✅ Yes |
 | <img width="48px" src=".github/assets/client-droid.png" alt="Droid" /> | [Droid (Factory Droid)](https://factory.ai/) | `~/.factory/sessions/` | ✅ Yes |
+| <img width="48px" src=".github/assets/client-openclaw.jpg" alt="OpenClaw" /> | [OpenClaw](https://openclaw.ai/) | `~/.openclaw/agents/` (+ legacy: `.clawdbot`, `.moltbot`, `.moldbot`) | ✅ Yes |
 
 Get real-time pricing calculations using [🚅 LiteLLM's pricing data](https://github.com/BerriAI/litellm), with support for tiered pricing models and cache token discounts.
 
@@ -113,7 +114,7 @@ In the age of AI-assisted development, **tokens are the new energy**. They power
   - GitHub-style contribution graph with 9 color themes
   - Real-time filtering and sorting
   - Zero flicker rendering (native Zig engine)
-- **Multi-platform support** - Track usage across OpenCode, Claude Code, Codex CLI, Cursor IDE, Gemini CLI, and Amp
+- **Multi-platform support** - Track usage across OpenCode, Claude Code, Codex CLI, Cursor IDE, Gemini CLI, Amp, Droid, and OpenClaw
 - **Real-time pricing** - Fetches current pricing from LiteLLM with 1-hour disk cache; automatic OpenRouter fallback for new models
 - **Detailed breakdowns** - Input, output, cache read/write, and reasoning token tracking
 - **Native Rust core** - All parsing and aggregation done in Rust for 10x faster processing
@@ -219,7 +220,7 @@ The interactive TUI mode provides:
   - `1-4` or `←/→/Tab`: Switch views
   - `↑/↓`: Navigate lists
   - `c/n/t`: Sort by cost/name/tokens
-  - `1-6`: Toggle sources (OpenCode/Claude/Codex/Cursor/Gemini/Amp)
+  - `1-8`: Toggle sources (OpenCode/Claude/Codex/Cursor/Gemini/Amp/Droid/OpenClaw)
   - `p`: Cycle through 9 color themes
   - `r`: Refresh data
   - `e`: Export to JSON
@@ -245,6 +246,15 @@ tokscale --gemini
 
 # Show only Cursor IDE usage (requires `tokscale cursor login` first)
 tokscale --cursor
+
+# Show only Amp usage
+tokscale --amp
+
+# Show only Droid usage
+tokscale --droid
+
+# Show only OpenClaw usage
+tokscale --openclaw
 
 # Combine filters
 tokscale --opencode --claude
@@ -497,7 +507,7 @@ The frontend provides a GitHub-style contribution graph visualization:
 - **Interactive tooltips**: Hover for detailed daily breakdowns
 - **Day breakdown panel**: Click to see per-source and per-model details
 - **Year filtering**: Navigate between years
-- **Source filtering**: Filter by platform (OpenCode, Claude, Codex, Cursor, Gemini, Amp)
+- **Source filtering**: Filter by platform (OpenCode, Claude, Codex, Cursor, Gemini, Amp, Droid, OpenClaw)
 - **Stats panel**: Total cost, tokens, active days, streaks
 - **FOUC prevention**: Theme applied before React hydrates (no flash)
 
@@ -757,6 +767,7 @@ AI coding tools store their session data in cross-platform locations. Most tools
 | Amp | `~/.local/share/amp/` | `%USERPROFILE%\.local\share\amp\` | Uses `xdg-basedir` like OpenCode |
 | Cursor | API sync | API sync | Data fetched via API, cached in `%USERPROFILE%\.config\tokscale\cursor-cache\` |
 | Droid | `~/.factory/` | `%USERPROFILE%\.factory\` | Same path on all platforms |
+| OpenClaw | `~/.openclaw/` (+ legacy: `.clawdbot`, `.moltbot`, `.moldbot`) | `%USERPROFILE%\.openclaw\` (+ legacy paths) | Same path on all platforms |
 
 > **Note**: On Windows, `~` expands to `%USERPROFILE%` (e.g., `C:\Users\YourName`). These tools intentionally use Unix-style paths (like `.local/share`) even on Windows for cross-platform consistency, rather than Windows-native paths like `%APPDATA%`.
 
@@ -896,6 +907,26 @@ Session files containing message arrays:
 Location: `~/.config/tokscale/cursor-cache/` (synced via Cursor API)
 
 Cursor data is fetched from the Cursor API using your session token and cached locally. Run `tokscale cursor login` to authenticate. See [Cursor IDE Commands](#cursor-ide-commands) for setup instructions.
+
+### OpenClaw
+
+Location: `~/.openclaw/agents/*/sessions/sessions.json` (also scans legacy paths: `~/.clawdbot/`, `~/.moltbot/`, `~/.moldbot/`)
+
+Index file pointing to JSONL session files:
+```json
+{
+  "agent:main:main": {
+    "sessionId": "uuid",
+    "sessionFile": "/path/to/session.jsonl"
+  }
+}
+```
+
+Session JSONL format with model_change events and assistant messages:
+```json
+{"type":"model_change","provider":"openai-codex","modelId":"gpt-5.2"}
+{"type":"message","message":{"role":"assistant","usage":{"input":1660,"output":55,"cacheRead":108928,"cost":{"total":0.02}},"timestamp":1769753935279}}
+```
 
 ## Pricing
 
