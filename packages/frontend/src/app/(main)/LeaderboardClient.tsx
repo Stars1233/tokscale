@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "nextjs-toploader/app";
 import styled from "styled-components";
 import { Pagination, Avatar } from "@primer/react";
@@ -8,6 +8,8 @@ import { CopyIcon, CheckIcon } from "@primer/octicons-react";
 import { TabBar } from "@/components/TabBar";
 import { LeaderboardSkeleton } from "@/components/Skeleton";
 import { formatCurrency, formatNumber } from "@/lib/utils";
+import { useSettings } from "@/lib/useSettings";
+import { Switch } from "@/components/Switch";
 
 const Section = styled.div`
   margin-bottom: 40px;
@@ -578,6 +580,20 @@ const ErrorBanner = styled.div`
   gap: 8px;
 `;
 
+const SortToggleContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: 16px;
+`;
+
+const SortLabel = styled.span`
+  font-size: 12px;
+  color: var(--color-fg-muted);
+  font-weight: 500;
+`;
+
 export type Period = "all" | "month" | "week";
 
 export interface LeaderboardUser {
@@ -637,6 +653,8 @@ export default function LeaderboardClient({ initialData, currentUser }: Leaderbo
   const [page, setPage] = useState(initialData.pagination.page);
   const [currentUserRank, setCurrentUserRank] = useState<LeaderboardUser | null>(null);
   const [currentUserRankError, setCurrentUserRankError] = useState(false);
+
+  const { leaderboardSortBy, setLeaderboardSort } = useSettings();
 
   const isFirstMount = useRef(true);
 
@@ -710,6 +728,21 @@ export default function LeaderboardClient({ initialData, currentUser }: Leaderbo
       setPage(data.pagination.totalPages);
     }
   }, [data.pagination.totalPages, page]);
+
+  const sortedUsers = useMemo(() => {
+    if (!data.users) return [];
+    
+    if (leaderboardSortBy === 'cost') {
+      return [...data.users]
+        .sort((a, b) => b.totalCost - a.totalCost)
+        .map((user, index) => ({
+          ...user,
+          rank: (data.pagination.page - 1) * data.pagination.limit + index + 1,
+        }));
+    }
+    
+    return data.users;
+  }, [data.users, data.pagination.page, data.pagination.limit, leaderboardSortBy]);
 
   const handleCopyCommand = (command: string) => {
     navigator.clipboard.writeText(command);
@@ -827,6 +860,16 @@ export default function LeaderboardClient({ initialData, currentUser }: Leaderbo
         />
       </TabSection>
 
+      <SortToggleContainer>
+        <SortLabel>Sort by:</SortLabel>
+        <Switch
+          checked={leaderboardSortBy === 'cost'}
+          onChange={(checked) => setLeaderboardSort(checked ? 'cost' : 'tokens')}
+          leftLabel="Tokens"
+          rightLabel="Cost"
+        />
+      </SortToggleContainer>
+
       {isLoading ? (
         <LeaderboardSkeleton />
       ) : error ? (
@@ -914,7 +957,7 @@ export default function LeaderboardClient({ initialData, currentUser }: Leaderbo
                     </tr>
                   </TableHead>
                   <TableBody>
-                    {data.users.map((user, index) => {
+                    {sortedUsers.map((user, index) => {
                       const isCurrentUser = !!(currentUser && user.username === currentUser.username);
                       return (
                         <TableRow
@@ -922,7 +965,7 @@ export default function LeaderboardClient({ initialData, currentUser }: Leaderbo
                           onClick={() => router.push(`/u/${user.username}`)}
                           $isCurrentUser={isCurrentUser}
                           style={{
-                            borderBottom: index < data.users.length - 1 ? "1px solid var(--color-border-default)" : "none",
+                            borderBottom: index < sortedUsers.length - 1 ? "1px solid var(--color-border-default)" : "none",
                           }}
                         >
                         <TableCell className="rank-cell">
