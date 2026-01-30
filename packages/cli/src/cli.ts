@@ -791,6 +791,7 @@ async function main() {
         cursor: options.cursor,
         amp: options.amp,
         droid: options.droid,
+        openclaw: options.openclaw,
         since: options.since,
         until: options.until,
         year: options.year,
