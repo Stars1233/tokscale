@@ -32,6 +32,20 @@ export const SOURCE_DISPLAY_NAMES: Record<string, string> = {
   cursor: "Cursor",
   amp: "Amp",
   droid: "Droid",
+  openclaw: "OpenClaw",
+};
+
+// Client logos from GitHub CDN (public repo)
+const GITHUB_CDN_BASE = "https://raw.githubusercontent.com/junhoyeo/tokscale/main/.github/assets";
+export const SOURCE_LOGOS: Record<string, string> = {
+  opencode: `${GITHUB_CDN_BASE}/client-opencode.png`,
+  claude: `${GITHUB_CDN_BASE}/client-claude.jpg`,
+  codex: `${GITHUB_CDN_BASE}/client-openai.jpg`,
+  gemini: `${GITHUB_CDN_BASE}/client-gemini.png`,
+  cursor: `${GITHUB_CDN_BASE}/client-cursor.jpg`,
+  amp: `${GITHUB_CDN_BASE}/client-amp.png`,
+  droid: `${GITHUB_CDN_BASE}/client-droid.png`,
+  openclaw: `${GITHUB_CDN_BASE}/client-openclaw.jpg`,
 };
 
 export const SOURCE_COLORS: Record<string, string> = {
@@ -42,6 +56,7 @@ export const SOURCE_COLORS: Record<string, string> = {
   cursor: "#22c55e",
   amp: "#EC4899",
   droid: "#1F1D1C",
+  openclaw: "#EF4444",
 };
 
 export const SOURCE_TEXT_COLORS: Record<string, string> = {

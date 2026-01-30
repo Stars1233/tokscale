@@ -3,7 +3,7 @@
 import styled from "styled-components";
 import type { ViewMode, ColorPaletteName, SourceType, GraphColorPalette } from "@/lib/types";
 import { getPaletteNames, colorPalettes } from "@/lib/themes";
-import { SOURCE_DISPLAY_NAMES } from "@/lib/constants";
+import { SOURCE_DISPLAY_NAMES, SOURCE_LOGOS } from "@/lib/constants";
 import { formatTokenCount } from "@/lib/utils";
 
 interface GraphControlsProps {
@@ -157,7 +157,10 @@ const FilterLabel = styled.span`
 `;
 
 const SourceFilterButton = styled.button<{ $isSelected: boolean }>`
-  padding: 4px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 4px 6px;
   font-size: 12px;
   border-radius: 9999px;
   transition: all 200ms;
@@ -165,7 +168,6 @@ const SourceFilterButton = styled.button<{ $isSelected: boolean }>`
   opacity: ${({ $isSelected }) => $isSelected ? '1' : '0.5'};
   border: 1.5px solid;
   flex: 0 0 auto;
-  min-height: 44px;
   touch-action: manipulation;
   
   &:hover {
@@ -178,8 +180,16 @@ const SourceFilterButton = styled.button<{ $isSelected: boolean }>`
   }
 
   @media (max-width: 400px) {
-    padding: 8px 10px;
+    padding: 4px 10px 4px 4px;
   }
+`;
+
+const SourceLogo = styled.img`
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
 `;
 
 const ActionButton = styled.button`
@@ -356,6 +366,12 @@ export function GraphControls({
                     borderColor: isSelected ? palette.grade3 : "var(--color-border-default)",
                   }}
                 >
+                  {SOURCE_LOGOS[source] && (
+                    <SourceLogo
+                      src={SOURCE_LOGOS[source]}
+                      alt={`${SOURCE_DISPLAY_NAMES[source] || source} logo`}
+                    />
+                  )}
                   {SOURCE_DISPLAY_NAMES[source] || source}
                 </SourceFilterButton>
               );
