@@ -677,6 +677,7 @@ export interface LeaderboardData {
 interface LeaderboardClientProps {
   initialData: LeaderboardData;
   currentUser: { id: string; username: string; displayName: string | null; avatarUrl: string | null } | null;
+  initialSortBy: 'tokens' | 'cost';
 }
 
 function isValidLeaderboardData(data: unknown): data is LeaderboardData {
@@ -757,7 +758,7 @@ const LeaderboardRow = memo(function LeaderboardRow({
   );
 });
 
-export default function LeaderboardClient({ initialData, currentUser }: LeaderboardClientProps) {
+export default function LeaderboardClient({ initialData, currentUser, initialSortBy }: LeaderboardClientProps) {
   const router = useRouter();
   const [data, setData] = useState<LeaderboardData>(initialData);
   const [isLoading, setIsLoading] = useState(false);
@@ -768,9 +769,12 @@ export default function LeaderboardClient({ initialData, currentUser }: Leaderbo
   const [currentUserRank, setCurrentUserRank] = useState<LeaderboardUser | null>(null);
   const [currentUserRankError, setCurrentUserRankError] = useState(false);
 
-  const { leaderboardSortBy, setLeaderboardSort } = useSettings();
+  const { leaderboardSortBy, setLeaderboardSort, mounted } = useSettings();
+  
+  const effectiveSortBy = mounted ? leaderboardSortBy : initialSortBy;
 
   const isFirstMount = useRef(true);
+  const prevSortByRef = useRef(initialSortBy);
 
   useEffect(() => {
     if (!currentUser) {
@@ -782,7 +786,7 @@ export default function LeaderboardClient({ initialData, currentUser }: Leaderbo
     const abortController = new AbortController();
     setCurrentUserRankError(false);
 
-    fetch(`/api/leaderboard/user/${currentUser.username}?period=${period}&sortBy=${leaderboardSortBy}`, {
+    fetch(`/api/leaderboard/user/${currentUser.username}?period=${period}&sortBy=${effectiveSortBy}`, {
       signal: abortController.signal,
     })
       .then((res) => {
@@ -801,7 +805,7 @@ export default function LeaderboardClient({ initialData, currentUser }: Leaderbo
       });
 
     return () => abortController.abort();
-  }, [currentUser, period, leaderboardSortBy]);
+  }, [currentUser, period, effectiveSortBy]);
 
   const fetchData = (targetPeriod: Period, targetPage: number, targetSortBy: 'tokens' | 'cost', signal?: AbortSignal) => {
     setIsLoading(true);
@@ -829,13 +833,19 @@ export default function LeaderboardClient({ initialData, currentUser }: Leaderbo
   useEffect(() => {
     if (isFirstMount.current) {
       isFirstMount.current = false;
+      prevSortByRef.current = effectiveSortBy;
       return;
     }
 
+    if (effectiveSortBy === prevSortByRef.current && period === initialData.period && page === initialData.pagination.page) {
+      return;
+    }
+    prevSortByRef.current = effectiveSortBy;
+
     const abortController = new AbortController();
-    fetchData(period, page, leaderboardSortBy, abortController.signal);
+    fetchData(period, page, effectiveSortBy, abortController.signal);
     return () => abortController.abort();
-  }, [period, page, leaderboardSortBy]);
+  }, [period, page, effectiveSortBy, initialData.period, initialData.pagination.page]);
 
   useEffect(() => {
     if (data.pagination.totalPages > 0 && page > data.pagination.totalPages) {
@@ -944,7 +954,7 @@ export default function LeaderboardClient({ initialData, currentUser }: Leaderbo
       <SortToggleContainer>
         <SortLabel>Sort by:</SortLabel>
         <Switch
-          checked={leaderboardSortBy === 'cost'}
+          checked={effectiveSortBy === 'cost'}
           onChange={(checked) => setLeaderboardSort(checked ? 'cost' : 'tokens')}
           leftLabel="Tokens"
           rightLabel="Cost"
@@ -958,7 +968,7 @@ export default function LeaderboardClient({ initialData, currentUser }: Leaderbo
           <EmptyState>
             <EmptyMessage>Failed to load leaderboard</EmptyMessage>
             <EmptyHint>{error}</EmptyHint>
-            <RetryButton onClick={() => fetchData(period, page, leaderboardSortBy)}>
+            <RetryButton onClick={() => fetchData(period, page, effectiveSortBy)}>
               Retry
             </RetryButton>
           </EmptyState>
