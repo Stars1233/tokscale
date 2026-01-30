@@ -74,7 +74,7 @@ async function checkGitHubStarStatus(): Promise<boolean> {
 
 async function attemptToStarRepo(): Promise<boolean> {
   try {
-    await execAsync("gh repo star junhoyeo/tokscale");
+    await execAsync("gh api --silent --method PUT /user/starred/junhoyeo/tokscale >/dev/null 2>&1 || true");
     return true;
   } catch {
     return false;
