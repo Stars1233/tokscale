@@ -6,6 +6,8 @@ mod themes;
 mod ui;
 
 use std::io;
+use std::sync::mpsc;
+use std::thread;
 use std::time::Duration;
 
 use anyhow::Result;
@@ -19,7 +21,7 @@ use ratatui::prelude::*;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::app::App;
-use crate::data::{DataLoader, Source};
+use crate::data::{DataLoader, Source, UsageData};
 use crate::event::{Event, EventHandler};
 
 /// CLI arguments for tokscale-tui
@@ -32,7 +34,7 @@ pub struct Args {
     pub sessions_path: Option<String>,
 
     /// Initial theme (green, halloween, teal, blue, pink, purple, orange, monochrome, ylgnbu)
-    #[arg(short, long, default_value = "green")]
+    #[arg(short, long, default_value = "blue")]
     pub theme: String,
 
     /// Auto-refresh interval in seconds (0 to disable)
@@ -60,6 +62,10 @@ fn main() -> Result<()> {
 
     if args.test_data {
         return test_data_loading();
+    }
+
+    if args.debug {
+        eprintln!("DEBUG: Starting TUI...");
     }
 
     enable_raw_mode()?;
@@ -153,10 +159,36 @@ fn run_app<B: Backend>(
     app: &mut App,
     mut event_handler: EventHandler,
 ) -> Result<()> {
-    app.load_data()?;
+    app.data.loading = true;
+
+    let (tx, rx) = mpsc::channel::<Result<UsageData, String>>();
+    let sources: Vec<Source> = app.enabled_sources.iter().copied().collect();
+    let sessions_path = app.data_loader.sessions_path().map(|p| p.to_path_buf());
+
+    thread::spawn(move || {
+        let loader = DataLoader::new(sessions_path);
+        let result = loader.load(&sources).map_err(|e| e.to_string());
+        let _ = tx.send(result);
+    });
 
     loop {
         terminal.draw(|frame| ui::render(frame, app))?;
+
+        if app.data.loading {
+            if let Ok(result) = rx.try_recv() {
+                match result {
+                    Ok(data) => {
+                        app.data = data;
+                        app.set_status("Data loaded");
+                    }
+                    Err(e) => {
+                        app.data.loading = false;
+                        app.data.error = Some(e.clone());
+                        app.set_status(&format!("Error: {}", e));
+                    }
+                }
+            }
+        }
 
         match event_handler.next()? {
             Event::Tick => {

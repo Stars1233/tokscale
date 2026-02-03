@@ -161,6 +161,10 @@ impl DataLoader {
         }
     }
 
+    pub fn sessions_path(&self) -> Option<&PathBuf> {
+        self._sessions_path.as_ref()
+    }
+
     pub fn load(&self, enabled_sources: &[Source]) -> Result<UsageData> {
         let home = dirs::home_dir()
             .ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?

@@ -520,7 +520,7 @@ impl App {
         }
     }
 
-    fn set_status(&mut self, message: &str) {
+    pub fn set_status(&mut self, message: &str) {
         self.status_message = Some(message.to_string());
         self.status_message_time = Some(Instant::now());
     }
