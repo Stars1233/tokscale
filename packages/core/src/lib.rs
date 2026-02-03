@@ -5,11 +5,9 @@
 
 #![deny(clippy::all)]
 
-use napi_derive::napi;
-
 mod aggregator;
 mod parser;
-mod pricing;
+pub mod pricing;
 mod scanner;
 pub mod sessions;
 
@@ -18,19 +16,19 @@ pub use parser::*;
 pub use scanner::*;
 
 /// Version of the native module
-#[napi]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi)]
 pub fn version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
 /// Simple health check to verify the native module is working
-#[napi]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi)]
 pub fn health_check() -> String {
     "tokscale-core is healthy!".to_string()
 }
 
 /// Token breakdown by type
-#[napi(object)]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi(object))]
 #[derive(Debug, Clone, Default)]
 pub struct TokenBreakdown {
     pub input: i64,
@@ -44,7 +42,7 @@ pub struct TokenBreakdown {
 // Two-Phase Processing Types (for parallel execution optimization)
 // =============================================================================
 
-#[napi(object)]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi(object))]
 #[derive(Debug, Clone)]
 pub struct ParsedMessage {
     pub source: String,
@@ -62,7 +60,7 @@ pub struct ParsedMessage {
 }
 
 /// Result of parsing local sources (excludes Cursor - it's network-synced)
-#[napi(object)]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi(object))]
 #[derive(Debug, Clone)]
 pub struct ParsedMessages {
     pub messages: Vec<ParsedMessage>,
@@ -77,7 +75,7 @@ pub struct ParsedMessages {
 }
 
 /// Options for parsing local sources only (no Cursor)
-#[napi(object)]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi(object))]
 #[derive(Debug, Clone)]
 pub struct LocalParseOptions {
     pub home_dir: Option<String>,
@@ -88,7 +86,7 @@ pub struct LocalParseOptions {
 }
 
 /// Options for finalizing report
-#[napi(object)]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi(object))]
 #[derive(Debug, Clone)]
 pub struct FinalizeReportOptions {
     pub home_dir: Option<String>,
@@ -100,7 +98,7 @@ pub struct FinalizeReportOptions {
 }
 
 /// Daily contribution totals
-#[napi(object)]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi(object))]
 #[derive(Debug, Clone, Default)]
 pub struct DailyTotals {
     pub tokens: i64,
@@ -109,7 +107,7 @@ pub struct DailyTotals {
 }
 
 /// Source contribution for a specific day
-#[napi(object)]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi(object))]
 #[derive(Debug, Clone)]
 pub struct SourceContribution {
     pub source: String,
@@ -121,7 +119,7 @@ pub struct SourceContribution {
 }
 
 /// Daily contribution data
-#[napi(object)]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi(object))]
 #[derive(Debug, Clone)]
 pub struct DailyContribution {
     pub date: String,
@@ -132,7 +130,7 @@ pub struct DailyContribution {
 }
 
 /// Year summary
-#[napi(object)]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi(object))]
 #[derive(Debug, Clone)]
 pub struct YearSummary {
     pub year: String,
@@ -143,7 +141,7 @@ pub struct YearSummary {
 }
 
 /// Data summary statistics
-#[napi(object)]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi(object))]
 #[derive(Debug, Clone)]
 pub struct DataSummary {
     pub total_tokens: i64,
@@ -157,7 +155,7 @@ pub struct DataSummary {
 }
 
 /// Metadata about the graph generation
-#[napi(object)]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi(object))]
 #[derive(Debug, Clone)]
 pub struct GraphMeta {
     pub generated_at: String,
@@ -168,7 +166,7 @@ pub struct GraphMeta {
 }
 
 /// Complete graph result
-#[napi(object)]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi(object))]
 #[derive(Debug, Clone)]
 pub struct GraphResult {
     pub meta: GraphMeta,
@@ -186,16 +184,19 @@ use sessions::UnifiedMessage;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-fn get_home_dir(home_dir_option: &Option<String>) -> napi::Result<String> {
+pub fn get_home_dir_string(home_dir_option: &Option<String>) -> Result<String, String> {
     home_dir_option
         .clone()
         .or_else(|| std::env::var("HOME").ok())
         .or_else(|| dirs::home_dir().map(|p| p.to_string_lossy().into_owned()))
         .ok_or_else(|| {
-            napi::Error::from_reason(
-                "HOME directory not specified and could not determine home directory",
-            )
+            "HOME directory not specified and could not determine home directory".to_string()
         })
+}
+
+#[cfg(feature = "napi-bindings")]
+fn get_home_dir(home_dir_option: &Option<String>) -> napi::Result<String> {
+    get_home_dir_string(home_dir_option).map_err(|e| napi::Error::from_reason(e))
 }
 
 // =============================================================================
@@ -203,7 +204,7 @@ fn get_home_dir(home_dir_option: &Option<String>) -> napi::Result<String> {
 // =============================================================================
 
 /// Options for reports
-#[napi(object)]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi(object))]
 #[derive(Debug, Clone)]
 pub struct ReportOptions {
     pub home_dir: Option<String>,
@@ -214,7 +215,7 @@ pub struct ReportOptions {
 }
 
 /// Model usage summary for reports
-#[napi(object)]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi(object))]
 #[derive(Debug, Clone)]
 pub struct ModelUsage {
     pub source: String,
@@ -230,7 +231,7 @@ pub struct ModelUsage {
 }
 
 /// Monthly usage summary
-#[napi(object)]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi(object))]
 #[derive(Debug, Clone)]
 pub struct MonthlyUsage {
     pub month: String,
@@ -244,7 +245,7 @@ pub struct MonthlyUsage {
 }
 
 /// Model report result
-#[napi(object)]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi(object))]
 #[derive(Debug, Clone)]
 pub struct ModelReport {
     pub entries: Vec<ModelUsage>,
@@ -258,7 +259,7 @@ pub struct ModelReport {
 }
 
 /// Monthly report result
-#[napi(object)]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi(object))]
 #[derive(Debug, Clone)]
 pub struct MonthlyReport {
     pub entries: Vec<MonthlyUsage>,
@@ -478,7 +479,8 @@ fn parse_all_messages_with_pricing(
 }
 
 /// Get model usage report with pricing calculation
-#[napi]
+#[cfg(feature = "napi-bindings")]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi)]
 pub async fn get_model_report(options: ReportOptions) -> napi::Result<ModelReport> {
     let start = Instant::now();
 
@@ -580,7 +582,8 @@ struct MonthAggregator {
 }
 
 /// Get monthly usage report with pricing calculation
-#[napi]
+#[cfg(feature = "napi-bindings")]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi)]
 pub async fn get_monthly_report(options: ReportOptions) -> napi::Result<MonthlyReport> {
     let start = Instant::now();
 
@@ -657,7 +660,8 @@ pub async fn get_monthly_report(options: ReportOptions) -> napi::Result<MonthlyR
 }
 
 /// Generate graph data with pricing calculation
-#[napi]
+#[cfg(feature = "napi-bindings")]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi)]
 pub async fn generate_graph_with_pricing(options: ReportOptions) -> napi::Result<GraphResult> {
     let start = Instant::now();
 
@@ -736,7 +740,8 @@ fn apply_headless_agent(message: &mut UnifiedMessage, is_headless: bool) {
 
 /// Parse local sources only (OpenCode, Claude, Codex, Gemini - NO Cursor)
 /// This can run in parallel with network operations (Cursor sync, pricing fetch)
-#[napi]
+#[cfg(feature = "napi-bindings")]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi)]
 pub fn parse_local_sources(options: LocalParseOptions) -> napi::Result<ParsedMessages> {
     let start = Instant::now();
 
@@ -952,7 +957,8 @@ fn parsed_to_unified(msg: &ParsedMessage, cost: f64) -> UnifiedMessage {
 }
 
 /// Finalize model report: apply pricing to local messages, add Cursor, aggregate
-#[napi]
+#[cfg(feature = "napi-bindings")]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi)]
 pub async fn finalize_report(options: FinalizeReportOptions) -> napi::Result<ModelReport> {
     let start = Instant::now();
 
@@ -1087,7 +1093,7 @@ pub async fn finalize_report(options: FinalizeReportOptions) -> napi::Result<Mod
 }
 
 /// Options for finalizing monthly report
-#[napi(object)]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi(object))]
 #[derive(Debug, Clone)]
 pub struct FinalizeMonthlyOptions {
     pub home_dir: Option<String>,
@@ -1099,7 +1105,8 @@ pub struct FinalizeMonthlyOptions {
 }
 
 /// Finalize monthly report
-#[napi]
+#[cfg(feature = "napi-bindings")]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi)]
 pub async fn finalize_monthly_report(options: FinalizeMonthlyOptions) -> napi::Result<MonthlyReport> {
     let start = Instant::now();
 
@@ -1219,7 +1226,7 @@ pub async fn finalize_monthly_report(options: FinalizeMonthlyOptions) -> napi::R
 }
 
 /// Options for finalizing graph
-#[napi(object)]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi(object))]
 #[derive(Debug, Clone)]
 pub struct FinalizeGraphOptions {
     pub home_dir: Option<String>,
@@ -1231,7 +1238,8 @@ pub struct FinalizeGraphOptions {
 }
 
 /// Finalize graph
-#[napi]
+#[cfg(feature = "napi-bindings")]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi)]
 pub async fn finalize_graph(options: FinalizeGraphOptions) -> napi::Result<GraphResult> {
     let start = Instant::now();
 
@@ -1316,7 +1324,7 @@ pub async fn finalize_graph(options: FinalizeGraphOptions) -> napi::Result<Graph
 }
 
 /// Combined result for report and graph (single pricing lookup)
-#[napi(object)]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi(object))]
 pub struct ReportAndGraph {
     pub report: ModelReport,
     pub graph: GraphResult,
@@ -1324,7 +1332,8 @@ pub struct ReportAndGraph {
 
 /// Finalize both report and graph in a single call with shared pricing
 /// This ensures consistent costs between report and graph data
-#[napi]
+#[cfg(feature = "napi-bindings")]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi)]
 pub async fn finalize_report_and_graph(options: FinalizeReportOptions) -> napi::Result<ReportAndGraph> {
     let start = Instant::now();
 
@@ -1470,7 +1479,7 @@ pub async fn finalize_report_and_graph(options: FinalizeReportOptions) -> napi::
 // New Pricing API (Rust-native pricing fetching)
 // =============================================================================
 
-#[napi(object)]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi(object))]
 pub struct NativePricing {
     pub input_cost_per_token: f64,
     pub output_cost_per_token: f64,
@@ -1478,7 +1487,7 @@ pub struct NativePricing {
     pub cache_creation_input_token_cost: Option<f64>,
 }
 
-#[napi(object)]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi(object))]
 pub struct PricingLookupResult {
     pub model_id: String,
     pub matched_key: String,
@@ -1486,7 +1495,8 @@ pub struct PricingLookupResult {
     pub pricing: NativePricing,
 }
 
-#[napi]
+#[cfg(feature = "napi-bindings")]
+#[cfg_attr(feature = "napi-bindings", napi_derive::napi)]
 pub async fn lookup_pricing(model_id: String, provider: Option<String>) -> napi::Result<PricingLookupResult> {
     let service = pricing::PricingService::get_or_init()
         .await

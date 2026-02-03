@@ -9,12 +9,14 @@ description = "Native Rust core for tokscale CLI - high-performance session pars
 crate-type = ["cdylib", "rlib"]
 
 [features]
+default = ["napi-bindings"]
+napi-bindings = ["napi", "napi-derive"]
 noop = ["napi/noop", "napi-derive/noop"]
 
 [dependencies]
-# NAPI-RS for Node.js bindings (v3 required for @napi-rs/cli v3.x type generation)
-napi = { version = "3", default-features = false, features = ["async", "napi8", "serde-json"] }
-napi-derive = "3"
+# NAPI-RS for Node.js bindings (optional - only needed for CLI)
+napi = { version = "3", default-features = false, features = ["async", "napi8", "serde-json"], optional = true }
+napi-derive = { version = "3", optional = true }
 
 # Parallelism
 rayon = "1.10"
