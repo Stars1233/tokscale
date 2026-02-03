@@ -112,6 +112,154 @@ function showTUIUnavailableMessage(): void {
   console.log();
 }
 
+// =============================================================================
+// Native TUI (Ratatui/Rust) - Fallback for Windows and non-Bun environments
+// =============================================================================
+
+/**
+ * Find the native TUI binary path.
+ * Searches in order:
+ * 1. Development: packages/tui/target/release/tokscale-tui
+ * 2. Installed: node_modules/@tokscale/tui/bin/tokscale-tui (future)
+ * 3. System PATH: tokscale-tui
+ */
+function findNativeTUIBinary(): string | null {
+  // Determine binary name based on platform
+  const binaryName = process.platform === "win32" ? "tokscale-tui.exe" : "tokscale-tui";
+  
+  // 1. Development path - relative to cli package
+  const currentPath = new URL(".", import.meta.url).pathname;
+  const cliPackageRoot = currentPath.includes("/dist/")
+    ? path.resolve(currentPath, "../../..")
+    : path.resolve(currentPath, "../..");
+  const monorepoRoot = path.resolve(cliPackageRoot, "..");
+  const devBinaryPath = path.join(monorepoRoot, "tui", "target", "release", binaryName);
+  
+  if (fs.existsSync(devBinaryPath)) {
+    return devBinaryPath;
+  }
+  
+  // 2. Installed path - when published as @tokscale/tui package (future)
+  const installedPaths = [
+    path.join(cliPackageRoot, "node_modules", "@tokscale", "tui", "bin", binaryName),
+    path.join(monorepoRoot, "node_modules", "@tokscale", "tui", "bin", binaryName),
+  ];
+  
+  for (const installedPath of installedPaths) {
+    if (fs.existsSync(installedPath)) {
+      return installedPath;
+    }
+  }
+  
+  // 3. Check if tokscale-tui is in PATH
+  try {
+    const { execSync } = require("node:child_process");
+    const whichCommand = process.platform === "win32" ? "where" : "which";
+    const result = execSync(`${whichCommand} ${binaryName}`, { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] });
+    const pathFromWhich = result.trim().split("\n")[0];
+    if (pathFromWhich && fs.existsSync(pathFromWhich)) {
+      return pathFromWhich;
+    }
+  } catch {
+    // Not in PATH
+  }
+  
+  return null;
+}
+
+/**
+ * Map TUI options to native TUI CLI arguments
+ */
+function buildNativeTUIArgs(options?: TUIOptions): string[] {
+  const args: string[] = [];
+  
+  // Tab mapping: OpenTUI uses "model", "daily", native uses different approach
+  // Native TUI starts on overview by default, users can navigate
+  
+  // Theme from settings
+  const settings = loadSettings();
+  if (settings.colorPalette) {
+    args.push("--theme", settings.colorPalette);
+  }
+  
+  // Auto-refresh
+  if (settings.autoRefreshEnabled && settings.autoRefreshMs) {
+    args.push("--refresh", String(Math.round(settings.autoRefreshMs / 1000)));
+  }
+  
+  // Debug mode
+  if (process.env.DEBUG) {
+    args.push("--debug");
+  }
+  
+  return args;
+}
+
+/**
+ * Spawn the native TUI binary.
+ * Returns a promise that resolves when the TUI exits.
+ */
+async function spawnNativeTUI(options?: TUIOptions): Promise<boolean> {
+  const binaryPath = findNativeTUIBinary();
+  
+  if (!binaryPath) {
+    return false;
+  }
+  
+  const args = buildNativeTUIArgs(options);
+  
+  return new Promise((resolve) => {
+    const proc = spawn(binaryPath, args, {
+      stdio: "inherit",
+      env: process.env,
+    });
+    
+    proc.on("error", (err) => {
+      if (process.env.DEBUG) {
+        console.error("Native TUI spawn error:", err);
+      }
+      resolve(false);
+    });
+    
+    proc.on("close", (code) => {
+      // Exit code 0 means success, anything else is a failure
+      resolve(code === 0);
+    });
+  });
+}
+
+/**
+ * Launch TUI with automatic fallback:
+ * 1. Try OpenTUI (requires Bun, best experience)
+ * 2. Fall back to native Ratatui TUI (works everywhere)
+ * 3. Show error message if neither works
+ */
+async function launchTUIWithFallback(options?: TUIOptions): Promise<void> {
+  // First try OpenTUI (best experience, but requires Bun)
+  const launchOpenTUI = await tryLoadTUI();
+  if (launchOpenTUI) {
+    try {
+      await launchOpenTUI(options);
+      return;
+    } catch (error) {
+      // OpenTUI failed (e.g., Windows terminal issues), try native
+      if (process.env.DEBUG) {
+        console.error("OpenTUI failed, falling back to native TUI:", error);
+      }
+    }
+  }
+  
+  // Try native TUI
+  const nativeSuccess = await spawnNativeTUI(options);
+  if (nativeSuccess) {
+    return;
+  }
+  
+  // Neither worked - show error
+  showTUIUnavailableMessage();
+  process.exit(1);
+}
+
 interface FilterOptions {
   opencode?: boolean;
   claude?: boolean;
@@ -460,13 +608,7 @@ async function main() {
       } else if (options.light) {
         await showMonthlyReport(options, { spinner: options.spinner });
       } else {
-        const launchTUI = await tryLoadTUI();
-        if (launchTUI) {
-          await launchTUI(buildTUIOptions(options, "daily"));
-        } else {
-          showTUIUnavailableMessage();
-          await showMonthlyReport(options, { spinner: options.spinner });
-        }
+        await launchTUIWithFallback(buildTUIOptions(options, "daily"));
       }
     });
 
@@ -497,13 +639,7 @@ async function main() {
       } else if (options.light) {
         await showModelReport(options, { spinner: options.spinner });
       } else {
-        const launchTUI = await tryLoadTUI();
-        if (launchTUI) {
-          await launchTUI(buildTUIOptions(options, "model"));
-        } else {
-          showTUIUnavailableMessage();
-          await showModelReport(options, { spinner: options.spinner });
-        }
+        await launchTUIWithFallback(buildTUIOptions(options, "model"));
       }
     });
 
@@ -836,13 +972,7 @@ async function main() {
     .option("--until <date>", "End date (YYYY-MM-DD)")
     .option("--year <year>", "Filter to specific year")
     .action(async (options) => {
-      const launchTUI = await tryLoadTUI();
-      if (launchTUI) {
-        await launchTUI(buildTUIOptions(options));
-      } else {
-        showTUIUnavailableMessage();
-        process.exit(1);
-      }
+      await launchTUIWithFallback(buildTUIOptions(options));
     });
 
   program
@@ -973,13 +1103,7 @@ async function main() {
     } else if (opts.light) {
       await showModelReport(opts, { spinner: opts.spinner });
     } else {
-      const launchTUI = await tryLoadTUI();
-      if (launchTUI) {
-        await launchTUI(buildTUIOptions(opts));
-      } else {
-        showTUIUnavailableMessage();
-        await showModelReport(opts, { spinner: opts.spinner });
-      }
+      await launchTUIWithFallback(buildTUIOptions(opts));
     }
   }
 }

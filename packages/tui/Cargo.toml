@@ -1,0 +1,60 @@
+[package]
+name = "tokscale-tui"
+version = "0.1.0"
+edition = "2021"
+authors = ["Junho Yeo <hello@junho.io>"]
+description = "Terminal UI for Tokscale - AI token usage analytics"
+license = "MIT"
+repository = "https://github.com/anthropics/tokscale"
+keywords = ["tui", "terminal", "analytics", "ai", "tokens"]
+categories = ["command-line-interface", "visualization"]
+
+[[bin]]
+name = "tokscale-tui"
+path = "src/main.rs"
+
+[dependencies]
+# TUI framework
+ratatui = { version = "0.29", features = ["all-widgets"] }
+crossterm = { version = "0.28", features = ["event-stream"] }
+
+# Async runtime
+tokio = { version = "1.43", features = ["full", "rt-multi-thread", "macros", "sync", "time"] }
+tokio-stream = "0.1"
+futures = "0.3"
+
+# Data handling
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Core library for data parsing
+tokscale-core = { path = "../core" }
+
+# Parallel processing
+rayon = "1.10"
+
+# Utilities
+chrono = { version = "0.4", features = ["serde"] }
+unicode-width = "0.2"
+dirs = "5.0"
+anyhow = "1.0"
+thiserror = "2.0"
+arboard = "3.4"
+walkdir = "2.5"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# CLI argument parsing
+clap = { version = "4.5", features = ["derive"] }
+
+[dev-dependencies]
+pretty_assertions = "1.4"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+[features]
+default = []
