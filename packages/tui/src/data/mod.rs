@@ -1,10 +1,14 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use anyhow::Result;
 use chrono::{Datelike, NaiveDate, TimeZone, Utc};
 use rayon::prelude::*;
+use tokio::runtime::Runtime;
 use walkdir::WalkDir;
+
+use tokscale_core::pricing::PricingService;
 
 #[derive(Debug, Clone, Default)]
 pub struct TokenBreakdown {
@@ -174,6 +178,11 @@ impl DataLoader {
         let xdg_data =
             std::env::var("XDG_DATA_HOME").unwrap_or_else(|_| format!("{}/.local/share", home));
 
+        let rt = Runtime::new()?;
+        let pricing = rt.block_on(async {
+            PricingService::get_or_init().await
+        }).ok();
+
         let mut all_messages: Vec<ParsedMessage> = Vec::new();
 
         for source in enabled_sources {
@@ -252,11 +261,14 @@ impl DataLoader {
             let output = msg.output.max(0) as u64;
             let cache_read = msg.cache_read.max(0) as u64;
             let cache_write = msg.cache_write.max(0) as u64;
-            let cost = if msg.cost.is_finite() && msg.cost >= 0.0 {
-                msg.cost
-            } else {
-                0.0
-            };
+            let cost = calculate_cost_with_pricing(
+                pricing.as_ref(),
+                &msg.model_id,
+                msg.input,
+                msg.output,
+                msg.cache_read,
+                msg.cache_write,
+            );
 
             let model_entry = models_map.entry(key).or_insert_with(|| ModelUsage {
                 model: msg.model_id.clone(),
@@ -481,7 +493,26 @@ fn detect_provider(model: &str) -> &'static str {
     }
 }
 
+fn calculate_cost_with_pricing(
+    pricing: Option<&Arc<PricingService>>,
+    model: &str,
+    input: i64,
+    output: i64,
+    cache_read: i64,
+    cache_write: i64,
+) -> f64 {
+    if let Some(svc) = pricing {
+        svc.calculate_cost(model, input, output, cache_read, cache_write, 0)
+    } else {
+        calculate_cost_fallback(model, input, output, cache_read, cache_write)
+    }
+}
+
 fn calculate_cost(model: &str, input: i64, output: i64, cache_read: i64, cache_write: i64) -> f64 {
+    calculate_cost_fallback(model, input, output, cache_read, cache_write)
+}
+
+fn calculate_cost_fallback(model: &str, input: i64, output: i64, cache_read: i64, cache_write: i64) -> f64 {
     let model_lower = model.to_lowercase();
     let (input_cost, output_cost, cr_cost, cw_cost) = if model_lower.contains("opus") {
         (15.0, 75.0, 1.5, 18.75)
