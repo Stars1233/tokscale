@@ -158,12 +158,12 @@ fn render_top_models(frame: &mut Frame, app: &mut App, area: Rect, items_per_pag
                 .fg(theme_highlight)
                 .add_modifier(Modifier::BOLD),
         ))
-        .title(
-            ratatui::widgets::block::Title::from(Span::styled(
+        .title_top(
+            Line::from(Span::styled(
                 format!(" {} ", title_right),
                 Style::default().fg(Color::Green),
             ))
-            .alignment(Alignment::Right),
+            .right_aligned(),
         )
         .style(Style::default().bg(theme_background));
 

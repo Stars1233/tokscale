@@ -45,12 +45,12 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         .style(Style::default().bg(app.theme.background));
 
     if !is_narrow {
-        block = block.title(
-            ratatui::widgets::block::Title::from(Line::from(vec![
+        block = block.title_top(
+            Line::from(vec![
                 Span::styled(" | ", Style::default().fg(Color::Rgb(102, 102, 102))),
                 Span::styled("GitHub ", Style::default().fg(Color::Rgb(102, 102, 102))),
-            ]))
-            .alignment(Alignment::Right),
+            ])
+            .right_aligned(),
         );
     }
 

@@ -1,7 +1,4 @@
 use ratatui::prelude::*;
-use ratatui::widgets::Paragraph;
-
-use crate::themes::Theme;
 
 pub fn format_tokens_compact(tokens: u64) -> String {
     if tokens >= 1_000_000_000 {
@@ -40,64 +37,6 @@ pub fn format_cost(cost: f64) -> String {
     } else {
         format!("${:.2}", cost)
     }
-}
-
-pub fn format_cost_full(cost: f64) -> String {
-    if !cost.is_finite() || cost < 0.0 {
-        return "$0.00".to_string();
-    }
-    format!("${:.2}", cost)
-}
-
-pub fn format_tokens_full(tokens: u64) -> String {
-    let s = tokens.to_string();
-    let mut result = String::new();
-    for (i, c) in s.chars().rev().enumerate() {
-        if i > 0 && i % 3 == 0 {
-            result.insert(0, ',');
-        }
-        result.insert(0, c);
-    }
-    result
-}
-
-pub fn render_token_breakdown(
-    frame: &mut Frame,
-    area: Rect,
-    input: u64,
-    output: u64,
-    cache_read: u64,
-    cache_write: u64,
-    theme: &Theme,
-    compact: bool,
-) {
-    let parts = if compact {
-        vec![
-            (format_tokens(input), "i", Color::Rgb(100, 200, 100)),
-            (format_tokens(output), "o", Color::Rgb(200, 100, 100)),
-        ]
-    } else {
-        vec![
-            (format_tokens(input), "in", Color::Rgb(100, 200, 100)),
-            (format_tokens(output), "out", Color::Rgb(200, 100, 100)),
-            (format_tokens(cache_read), "cr", Color::Rgb(100, 150, 200)),
-            (format_tokens(cache_write), "cw", Color::Rgb(200, 150, 100)),
-        ]
-    };
-
-    let spans: Vec<Span> = parts
-        .into_iter()
-        .flat_map(|(value, label, color)| {
-            vec![
-                Span::styled(value, Style::default().fg(color)),
-                Span::styled(format!("{} ", label), Style::default().fg(theme.muted)),
-            ]
-        })
-        .collect();
-
-    let line = Line::from(spans);
-    let paragraph = Paragraph::new(line);
-    frame.render_widget(paragraph, area);
 }
 
 pub fn get_model_color(model: &str) -> Color {
@@ -145,18 +84,6 @@ fn get_provider_from_model(model: &str) -> &'static str {
         "cursor"
     } else {
         "unknown"
-    }
-}
-
-pub fn get_provider_color(provider: &str) -> Color {
-    match provider.to_lowercase().as_str() {
-        "anthropic" => Color::Rgb(255, 107, 107),
-        "openai" => Color::Rgb(116, 185, 255),
-        "google" => Color::Rgb(255, 234, 167),
-        "meta" => Color::Rgb(255, 159, 67),
-        "mistral" => Color::Rgb(162, 155, 254),
-        "deepseek" => Color::Rgb(0, 206, 201),
-        _ => Color::Rgb(178, 190, 195),
     }
 }
 

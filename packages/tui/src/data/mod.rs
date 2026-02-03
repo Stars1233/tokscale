@@ -56,7 +56,6 @@ pub struct ContributionDay {
 #[derive(Debug, Clone)]
 pub struct GraphData {
     pub weeks: Vec<Vec<Option<ContributionDay>>>,
-    pub max_tokens: u64,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -68,10 +67,8 @@ pub struct UsageData {
     pub total_cost: f64,
     pub loading: bool,
     pub error: Option<String>,
-    pub last_updated: Option<chrono::DateTime<Utc>>,
     pub current_streak: u32,
     pub longest_streak: u32,
-    pub total_sessions: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -180,19 +177,15 @@ impl DataLoader {
                 Source::OpenCode => {
                     let path = format!("{}/opencode/storage/message", xdg_data);
                     let files = scan_directory(&path, "*.json");
-                    let msgs: Vec<ParsedMessage> = files
-                        .par_iter()
-                        .filter_map(|p| parse_opencode_file(p))
-                        .collect();
+                    let msgs: Vec<ParsedMessage> =
+                        files.par_iter().filter_map(parse_opencode_file).collect();
                     all_messages.extend(msgs);
                 }
                 Source::Claude => {
                     let path = format!("{}/.claude/projects", home);
                     let files = scan_directory(&path, "*.jsonl");
-                    let msgs: Vec<ParsedMessage> = files
-                        .par_iter()
-                        .flat_map(|p| parse_claude_file(p))
-                        .collect();
+                    let msgs: Vec<ParsedMessage> =
+                        files.par_iter().flat_map(parse_claude_file).collect();
                     all_messages.extend(msgs);
                 }
                 Source::Codex => {
@@ -201,49 +194,43 @@ impl DataLoader {
                     let path = format!("{}/sessions", codex_home);
                     let files = scan_directory(&path, "*.jsonl");
                     let msgs: Vec<ParsedMessage> =
-                        files.par_iter().flat_map(|p| parse_codex_file(p)).collect();
+                        files.par_iter().flat_map(parse_codex_file).collect();
                     all_messages.extend(msgs);
                 }
                 Source::Cursor => {
                     let path = format!("{}/.config/tokscale/cursor-cache", home);
                     let files = scan_cursor_files(&path);
-                    let msgs: Vec<ParsedMessage> = files
-                        .par_iter()
-                        .flat_map(|p| parse_cursor_file(p))
-                        .collect();
+                    let msgs: Vec<ParsedMessage> =
+                        files.par_iter().flat_map(parse_cursor_file).collect();
                     all_messages.extend(msgs);
                 }
                 Source::Gemini => {
                     let path = format!("{}/.gemini/tmp", home);
                     let files = scan_directory(&path, "session-*.json");
-                    let msgs: Vec<ParsedMessage> = files
-                        .par_iter()
-                        .flat_map(|p| parse_gemini_file(p))
-                        .collect();
+                    let msgs: Vec<ParsedMessage> =
+                        files.par_iter().flat_map(parse_gemini_file).collect();
                     all_messages.extend(msgs);
                 }
                 Source::Amp => {
                     let path = format!("{}/amp/threads", xdg_data);
                     let files = scan_directory(&path, "T-*.json");
                     let msgs: Vec<ParsedMessage> =
-                        files.par_iter().flat_map(|p| parse_amp_file(p)).collect();
+                        files.par_iter().flat_map(parse_amp_file).collect();
                     all_messages.extend(msgs);
                 }
                 Source::Droid => {
                     let path = format!("{}/.factory/sessions", home);
                     let files = scan_directory(&path, "*.settings.json");
                     let msgs: Vec<ParsedMessage> =
-                        files.par_iter().flat_map(|p| parse_droid_file(p)).collect();
+                        files.par_iter().flat_map(parse_droid_file).collect();
                     all_messages.extend(msgs);
                 }
                 Source::OpenClaw => {
                     for base in &[".openclaw", ".clawdbot", ".moltbot", ".moldbot"] {
                         let path = format!("{}/{}/agents", home, base);
                         let files = scan_directory(&path, "sessions.json");
-                        let msgs: Vec<ParsedMessage> = files
-                            .par_iter()
-                            .flat_map(|p| parse_openclaw_index(p))
-                            .collect();
+                        let msgs: Vec<ParsedMessage> =
+                            files.par_iter().flat_map(parse_openclaw_index).collect();
                         all_messages.extend(msgs);
                     }
                 }
@@ -320,7 +307,6 @@ impl DataLoader {
         let models: Vec<ModelUsage> = models_map.into_values().collect();
         let total_tokens: u64 = models.iter().map(|m| m.tokens.total()).sum();
         let total_cost: f64 = models.iter().map(|m| m.cost).sum();
-        let total_sessions: u32 = models.iter().map(|m| m.session_count).sum();
 
         let daily: Vec<DailyUsage> = daily_map.into_values().collect();
         let graph = build_graph_data(&contribution_map);
@@ -336,10 +322,8 @@ impl DataLoader {
             total_cost,
             loading: false,
             error: None,
-            last_updated: Some(Utc::now()),
             current_streak,
             longest_streak,
-            total_sessions,
         })
     }
 }
@@ -1077,5 +1061,5 @@ fn build_graph_data(contributions: &HashMap<String, (u64, f64)>) -> GraphData {
         weeks.push(current_week);
     }
 
-    GraphData { weeks, max_tokens }
+    GraphData { weeks }
 }

@@ -581,13 +581,4 @@ impl App {
     pub fn is_very_narrow(&self) -> bool {
         self.terminal_width < 60
     }
-
-    pub fn time_until_refresh(&self) -> Duration {
-        if self.auto_refresh {
-            self.auto_refresh_interval
-                .saturating_sub(self.last_refresh.elapsed())
-        } else {
-            Duration::ZERO
-        }
-    }
 }

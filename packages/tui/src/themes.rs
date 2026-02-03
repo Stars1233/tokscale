@@ -157,15 +157,4 @@ impl Theme {
             muted: Color::Rgb(139, 148, 158),
         }
     }
-
-    pub fn intensity_color(&self, intensity: f64) -> Color {
-        let idx = match intensity {
-            x if x <= 0.0 => 0,
-            x if x < 0.25 => 1,
-            x if x < 0.50 => 2,
-            x if x < 0.75 => 3,
-            _ => 4,
-        };
-        self.colors[idx]
-    }
 }

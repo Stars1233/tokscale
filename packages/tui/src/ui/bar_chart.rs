@@ -135,7 +135,7 @@ pub fn render_bar_chart(frame: &mut Frame, app: &App, area: Rect, data: &[(Strin
 
             let label = if let Some((month_str, day_str)) = date_str.split_once('/') {
                 if let (Ok(month), Ok(day)) = (month_str.parse::<usize>(), day_str.parse::<u32>()) {
-                    if month >= 1 && month <= 12 {
+                    if (1..=12).contains(&month) {
                         if is_very_narrow {
                             format!("{}/{}", month, day)
                         } else {
