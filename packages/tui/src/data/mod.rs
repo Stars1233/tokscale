@@ -591,69 +591,99 @@ fn parse_opencode_file(path: &PathBuf) -> Option<ParsedMessage> {
 }
 
 fn parse_claude_file(path: &PathBuf) -> Vec<ParsedMessage> {
+    use std::collections::HashSet;
+    
     let content = match std::fs::read_to_string(path) {
         Ok(c) => c,
         Err(_) => return Vec::new(),
     };
 
-    content
-        .lines()
-        .filter_map(|line| {
-            let json: serde_json::Value = serde_json::from_str(line).ok()?;
+    let mut seen_hashes: HashSet<String> = HashSet::new();
+    let mut messages = Vec::new();
 
-            let msg_type = json.get("type").and_then(|v| v.as_str())?;
-            if msg_type != "assistant" {
-                return None;
+    for line in content.lines() {
+        let json: serde_json::Value = match serde_json::from_str(line) {
+            Ok(j) => j,
+            Err(_) => continue,
+        };
+
+        let msg_type = match json.get("type").and_then(|v| v.as_str()) {
+            Some(t) => t,
+            None => continue,
+        };
+        if msg_type != "assistant" {
+            continue;
+        }
+
+        let message = match json.get("message") {
+            Some(m) => m,
+            None => continue,
+        };
+        
+        // Deduplicate by messageId:requestId composite key (same as tokscale-core)
+        let msg_id = message.get("id").and_then(|v| v.as_str());
+        let request_id = json.get("requestId").and_then(|v| v.as_str());
+        if let (Some(mid), Some(rid)) = (msg_id, request_id) {
+            let hash = format!("{}:{}", mid, rid);
+            if !seen_hashes.insert(hash) {
+                continue; // Skip duplicate
             }
+        }
+        
+        let model_id = match message.get("model").and_then(|v| v.as_str()) {
+            Some(m) => m.to_string(),
+            None => continue,
+        };
+        let usage = match message.get("usage") {
+            Some(u) => u,
+            None => continue,
+        };
 
-            let message = json.get("message")?;
-            let model_id = message.get("model").and_then(|v| v.as_str())?.to_string();
-            let usage = message.get("usage")?;
+        let input = usage
+            .get("input_tokens")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0);
+        let output = usage
+            .get("output_tokens")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0);
+        let cache_read = usage
+            .get("cache_read_input_tokens")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0);
+        let cache_write = usage
+            .get("cache_creation_input_tokens")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0);
 
-            let input = usage
-                .get("input_tokens")
-                .and_then(|v| v.as_i64())
-                .unwrap_or(0);
-            let output = usage
-                .get("output_tokens")
-                .and_then(|v| v.as_i64())
-                .unwrap_or(0);
-            let cache_read = usage
-                .get("cache_read_input_tokens")
-                .and_then(|v| v.as_i64())
-                .unwrap_or(0);
-            let cache_write = usage
-                .get("cache_creation_input_tokens")
-                .and_then(|v| v.as_i64())
-                .unwrap_or(0);
+        if input == 0 && output == 0 {
+            continue;
+        }
 
-            if input == 0 && output == 0 {
-                return None;
-            }
+        let timestamp = json
+            .get("timestamp")
+            .and_then(|v| v.as_str())
+            .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+            .map(|dt| dt.timestamp_millis())
+            .unwrap_or(0);
 
-            let timestamp = json
-                .get("timestamp")
-                .and_then(|v| v.as_str())
-                .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-                .map(|dt| dt.timestamp_millis())
-                .unwrap_or(0);
+        let provider_id = detect_provider(&model_id).to_string();
+        let cost = calculate_cost(&model_id, input, output, cache_read, cache_write);
 
-            let provider_id = detect_provider(&model_id).to_string();
-            let cost = calculate_cost(&model_id, input, output, cache_read, cache_write);
-
-            Some(ParsedMessage {
-                source: "Claude".to_string(),
-                model_id,
-                provider_id,
-                timestamp,
-                input,
-                output,
-                cache_read,
-                cache_write,
-                cost,
-            })
-        })
-        .collect()
+        messages.push(ParsedMessage {
+            source: "Claude".to_string(),
+            model_id,
+            provider_id,
+            timestamp,
+            input,
+            output,
+            cache_read,
+            cache_write,
+            cost,
+        });
+    }
+    
+    messages
 }
 
 fn parse_codex_file(path: &PathBuf) -> Vec<ParsedMessage> {
@@ -777,31 +807,58 @@ fn parse_cursor_file(path: &PathBuf) -> Vec<ParsedMessage> {
         Err(_) => return Vec::new(),
     };
 
-    content
-        .lines()
-        .skip(1)
+    let mut lines = content.lines();
+    let header = match lines.next() {
+        Some(h) => h,
+        None => return Vec::new(),
+    };
+
+    if !header.contains("Date") || !header.contains("Model") {
+        return Vec::new();
+    }
+
+    let has_kind_column = header.contains("Kind");
+    let (model_idx, input_cw_idx, input_idx, cache_read_idx, output_idx, cost_idx) = if has_kind_column {
+        (2, 4, 5, 6, 7, 9)
+    } else {
+        (1, 2, 3, 4, 5, 7)
+    };
+
+    lines
         .filter_map(|line| {
-            let cols: Vec<&str> = line.split(',').collect();
-            if cols.len() < 9 {
+            let cols: Vec<&str> = line.split(',').map(|s| s.trim().trim_matches('"')).collect();
+            let min_fields = cost_idx + 1;
+            if cols.len() < min_fields {
                 return None;
             }
 
-            let timestamp = chrono::DateTime::parse_from_rfc3339(cols[0])
+            let date_str = cols[0];
+            let timestamp = chrono::DateTime::parse_from_rfc3339(date_str)
                 .ok()
                 .map(|dt| dt.timestamp_millis())
                 .unwrap_or(0);
-            let model_id = cols[1].to_string();
-            let input: i64 = cols[3].parse().unwrap_or(0);
-            let output: i64 = cols[4].parse().unwrap_or(0);
-            let cache_read: i64 = cols[5].parse().unwrap_or(0);
-            let cache_write: i64 = cols[6].parse().unwrap_or(0);
-            let cost: f64 = cols[8].parse().unwrap_or(0.0);
+            if timestamp == 0 {
+                return None;
+            }
 
-            if input == 0 && output == 0 {
+            let model_id = cols[model_idx].to_string();
+            if model_id.is_empty() {
+                return None;
+            }
+
+            let input_with_cw: i64 = cols[input_cw_idx].parse().unwrap_or(0);
+            let input_without_cw: i64 = cols[input_idx].parse().unwrap_or(0);
+            let cache_read: i64 = cols[cache_read_idx].parse().unwrap_or(0);
+            let output: i64 = cols[output_idx].parse().unwrap_or(0);
+            let cache_write = (input_with_cw - input_without_cw).max(0);
+            let input = input_without_cw;
+
+            if input == 0 && output == 0 && cache_read == 0 {
                 return None;
             }
 
             let provider_id = detect_provider(&model_id).to_string();
+            let cost = calculate_cost(&model_id, input, output, cache_read, cache_write);
 
             Some(ParsedMessage {
                 source: "Cursor".to_string(),
