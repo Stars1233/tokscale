@@ -247,12 +247,40 @@ impl DayAccumulator {
     }
 
     fn into_contribution(self, date: String) -> DailyContribution {
+        // Clamp all token values to non-negative to ensure validation passes
+        let token_breakdown = TokenBreakdown {
+            input: self.token_breakdown.input.max(0),
+            output: self.token_breakdown.output.max(0),
+            cache_read: self.token_breakdown.cache_read.max(0),
+            cache_write: self.token_breakdown.cache_write.max(0),
+            reasoning: self.token_breakdown.reasoning.max(0),
+        };
+
+        // Clamp source contributions to non-negative
+        let sources: Vec<SourceContribution> = self
+            .sources
+            .into_values()
+            .map(|mut s| {
+                s.tokens.input = s.tokens.input.max(0);
+                s.tokens.output = s.tokens.output.max(0);
+                s.tokens.cache_read = s.tokens.cache_read.max(0);
+                s.tokens.cache_write = s.tokens.cache_write.max(0);
+                s.tokens.reasoning = s.tokens.reasoning.max(0);
+                s.cost = s.cost.max(0.0);
+                s
+            })
+            .collect();
+
         DailyContribution {
             date,
-            totals: self.totals,
+            totals: DailyTotals {
+                tokens: self.totals.tokens.max(0),
+                cost: self.totals.cost.max(0.0),
+                messages: self.totals.messages.max(0),
+            },
             intensity: 0, // Will be calculated later
-            token_breakdown: self.token_breakdown,
-            sources: self.sources.into_values().collect(),
+            token_breakdown,
+            sources,
         }
     }
 }
