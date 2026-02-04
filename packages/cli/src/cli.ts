@@ -117,15 +117,15 @@ function showTUIUnavailableMessage(): void {
 // =============================================================================
 
 /**
- * Find the native TUI binary path.
+ * Find the native TUI binary.
  * Searches in order:
- * 1. Development: packages/tui/target/release/tokscale-tui
- * 2. Installed: node_modules/@tokscale/tui/bin/tokscale-tui (future)
- * 3. System PATH: tokscale-tui
+ * 1. Development: crates/tokscale-cli/target/release/tokscale
+ * 2. Installed: node_modules/@tokscale/tui/bin/tokscale (future)
+ * 3. System PATH: tokscale
  */
 function findNativeTUIBinary(): string | null {
   // Determine binary name based on platform
-  const binaryName = process.platform === "win32" ? "tokscale-tui.exe" : "tokscale-tui";
+  const binaryName = process.platform === "win32" ? "tokscale.exe" : "tokscale";
   
   // 1. Development path - relative to cli package
   const currentPath = new URL(".", import.meta.url).pathname;
@@ -133,7 +133,8 @@ function findNativeTUIBinary(): string | null {
     ? path.resolve(currentPath, "../../..")
     : path.resolve(currentPath, "../..");
   const monorepoRoot = path.resolve(cliPackageRoot, "..");
-  const devBinaryPath = path.join(monorepoRoot, "tui", "target", "release", binaryName);
+  // Cargo workspace builds to workspace root target/ directory
+  const devBinaryPath = path.join(monorepoRoot, "target", "release", binaryName);
   
   if (fs.existsSync(devBinaryPath)) {
     return devBinaryPath;
