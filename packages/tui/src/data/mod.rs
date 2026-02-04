@@ -814,7 +814,12 @@ fn parse_gemini_file(path: &PathBuf) -> Vec<ParsedMessage> {
                 return None;
             }
 
-            let timestamp = msg.get("timestamp").and_then(|v| v.as_i64()).unwrap_or(0);
+            let timestamp = msg
+                .get("timestamp")
+                .and_then(|v| v.as_str())
+                .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+                .map(|dt| dt.timestamp_millis())
+                .unwrap_or(0);
             let provider_id = "Google".to_string();
             let cost = calculate_cost(&model_id, input, output, cache_read, 0);
 
