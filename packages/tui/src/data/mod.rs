@@ -195,10 +195,17 @@ impl DataLoader {
                     all_messages.extend(msgs);
                 }
                 Source::Claude => {
+                    use std::collections::HashSet;
                     let path = format!("{}/.claude/projects", home);
                     let files = scan_directory(&path, "*.jsonl");
-                    let msgs: Vec<ParsedMessage> =
+                    let msgs_with_keys: Vec<(String, ParsedMessage)> =
                         files.par_iter().flat_map(parse_claude_file).collect();
+                    let mut seen_keys: HashSet<String> = HashSet::new();
+                    let msgs: Vec<ParsedMessage> = msgs_with_keys
+                        .into_iter()
+                        .filter(|(key, _)| key.is_empty() || seen_keys.insert(key.clone()))
+                        .map(|(_, msg)| msg)
+                        .collect();
                     all_messages.extend(msgs);
                 }
                 Source::Codex => {
@@ -619,15 +626,12 @@ fn parse_opencode_file(path: &PathBuf) -> Option<ParsedMessage> {
     })
 }
 
-fn parse_claude_file(path: &PathBuf) -> Vec<ParsedMessage> {
-    use std::collections::HashSet;
-    
+fn parse_claude_file(path: &PathBuf) -> Vec<(String, ParsedMessage)> {
     let content = match std::fs::read_to_string(path) {
         Ok(c) => c,
         Err(_) => return Vec::new(),
     };
 
-    let mut seen_hashes: HashSet<String> = HashSet::new();
     let mut messages = Vec::new();
 
     for line in content.lines() {
@@ -649,15 +653,14 @@ fn parse_claude_file(path: &PathBuf) -> Vec<ParsedMessage> {
             None => continue,
         };
         
-        // Deduplicate by messageId:requestId composite key (same as tokscale-core)
         let msg_id = message.get("id").and_then(|v| v.as_str());
         let request_id = json.get("requestId").and_then(|v| v.as_str());
-        if let (Some(mid), Some(rid)) = (msg_id, request_id) {
-            let hash = format!("{}:{}", mid, rid);
-            if !seen_hashes.insert(hash) {
-                continue; // Skip duplicate
+        let dedup_key = match (msg_id, request_id) {
+            (Some(mid), Some(rid)) if !mid.is_empty() && !rid.is_empty() => {
+                format!("{}:{}", mid, rid)
             }
-        }
+            _ => String::new(),
+        };
         
         let model_id = match message.get("model").and_then(|v| v.as_str()) {
             Some(m) => m.to_string(),
@@ -699,7 +702,7 @@ fn parse_claude_file(path: &PathBuf) -> Vec<ParsedMessage> {
         let provider_id = detect_provider(&model_id).to_string();
         let cost = calculate_cost(&model_id, input, output, cache_read, cache_write);
 
-        messages.push(ParsedMessage {
+        messages.push((dedup_key, ParsedMessage {
             source: "Claude".to_string(),
             model_id,
             provider_id,
@@ -709,7 +712,7 @@ fn parse_claude_file(path: &PathBuf) -> Vec<ParsedMessage> {
             cache_read,
             cache_write,
             cost,
-        });
+        }));
     }
     
     messages
