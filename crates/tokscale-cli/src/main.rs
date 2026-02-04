@@ -29,11 +29,79 @@ enum Commands {
     Models {
         #[arg(long)]
         json: bool,
+        #[arg(long)]
+        light: bool,
+        #[arg(long, help = "Show only OpenCode usage")]
+        opencode: bool,
+        #[arg(long, help = "Show only Claude Code usage")]
+        claude: bool,
+        #[arg(long, help = "Show only Codex CLI usage")]
+        codex: bool,
+        #[arg(long, help = "Show only Gemini CLI usage")]
+        gemini: bool,
+        #[arg(long, help = "Show only Cursor IDE usage")]
+        cursor: bool,
+        #[arg(long, help = "Show only Amp usage")]
+        amp: bool,
+        #[arg(long, help = "Show only Droid usage")]
+        droid: bool,
+        #[arg(long, help = "Show only OpenClaw usage")]
+        openclaw: bool,
+        #[arg(long, help = "Show only today's usage")]
+        today: bool,
+        #[arg(long, help = "Show last 7 days")]
+        week: bool,
+        #[arg(long, help = "Show current month")]
+        month: bool,
+        #[arg(long, help = "Start date (YYYY-MM-DD)")]
+        since: Option<String>,
+        #[arg(long, help = "End date (YYYY-MM-DD)")]
+        until: Option<String>,
+        #[arg(long, help = "Filter by year (YYYY)")]
+        year: Option<String>,
+        #[arg(long, help = "Show processing time")]
+        benchmark: bool,
+        #[arg(long, help = "Disable spinner")]
+        no_spinner: bool,
     },
     #[command(about = "Show monthly usage report")]
     Monthly {
         #[arg(long)]
         json: bool,
+        #[arg(long)]
+        light: bool,
+        #[arg(long, help = "Show only OpenCode usage")]
+        opencode: bool,
+        #[arg(long, help = "Show only Claude Code usage")]
+        claude: bool,
+        #[arg(long, help = "Show only Codex CLI usage")]
+        codex: bool,
+        #[arg(long, help = "Show only Gemini CLI usage")]
+        gemini: bool,
+        #[arg(long, help = "Show only Cursor IDE usage")]
+        cursor: bool,
+        #[arg(long, help = "Show only Amp usage")]
+        amp: bool,
+        #[arg(long, help = "Show only Droid usage")]
+        droid: bool,
+        #[arg(long, help = "Show only OpenClaw usage")]
+        openclaw: bool,
+        #[arg(long, help = "Show only today's usage")]
+        today: bool,
+        #[arg(long, help = "Show last 7 days")]
+        week: bool,
+        #[arg(long, help = "Show current month")]
+        month: bool,
+        #[arg(long, help = "Start date (YYYY-MM-DD)")]
+        since: Option<String>,
+        #[arg(long, help = "End date (YYYY-MM-DD)")]
+        until: Option<String>,
+        #[arg(long, help = "Filter by year (YYYY)")]
+        year: Option<String>,
+        #[arg(long, help = "Show processing time")]
+        benchmark: bool,
+        #[arg(long, help = "Disable spinner")]
+        no_spinner: bool,
     },
     #[command(about = "Show pricing for a model")]
     Pricing { model_id: String },
@@ -47,11 +115,57 @@ fn main() -> Result<()> {
     }
 
     match cli.command {
-        Some(Commands::Models { json }) => {
-            run_models_report(json)
+        Some(Commands::Models {
+            json,
+            light: _,
+            opencode,
+            claude,
+            codex,
+            gemini,
+            cursor,
+            amp,
+            droid,
+            openclaw,
+            today,
+            week,
+            month,
+            since,
+            until,
+            year,
+            benchmark: _,
+            no_spinner: _,
+        }) => {
+            let sources = build_source_filter(SourceFlags {
+                opencode, claude, codex, gemini, cursor, amp, droid, openclaw,
+            });
+            let (since, until) = build_date_filter(today, week, month, since, until);
+            run_models_report(json, sources, since, until, year)
         }
-        Some(Commands::Monthly { json }) => {
-            run_monthly_report(json)
+        Some(Commands::Monthly {
+            json,
+            light: _,
+            opencode,
+            claude,
+            codex,
+            gemini,
+            cursor,
+            amp,
+            droid,
+            openclaw,
+            today,
+            week,
+            month,
+            since,
+            until,
+            year,
+            benchmark: _,
+            no_spinner: _,
+        }) => {
+            let sources = build_source_filter(SourceFlags {
+                opencode, claude, codex, gemini, cursor, amp, droid, openclaw,
+            });
+            let (since, until) = build_date_filter(today, week, month, since, until);
+            run_monthly_report(json, sources, since, until, year)
         }
         Some(Commands::Pricing { model_id }) => {
             run_pricing_lookup(&model_id)
@@ -62,7 +176,77 @@ fn main() -> Result<()> {
     }
 }
 
-fn run_models_report(json: bool) -> Result<()> {
+struct SourceFlags {
+    opencode: bool,
+    claude: bool,
+    codex: bool,
+    gemini: bool,
+    cursor: bool,
+    amp: bool,
+    droid: bool,
+    openclaw: bool,
+}
+
+fn build_source_filter(flags: SourceFlags) -> Option<Vec<String>> {
+    let mut sources = Vec::new();
+    if flags.opencode { sources.push("opencode".to_string()); }
+    if flags.claude { sources.push("claude".to_string()); }
+    if flags.codex { sources.push("codex".to_string()); }
+    if flags.gemini { sources.push("gemini".to_string()); }
+    if flags.cursor { sources.push("cursor".to_string()); }
+    if flags.amp { sources.push("amp".to_string()); }
+    if flags.droid { sources.push("droid".to_string()); }
+    if flags.openclaw { sources.push("openclaw".to_string()); }
+    
+    if sources.is_empty() {
+        None
+    } else {
+        Some(sources)
+    }
+}
+
+fn build_date_filter(
+    today: bool,
+    week: bool,
+    month: bool,
+    since: Option<String>,
+    until: Option<String>,
+) -> (Option<String>, Option<String>) {
+    use chrono::{Local, Datelike, Duration};
+    
+    if today {
+        let date = Local::now().format("%Y-%m-%d").to_string();
+        return (Some(date.clone()), Some(date));
+    }
+    
+    if week {
+        let end = Local::now();
+        let start = end - Duration::days(6);
+        return (
+            Some(start.format("%Y-%m-%d").to_string()),
+            Some(end.format("%Y-%m-%d").to_string()),
+        );
+    }
+    
+    if month {
+        let now = Local::now();
+        let start = now.with_day(1).unwrap();
+        return (
+            Some(start.format("%Y-%m-%d").to_string()),
+            Some(now.format("%Y-%m-%d").to_string()),
+        );
+    }
+    
+    (since, until)
+}
+
+fn run_models_report(
+    json: bool,
+    sources: Option<Vec<String>>,
+    since: Option<String>,
+    until: Option<String>,
+    year: Option<String>,
+) -> Result<()> {
     use tokio::runtime::Runtime;
     use tokscale_core::{get_model_report, ReportOptions};
 
@@ -70,10 +254,10 @@ fn run_models_report(json: bool) -> Result<()> {
     let report = rt.block_on(async {
         get_model_report(ReportOptions {
             home_dir: None,
-            sources: None,
-            since: None,
-            until: None,
-            year: None,
+            sources,
+            since,
+            until,
+            year,
         })
         .await
     }).map_err(|e| anyhow::anyhow!(e))?;
@@ -108,7 +292,13 @@ fn run_models_report(json: bool) -> Result<()> {
     Ok(())
 }
 
-fn run_monthly_report(json: bool) -> Result<()> {
+fn run_monthly_report(
+    json: bool,
+    sources: Option<Vec<String>>,
+    since: Option<String>,
+    until: Option<String>,
+    year: Option<String>,
+) -> Result<()> {
     use tokio::runtime::Runtime;
     use tokscale_core::{get_monthly_report, ReportOptions};
 
@@ -116,10 +306,10 @@ fn run_monthly_report(json: bool) -> Result<()> {
     let report = rt.block_on(async {
         get_monthly_report(ReportOptions {
             home_dir: None,
-            sources: None,
-            since: None,
-            until: None,
-            year: None,
+            sources,
+            since,
+            until,
+            year,
         })
         .await
     }).map_err(|e| anyhow::anyhow!(e))?;
