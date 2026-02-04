@@ -32,3 +32,5 @@ chrono = { workspace = true }
 dirs = { workspace = true }
 rayon = { workspace = true }
 arboard = { workspace = true }
+reqwest = { workspace = true }
+hostname = "0.4"

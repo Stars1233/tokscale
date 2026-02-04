@@ -1,4 +1,5 @@
 mod tui;
+mod auth;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -111,6 +112,12 @@ enum Commands {
         #[arg(long, help = "Output as JSON")]
         json: bool,
     },
+    #[command(about = "Login to Tokscale (opens browser for GitHub auth)")]
+    Login,
+    #[command(about = "Logout from Tokscale")]
+    Logout,
+    #[command(about = "Show current logged in user")]
+    Whoami,
     #[command(about = "Export contribution graph data as JSON")]
     Graph {
         #[arg(long, help = "Write to file instead of stdout")]
@@ -213,6 +220,15 @@ fn main() -> Result<()> {
         }
         Some(Commands::Sources { json }) => {
             run_sources_command(json)
+        }
+        Some(Commands::Login) => {
+            run_login_command()
+        }
+        Some(Commands::Logout) => {
+            run_logout_command()
+        }
+        Some(Commands::Whoami) => {
+            run_whoami_command()
         }
         Some(Commands::Graph {
             output,
@@ -722,6 +738,23 @@ fn format_number(n: i32) -> String {
     } else {
         n.to_string()
     }
+}
+
+fn run_login_command() -> Result<()> {
+    use tokio::runtime::Runtime;
+    
+    let rt = Runtime::new()?;
+    rt.block_on(async {
+        auth::login().await
+    })
+}
+
+fn run_logout_command() -> Result<()> {
+    auth::logout()
+}
+
+fn run_whoami_command() -> Result<()> {
+    auth::whoami()
 }
 
 fn run_graph_command(
