@@ -493,6 +493,30 @@ fn detect_provider(model: &str) -> &'static str {
     }
 }
 
+fn parse_csv_line(line: &str) -> Vec<&str> {
+    let mut fields = Vec::new();
+    let mut start = 0;
+    let mut in_quotes = false;
+    let bytes = line.as_bytes();
+
+    for (i, &byte) in bytes.iter().enumerate() {
+        match byte {
+            b'"' => in_quotes = !in_quotes,
+            b',' if !in_quotes => {
+                fields.push(line[start..i].trim().trim_matches('"'));
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+
+    if start <= line.len() {
+        fields.push(line[start..].trim().trim_matches('"'));
+    }
+
+    fields
+}
+
 fn calculate_cost_with_pricing(
     pricing: Option<&Arc<PricingService>>,
     model: &str,
@@ -545,6 +569,11 @@ fn calculate_cost_fallback(model: &str, input: i64, output: i64, cache_read: i64
 fn parse_opencode_file(path: &PathBuf) -> Option<ParsedMessage> {
     let content = std::fs::read_to_string(path).ok()?;
     let json: serde_json::Value = serde_json::from_str(&content).ok()?;
+
+    let role = json.get("role").and_then(|v| v.as_str())?;
+    if role != "assistant" {
+        return None;
+    }
 
     let model_id = json.get("modelID").and_then(|v| v.as_str())?.to_string();
     let provider_id = json
@@ -826,7 +855,7 @@ fn parse_cursor_file(path: &PathBuf) -> Vec<ParsedMessage> {
 
     lines
         .filter_map(|line| {
-            let cols: Vec<&str> = line.split(',').map(|s| s.trim().trim_matches('"')).collect();
+            let cols = parse_csv_line(line);
             let min_fields = cost_idx + 1;
             if cols.len() < min_fields {
                 return None;
