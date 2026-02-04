@@ -21,7 +21,11 @@ pub struct TokenBreakdown {
 
 impl TokenBreakdown {
     pub fn total(&self) -> u64 {
-        self.input + self.output + self.cache_read + self.cache_write + self.reasoning
+        self.input
+            .saturating_add(self.output)
+            .saturating_add(self.cache_read)
+            .saturating_add(self.cache_write)
+            .saturating_add(self.reasoning)
     }
 }
 
@@ -208,7 +212,7 @@ impl DataLoader {
                 .filter(|m| {
                     m.dedup_key
                         .as_ref()
-                        .map_or(true, |k| k.is_empty() || seen_keys.insert(k.clone()))
+                        .is_none_or(|k| k.is_empty() || seen_keys.insert(k.clone()))
                 })
                 .collect();
             all_messages.extend(msgs);
@@ -306,12 +310,32 @@ impl DataLoader {
                 session_count: 0,
             });
 
-            model_entry.tokens.input += msg.tokens.input.max(0) as u64;
-            model_entry.tokens.output += msg.tokens.output.max(0) as u64;
-            model_entry.tokens.cache_read += msg.tokens.cache_read.max(0) as u64;
-            model_entry.tokens.cache_write += msg.tokens.cache_write.max(0) as u64;
-            model_entry.tokens.reasoning += msg.tokens.reasoning.max(0) as u64;
-            model_entry.cost += msg.cost;
+            model_entry.tokens.input = model_entry
+                .tokens
+                .input
+                .saturating_add(msg.tokens.input.max(0) as u64);
+            model_entry.tokens.output = model_entry
+                .tokens
+                .output
+                .saturating_add(msg.tokens.output.max(0) as u64);
+            model_entry.tokens.cache_read = model_entry
+                .tokens
+                .cache_read
+                .saturating_add(msg.tokens.cache_read.max(0) as u64);
+            model_entry.tokens.cache_write = model_entry
+                .tokens
+                .cache_write
+                .saturating_add(msg.tokens.cache_write.max(0) as u64);
+            model_entry.tokens.reasoning = model_entry
+                .tokens
+                .reasoning
+                .saturating_add(msg.tokens.reasoning.max(0) as u64);
+            let msg_cost = if msg.cost.is_finite() && msg.cost >= 0.0 {
+                msg.cost
+            } else {
+                0.0
+            };
+            model_entry.cost += msg_cost;
 
             let session_key = format!("{}:{}", msg.source, msg.session_id);
             if session_ids.insert(session_key) {
@@ -326,12 +350,32 @@ impl DataLoader {
                     models: HashMap::new(),
                 });
 
-                daily_entry.tokens.input += msg.tokens.input.max(0) as u64;
-                daily_entry.tokens.output += msg.tokens.output.max(0) as u64;
-                daily_entry.tokens.cache_read += msg.tokens.cache_read.max(0) as u64;
-                daily_entry.tokens.cache_write += msg.tokens.cache_write.max(0) as u64;
-                daily_entry.tokens.reasoning += msg.tokens.reasoning.max(0) as u64;
-                daily_entry.cost += msg.cost;
+                daily_entry.tokens.input = daily_entry
+                    .tokens
+                    .input
+                    .saturating_add(msg.tokens.input.max(0) as u64);
+                daily_entry.tokens.output = daily_entry
+                    .tokens
+                    .output
+                    .saturating_add(msg.tokens.output.max(0) as u64);
+                daily_entry.tokens.cache_read = daily_entry
+                    .tokens
+                    .cache_read
+                    .saturating_add(msg.tokens.cache_read.max(0) as u64);
+                daily_entry.tokens.cache_write = daily_entry
+                    .tokens
+                    .cache_write
+                    .saturating_add(msg.tokens.cache_write.max(0) as u64);
+                daily_entry.tokens.reasoning = daily_entry
+                    .tokens
+                    .reasoning
+                    .saturating_add(msg.tokens.reasoning.max(0) as u64);
+                let msg_cost = if msg.cost.is_finite() && msg.cost >= 0.0 {
+                    msg.cost
+                } else {
+                    0.0
+                };
+                daily_entry.cost += msg_cost;
 
                 let model_info = daily_entry
                     .models
@@ -342,27 +386,52 @@ impl DataLoader {
                         cost: 0.0,
                     });
 
-                model_info.tokens.input += msg.tokens.input.max(0) as u64;
-                model_info.tokens.output += msg.tokens.output.max(0) as u64;
-                model_info.tokens.cache_read += msg.tokens.cache_read.max(0) as u64;
-                model_info.tokens.cache_write += msg.tokens.cache_write.max(0) as u64;
-                model_info.tokens.reasoning += msg.tokens.reasoning.max(0) as u64;
-                model_info.cost += msg.cost;
+                model_info.tokens.input = model_info
+                    .tokens
+                    .input
+                    .saturating_add(msg.tokens.input.max(0) as u64);
+                model_info.tokens.output = model_info
+                    .tokens
+                    .output
+                    .saturating_add(msg.tokens.output.max(0) as u64);
+                model_info.tokens.cache_read = model_info
+                    .tokens
+                    .cache_read
+                    .saturating_add(msg.tokens.cache_read.max(0) as u64);
+                model_info.tokens.cache_write = model_info
+                    .tokens
+                    .cache_write
+                    .saturating_add(msg.tokens.cache_write.max(0) as u64);
+                model_info.tokens.reasoning = model_info
+                    .tokens
+                    .reasoning
+                    .saturating_add(msg.tokens.reasoning.max(0) as u64);
+                let model_msg_cost = if msg.cost.is_finite() && msg.cost >= 0.0 {
+                    msg.cost
+                } else {
+                    0.0
+                };
+                model_info.cost += model_msg_cost;
             }
         }
 
         let mut models: Vec<ModelUsage> = model_map.into_values().collect();
         models.sort_by(|a, b| {
             b.cost
-                .partial_cmp(&a.cost)
-                .unwrap_or(std::cmp::Ordering::Equal)
+                .total_cmp(&a.cost)
+                .then_with(|| a.model.cmp(&b.model))
+                .then_with(|| a.provider.cmp(&b.provider))
+                .then_with(|| a.source.cmp(&b.source))
         });
 
         let mut daily: Vec<DailyUsage> = daily_map.into_values().collect();
         daily.sort_by(|a, b| b.date.cmp(&a.date));
 
         let total_tokens: u64 = models.iter().map(|m| m.tokens.total()).sum();
-        let total_cost: f64 = models.iter().map(|m| m.cost).sum();
+        let total_cost: f64 = models
+            .iter()
+            .map(|m| if m.cost.is_finite() { m.cost } else { 0.0 })
+            .sum();
 
         let graph = build_contribution_graph(&daily);
         let (current_streak, longest_streak) = calculate_streaks(&daily);
@@ -409,8 +478,13 @@ fn build_contribution_graph(daily: &[DailyUsage]) -> GraphData {
     let mut current_date = start_date;
     while current_date <= end_date {
         let day = if let Some(usage) = daily_map.get(&current_date) {
-            let intensity = if max_cost > 0.0 {
-                (usage.cost / max_cost).min(1.0)
+            let raw_intensity = if max_cost > 0.0 {
+                usage.cost / max_cost
+            } else {
+                0.0
+            };
+            let intensity = if raw_intensity.is_finite() {
+                raw_intensity.clamp(0.0, 1.0)
             } else {
                 0.0
             };

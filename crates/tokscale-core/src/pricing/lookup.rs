@@ -325,30 +325,33 @@ impl PricingLookup {
     }
 
     fn exact_match_litellm(&self, model_id: &str) -> Option<LookupResult> {
-        if let Some(key) = self.litellm_lower.get(model_id) {
-            return Some(LookupResult {
-                pricing: self.litellm.get(key).unwrap().clone(),
-                source: "LiteLLM".into(),
-                matched_key: key.clone(),
-            });
-        }
-        None
+        let key = self.litellm_lower.get(model_id)?;
+        let pricing = self.litellm.get(key)?;
+        Some(LookupResult {
+            pricing: pricing.clone(),
+            source: "LiteLLM".into(),
+            matched_key: key.clone(),
+        })
     }
 
     fn exact_match_openrouter(&self, model_id: &str) -> Option<LookupResult> {
         if let Some(key) = self.openrouter_lower.get(model_id) {
-            return Some(LookupResult {
-                pricing: self.openrouter.get(key).unwrap().clone(),
-                source: "OpenRouter".into(),
-                matched_key: key.clone(),
-            });
+            if let Some(pricing) = self.openrouter.get(key) {
+                return Some(LookupResult {
+                    pricing: pricing.clone(),
+                    source: "OpenRouter".into(),
+                    matched_key: key.clone(),
+                });
+            }
         }
         if let Some(key) = self.openrouter_model_part.get(model_id) {
-            return Some(LookupResult {
-                pricing: self.openrouter.get(key).unwrap().clone(),
-                source: "OpenRouter".into(),
-                matched_key: key.clone(),
-            });
+            if let Some(pricing) = self.openrouter.get(key) {
+                return Some(LookupResult {
+                    pricing: pricing.clone(),
+                    source: "OpenRouter".into(),
+                    matched_key: key.clone(),
+                });
+            }
         }
         None
     }
@@ -357,11 +360,13 @@ impl PricingLookup {
         for prefix in PROVIDER_PREFIXES {
             let key = format!("{}{}", prefix, model_id);
             if let Some(litellm_key) = self.litellm_lower.get(&key) {
-                return Some(LookupResult {
-                    pricing: self.litellm.get(litellm_key).unwrap().clone(),
-                    source: "LiteLLM".into(),
-                    matched_key: litellm_key.clone(),
-                });
+                if let Some(pricing) = self.litellm.get(litellm_key) {
+                    return Some(LookupResult {
+                        pricing: pricing.clone(),
+                        source: "LiteLLM".into(),
+                        matched_key: litellm_key.clone(),
+                    });
+                }
             }
         }
         None
@@ -371,11 +376,13 @@ impl PricingLookup {
         for prefix in PROVIDER_PREFIXES {
             let key = format!("{}{}", prefix, model_id);
             if let Some(or_key) = self.openrouter_lower.get(&key) {
-                return Some(LookupResult {
-                    pricing: self.openrouter.get(or_key).unwrap().clone(),
-                    source: "OpenRouter".into(),
-                    matched_key: or_key.clone(),
-                });
+                if let Some(pricing) = self.openrouter.get(or_key) {
+                    return Some(LookupResult {
+                        pricing: pricing.clone(),
+                        source: "OpenRouter".into(),
+                        matched_key: or_key.clone(),
+                    });
+                }
             }
         }
         None
@@ -716,24 +723,28 @@ fn select_best_match(
     }
 
     if let Some(key) = matches.iter().find(|k| is_original_provider(k)) {
-        return Some(LookupResult {
-            pricing: dataset.get(*key).unwrap().clone(),
-            source: source.into(),
-            matched_key: (*key).clone(),
-        });
+        if let Some(pricing) = dataset.get(*key) {
+            return Some(LookupResult {
+                pricing: pricing.clone(),
+                source: source.into(),
+                matched_key: (*key).clone(),
+            });
+        }
     }
 
     if let Some(key) = matches.iter().find(|k| !is_reseller_provider(k)) {
-        return Some(LookupResult {
-            pricing: dataset.get(*key).unwrap().clone(),
-            source: source.into(),
-            matched_key: (*key).clone(),
-        });
+        if let Some(pricing) = dataset.get(*key) {
+            return Some(LookupResult {
+                pricing: pricing.clone(),
+                source: source.into(),
+                matched_key: (*key).clone(),
+            });
+        }
     }
 
     let key = matches[0];
-    Some(LookupResult {
-        pricing: dataset.get(key).unwrap().clone(),
+    dataset.get(key).map(|pricing| LookupResult {
+        pricing: pricing.clone(),
         source: source.into(),
         matched_key: key.clone(),
     })

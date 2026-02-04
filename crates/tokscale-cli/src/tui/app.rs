@@ -193,6 +193,7 @@ impl App {
             Ok(data) => {
                 self.data = data;
                 self.last_refresh = Instant::now();
+                self.clamp_selection();
                 self.set_status("Data loaded");
             }
             Err(e) => {
@@ -333,7 +334,22 @@ impl App {
     pub fn handle_resize(&mut self, width: u16, height: u16) {
         self.terminal_width = width;
         self.terminal_height = height;
-        self.max_visible_items = (height.saturating_sub(10)) as usize;
+        // Ensure at least 1 visible item to prevent division/slice issues
+        self.max_visible_items = (height.saturating_sub(10) as usize).max(1);
+        self.clamp_selection();
+    }
+
+    /// Clamp selection and scroll offset to valid bounds after data/resize changes
+    fn clamp_selection(&mut self) {
+        let len = self.get_current_list_len();
+        if len == 0 {
+            self.selected_index = 0;
+            self.scroll_offset = 0;
+            return;
+        }
+        self.selected_index = self.selected_index.min(len.saturating_sub(1));
+        let max_scroll = len.saturating_sub(self.max_visible_items);
+        self.scroll_offset = self.scroll_offset.min(max_scroll);
     }
 
     pub fn clear_click_areas(&mut self) {
@@ -387,6 +403,7 @@ impl App {
             self.sort_field = field;
             self.sort_direction = SortDirection::Descending;
         }
+        self.reset_selection();
         self.set_status(&format!(
             "Sorted by {:?} {:?}",
             self.sort_field, self.sort_direction
@@ -397,8 +414,15 @@ impl App {
         let new_theme = self.theme.name.next();
         self.theme = Theme::from_name(new_theme);
         self.settings.set_theme(new_theme);
-        let _ = self.settings.save();
-        self.set_status(&format!("Theme: {}", new_theme.as_str()));
+        if let Err(e) = self.settings.save() {
+            self.set_status(&format!(
+                "Theme: {} (save failed: {})",
+                new_theme.as_str(),
+                e
+            ));
+        } else {
+            self.set_status(&format!("Theme: {}", new_theme.as_str()));
+        }
     }
 
     fn toggle_source(&mut self, key: char) {
@@ -423,7 +447,9 @@ impl App {
             .iter()
             .map(|s| s.as_str().to_string())
             .collect();
-        let _ = self.settings.save();
+        if let Err(e) = self.settings.save() {
+            self.set_status(&format!("Settings save failed: {}", e));
+        }
     }
 
     fn toggle_auto_refresh(&mut self) {
@@ -442,22 +468,32 @@ impl App {
         let secs = self.auto_refresh_interval.as_secs();
         self.auto_refresh_interval = Duration::from_secs(secs.saturating_add(10).min(300));
         self.settings.auto_refresh_interval = self.auto_refresh_interval.as_secs();
-        let _ = self.settings.save();
-        self.set_status(&format!(
+        let save_result = self.settings.save();
+        let msg = format!(
             "Refresh interval: {}s",
             self.auto_refresh_interval.as_secs()
-        ));
+        );
+        if let Err(e) = save_result {
+            self.set_status(&format!("{} (save failed: {})", msg, e));
+        } else {
+            self.set_status(&msg);
+        }
     }
 
     fn decrease_refresh_interval(&mut self) {
         let secs = self.auto_refresh_interval.as_secs();
         self.auto_refresh_interval = Duration::from_secs(secs.saturating_sub(10).max(10));
         self.settings.auto_refresh_interval = self.auto_refresh_interval.as_secs();
-        let _ = self.settings.save();
-        self.set_status(&format!(
+        let save_result = self.settings.save();
+        let msg = format!(
             "Refresh interval: {}s",
             self.auto_refresh_interval.as_secs()
-        ));
+        );
+        if let Err(e) = save_result {
+            self.set_status(&format!("{} (save failed: {})", msg, e));
+        } else {
+            self.set_status(&msg);
+        }
     }
 
     fn copy_selected_to_clipboard(&mut self) {
@@ -519,11 +555,11 @@ impl App {
             chrono::Utc::now().format("%Y%m%d-%H%M%S")
         );
 
-        match std::fs::write(
-            &filename,
-            serde_json::to_string_pretty(&export_data).unwrap(),
-        ) {
-            Ok(_) => self.set_status(&format!("Exported to {}", filename)),
+        match serde_json::to_string_pretty(&export_data) {
+            Ok(json) => match std::fs::write(&filename, json) {
+                Ok(_) => self.set_status(&format!("Exported to {}", filename)),
+                Err(e) => self.set_status(&format!("Export failed: {}", e)),
+            },
             Err(e) => self.set_status(&format!("Export failed: {}", e)),
         }
     }
@@ -542,24 +578,35 @@ impl App {
     pub fn get_sorted_models(&self) -> Vec<&ModelUsage> {
         let mut models: Vec<&ModelUsage> = self.data.models.iter().collect();
 
+        let tie_breaker = |a: &&ModelUsage, b: &&ModelUsage| {
+            a.model
+                .cmp(&b.model)
+                .then_with(|| a.provider.cmp(&b.provider))
+                .then_with(|| a.source.cmp(&b.source))
+        };
+
         match (self.sort_field, self.sort_direction) {
-            (SortField::Cost, SortDirection::Descending) => models.sort_by(|a, b| {
-                b.cost
-                    .partial_cmp(&a.cost)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            }),
-            (SortField::Cost, SortDirection::Ascending) => models.sort_by(|a, b| {
-                a.cost
-                    .partial_cmp(&b.cost)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            }),
-            (SortField::Tokens, SortDirection::Descending) => {
-                models.sort_by(|a, b| b.tokens.total().cmp(&a.tokens.total()))
+            (SortField::Cost, SortDirection::Descending) => {
+                models.sort_by(|a, b| b.cost.total_cmp(&a.cost).then_with(|| tie_breaker(a, b)))
             }
-            (SortField::Tokens, SortDirection::Ascending) => {
-                models.sort_by(|a, b| a.tokens.total().cmp(&b.tokens.total()))
+            (SortField::Cost, SortDirection::Ascending) => {
+                models.sort_by(|a, b| a.cost.total_cmp(&b.cost).then_with(|| tie_breaker(a, b)))
             }
-            (SortField::Date, _) => {}
+            (SortField::Tokens, SortDirection::Descending) => models.sort_by(|a, b| {
+                b.tokens
+                    .total()
+                    .cmp(&a.tokens.total())
+                    .then_with(|| tie_breaker(a, b))
+            }),
+            (SortField::Tokens, SortDirection::Ascending) => models.sort_by(|a, b| {
+                a.tokens
+                    .total()
+                    .cmp(&b.tokens.total())
+                    .then_with(|| tie_breaker(a, b))
+            }),
+            (SortField::Date, _) => {
+                models.sort_by(|a, b| tie_breaker(a, b));
+            }
         }
 
         models
@@ -569,22 +616,24 @@ impl App {
         let mut daily: Vec<&DailyUsage> = self.data.daily.iter().collect();
 
         match (self.sort_field, self.sort_direction) {
-            (SortField::Cost, SortDirection::Descending) => daily.sort_by(|a, b| {
-                b.cost
-                    .partial_cmp(&a.cost)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            }),
-            (SortField::Cost, SortDirection::Ascending) => daily.sort_by(|a, b| {
-                a.cost
-                    .partial_cmp(&b.cost)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            }),
-            (SortField::Tokens, SortDirection::Descending) => {
-                daily.sort_by(|a, b| b.tokens.total().cmp(&a.tokens.total()))
+            (SortField::Cost, SortDirection::Descending) => {
+                daily.sort_by(|a, b| b.cost.total_cmp(&a.cost).then_with(|| a.date.cmp(&b.date)))
             }
-            (SortField::Tokens, SortDirection::Ascending) => {
-                daily.sort_by(|a, b| a.tokens.total().cmp(&b.tokens.total()))
+            (SortField::Cost, SortDirection::Ascending) => {
+                daily.sort_by(|a, b| a.cost.total_cmp(&b.cost).then_with(|| a.date.cmp(&b.date)))
             }
+            (SortField::Tokens, SortDirection::Descending) => daily.sort_by(|a, b| {
+                b.tokens
+                    .total()
+                    .cmp(&a.tokens.total())
+                    .then_with(|| a.date.cmp(&b.date))
+            }),
+            (SortField::Tokens, SortDirection::Ascending) => daily.sort_by(|a, b| {
+                a.tokens
+                    .total()
+                    .cmp(&b.tokens.total())
+                    .then_with(|| a.date.cmp(&b.date))
+            }),
             (SortField::Date, SortDirection::Descending) => {
                 daily.sort_by(|a, b| b.date.cmp(&a.date))
             }

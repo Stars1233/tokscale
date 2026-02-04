@@ -178,11 +178,19 @@ fn render_top_models(frame: &mut Frame, app: &mut App, area: Rect, items_per_pag
         return;
     }
 
-    let total = models_data.iter().map(|m| m.cost).sum::<f64>().max(0.01);
+    let total = models_data
+        .iter()
+        .map(|m| if m.cost.is_finite() { m.cost } else { 0.0 })
+        .sum::<f64>()
+        .max(0.01);
     let models_len = models_data.len();
-    let start = scroll_offset;
+    let start = scroll_offset.min(models_len);
     let end = (start + items_per_page).min(models_len);
     let max_name_width = if is_narrow { 20 } else { 35 };
+
+    if start >= models_len {
+        return;
+    }
 
     let mut y = inner.y;
     for (i, model) in models_data[start..end].iter().enumerate() {
@@ -309,10 +317,17 @@ fn render_top_models(frame: &mut Frame, app: &mut App, area: Rect, items_per_pag
     }
 }
 
-fn truncate_string(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
+fn truncate_string(s: &str, max_chars: usize) -> String {
+    if max_chars == 0 {
+        return String::new();
+    }
+    let char_count = s.chars().count();
+    if char_count <= max_chars {
         s.to_string()
+    } else if max_chars == 1 {
+        "…".to_string()
     } else {
-        format!("{}…", &s[..max_len - 1])
+        let head: String = s.chars().take(max_chars - 1).collect();
+        format!("{}…", head)
     }
 }

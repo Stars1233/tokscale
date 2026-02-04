@@ -14,7 +14,6 @@ pub enum Event {
 
 pub struct EventHandler {
     rx: mpsc::Receiver<Event>,
-    _tx: mpsc::Sender<Event>,
 }
 
 impl EventHandler {
@@ -47,7 +46,8 @@ impl EventHandler {
             }
         });
 
-        Self { rx, _tx: tx }
+        drop(tx);
+        Self { rx }
     }
 
     pub fn next(&mut self) -> Result<Event> {

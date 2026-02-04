@@ -1,6 +1,6 @@
 use ratatui::prelude::*;
 use ratatui::widgets::{
-    Block, Borders, Cell, Row, Scrollbar, ScrollbarOrientation, ScrollbarState, Table,
+    Block, Borders, Cell, Paragraph, Row, Scrollbar, ScrollbarOrientation, ScrollbarState, Table,
 };
 
 use super::widgets::{format_cost, format_tokens, get_model_color};
@@ -36,6 +36,11 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
 
     let models = app.get_sorted_models();
     if models.is_empty() {
+        let empty_msg =
+            Paragraph::new("No usage data found. Press 'r' to refresh or toggle sources with 1-8.")
+                .style(Style::default().fg(theme_muted))
+                .alignment(Alignment::Center);
+        frame.render_widget(empty_msg, inner);
         return;
     }
 
@@ -86,8 +91,12 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     .height(1);
 
     let models_len = models.len();
-    let start = scroll_offset;
+    let start = scroll_offset.min(models_len);
     let end = (start + visible_height).min(models_len);
+
+    if start >= models_len {
+        return;
+    }
 
     let rows: Vec<Row> = models[start..end]
         .iter()
@@ -192,10 +201,17 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     }
 }
 
-fn truncate(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
+fn truncate(s: &str, max_chars: usize) -> String {
+    if max_chars == 0 {
+        return String::new();
+    }
+    let char_count = s.chars().count();
+    if char_count <= max_chars {
         s.to_string()
+    } else if max_chars <= 3 {
+        s.chars().take(max_chars).collect()
     } else {
-        format!("{}...", &s[..max_len - 3])
+        let head: String = s.chars().take(max_chars - 3).collect();
+        format!("{}...", head)
     }
 }

@@ -1,6 +1,6 @@
 use ratatui::prelude::*;
 use ratatui::widgets::{
-    Block, Borders, Cell, Row, Scrollbar, ScrollbarOrientation, ScrollbarState, Table,
+    Block, Borders, Cell, Paragraph, Row, Scrollbar, ScrollbarOrientation, ScrollbarState, Table,
 };
 
 use super::widgets::{format_cost, format_tokens};
@@ -26,6 +26,10 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
 
     let daily = app.get_sorted_daily();
     if daily.is_empty() {
+        let empty_msg = Paragraph::new("No daily usage data found. Press 'r' to refresh.")
+            .style(Style::default().fg(app.theme.muted))
+            .alignment(Alignment::Center);
+        frame.render_widget(empty_msg, inner);
         return;
     }
 
@@ -85,8 +89,12 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     .height(1);
 
     let daily_len = daily.len();
-    let start = scroll_offset;
+    let start = scroll_offset.min(daily_len);
     let end = (start + visible_height).min(daily_len);
+
+    if start >= daily_len {
+        return;
+    }
 
     let rows: Vec<Row> = daily[start..end]
         .iter()

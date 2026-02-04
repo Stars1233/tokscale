@@ -70,12 +70,17 @@ fn render_graph(frame: &mut Frame, app: &mut App, area: Rect) {
         }
     }
 
-    let max_weeks = ((inner.width - label_width) / CELL_WIDTH) as usize;
+    let max_weeks = (inner.width.saturating_sub(label_width) / CELL_WIDTH) as usize;
     let weeks_to_show = graph.weeks.len().min(max_weeks);
     let start_week = graph.weeks.len().saturating_sub(weeks_to_show);
 
     let intensity_color = |intensity: f64| -> Color {
-        let idx = match intensity {
+        let safe_intensity = if intensity.is_finite() {
+            intensity.clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        let idx = match safe_intensity {
             x if x <= 0.0 => 0,
             x if x < 0.25 => 1,
             x if x < 0.50 => 2,
@@ -590,10 +595,17 @@ fn render_breakdown_panel(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(paragraph, inner);
 }
 
-fn truncate_model_name(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
+fn truncate_model_name(s: &str, max_chars: usize) -> String {
+    if max_chars == 0 {
+        return String::new();
+    }
+    let char_count = s.chars().count();
+    if char_count <= max_chars {
         s.to_string()
+    } else if max_chars == 1 {
+        "…".to_string()
     } else {
-        format!("{}…", &s[..max_len - 1])
+        let head: String = s.chars().take(max_chars - 1).collect();
+        format!("{}…", head)
     }
 }

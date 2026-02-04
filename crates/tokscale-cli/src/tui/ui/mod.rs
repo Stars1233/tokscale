@@ -14,8 +14,13 @@ use ratatui::widgets::{Block, Borders, Paragraph};
 use crate::tui::app::{App, Tab};
 
 pub fn render(frame: &mut Frame, app: &mut App) {
+    let area = frame.area();
+    if area.width == 0 || area.height == 0 {
+        return;
+    }
+
     app.clear_click_areas();
-    app.handle_resize(frame.area().width, frame.area().height);
+    app.handle_resize(area.width, area.height);
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -24,7 +29,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             Constraint::Min(0),
             Constraint::Length(3),
         ])
-        .split(frame.area());
+        .split(area);
 
     header::render(frame, app, chunks[0]);
 
