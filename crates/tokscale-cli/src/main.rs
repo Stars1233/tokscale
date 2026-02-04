@@ -111,6 +111,41 @@ enum Commands {
         #[arg(long, help = "Output as JSON")]
         json: bool,
     },
+    #[command(about = "Export contribution graph data as JSON")]
+    Graph {
+        #[arg(long, help = "Write to file instead of stdout")]
+        output: Option<String>,
+        #[arg(long, help = "Show only OpenCode usage")]
+        opencode: bool,
+        #[arg(long, help = "Show only Claude Code usage")]
+        claude: bool,
+        #[arg(long, help = "Show only Codex CLI usage")]
+        codex: bool,
+        #[arg(long, help = "Show only Gemini CLI usage")]
+        gemini: bool,
+        #[arg(long, help = "Show only Cursor IDE usage")]
+        cursor: bool,
+        #[arg(long, help = "Show only Amp usage")]
+        amp: bool,
+        #[arg(long, help = "Show only Droid usage")]
+        droid: bool,
+        #[arg(long, help = "Show only OpenClaw usage")]
+        openclaw: bool,
+        #[arg(long, help = "Show only today's usage")]
+        today: bool,
+        #[arg(long, help = "Show last 7 days")]
+        week: bool,
+        #[arg(long, help = "Show current month")]
+        month: bool,
+        #[arg(long, help = "Start date (YYYY-MM-DD)")]
+        since: Option<String>,
+        #[arg(long, help = "End date (YYYY-MM-DD)")]
+        until: Option<String>,
+        #[arg(long, help = "Filter by year (YYYY)")]
+        year: Option<String>,
+        #[arg(long, help = "Show processing time")]
+        benchmark: bool,
+    },
 }
 
 fn main() -> Result<()> {
@@ -178,6 +213,30 @@ fn main() -> Result<()> {
         }
         Some(Commands::Sources { json }) => {
             run_sources_command(json)
+        }
+        Some(Commands::Graph {
+            output,
+            opencode,
+            claude,
+            codex,
+            gemini,
+            cursor,
+            amp,
+            droid,
+            openclaw,
+            today,
+            week,
+            month,
+            since,
+            until,
+            year,
+            benchmark,
+        }) => {
+            let sources = build_source_filter(SourceFlags {
+                opencode, claude, codex, gemini, cursor, amp, droid, openclaw,
+            });
+            let (since, until) = build_date_filter(today, week, month, since, until);
+            run_graph_command(output, sources, since, until, year, benchmark)
         }
         None => {
             tui::run(&cli.theme, cli.refresh, cli.debug)
@@ -663,4 +722,77 @@ fn format_number(n: i32) -> String {
     } else {
         n.to_string()
     }
+}
+
+fn run_graph_command(
+    output: Option<String>,
+    sources: Option<Vec<String>>,
+    since: Option<String>,
+    until: Option<String>,
+    year: Option<String>,
+    benchmark: bool,
+) -> Result<()> {
+    use tokscale_core::{parse_local_sources, LocalParseOptions, aggregate_by_date, generate_graph_result, UnifiedMessage, TokenBreakdown};
+    use std::time::Instant;
+    
+    let home_dir = dirs::home_dir()
+        .ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?;
+    
+    let start = Instant::now();
+    
+    let parsed = parse_local_sources(LocalParseOptions {
+        home_dir: Some(home_dir.to_string_lossy().to_string()),
+        sources: sources.clone(),
+        since: since.clone(),
+        until: until.clone(),
+        year: year.clone(),
+    }).map_err(|e| anyhow::anyhow!(e))?;
+    
+    let unified_messages: Vec<UnifiedMessage> = parsed.messages.into_iter().map(|msg| {
+        let tokens = TokenBreakdown {
+            input: msg.input,
+            output: msg.output,
+            cache_read: msg.cache_read,
+            cache_write: msg.cache_write,
+            reasoning: msg.reasoning,
+        };
+        
+        UnifiedMessage::new_with_agent(
+            msg.source,
+            msg.model_id,
+            msg.provider_id,
+            msg.session_id,
+            msg.timestamp,
+            tokens,
+            0.0,
+            msg.agent,
+        )
+    }).collect();
+    
+    let contributions = aggregate_by_date(unified_messages);
+    let processing_time_ms = start.elapsed().as_millis() as u32;
+    let graph_result = generate_graph_result(contributions, processing_time_ms);
+    
+    let json_output = serde_json::to_string_pretty(&graph_result)?;
+    
+    if let Some(output_path) = output {
+        std::fs::write(&output_path, json_output)?;
+        
+        use colored::Colorize;
+        eprintln!("{}", format!("✓ Graph data written to {}", output_path).green());
+        eprintln!("{}", format!("  {} days, {} sources, {} models",
+            graph_result.contributions.len(),
+            graph_result.summary.sources.len(),
+            graph_result.summary.models.len()
+        ).bright_black());
+        eprintln!("{}", format!("  Total: {}", format_currency(graph_result.summary.total_cost)).bright_black());
+        
+        if benchmark {
+            eprintln!("{}", format!("  Processing time: {}ms (Rust native)", processing_time_ms).bright_black());
+        }
+    } else {
+        println!("{}", json_output);
+    }
+    
+    Ok(())
 }

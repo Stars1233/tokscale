@@ -24,7 +24,7 @@ pub fn health_check() -> String {
     "tokscale-core is healthy!".to_string()
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, serde::Serialize)]
 pub struct TokenBreakdown {
     pub input: i64,
     pub output: i64,
@@ -77,14 +77,14 @@ pub struct LocalParseOptions {
     pub year: Option<String>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, serde::Serialize)]
 pub struct DailyTotals {
     pub tokens: i64,
     pub cost: f64,
     pub messages: i32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct SourceContribution {
     pub source: String,
     pub model_id: String,
@@ -94,7 +94,7 @@ pub struct SourceContribution {
     pub messages: i32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct DailyContribution {
     pub date: String,
     pub totals: DailyTotals,
@@ -103,7 +103,7 @@ pub struct DailyContribution {
     pub sources: Vec<SourceContribution>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct YearSummary {
     pub year: String,
     pub total_tokens: i64,
@@ -112,7 +112,7 @@ pub struct YearSummary {
     pub range_end: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct DataSummary {
     pub total_tokens: i64,
     pub total_cost: f64,
@@ -124,7 +124,7 @@ pub struct DataSummary {
     pub models: Vec<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct GraphMeta {
     pub generated_at: String,
     pub version: String,
@@ -133,7 +133,7 @@ pub struct GraphMeta {
     pub processing_time_ms: u32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct GraphResult {
     pub meta: GraphMeta,
     pub summary: DataSummary,
