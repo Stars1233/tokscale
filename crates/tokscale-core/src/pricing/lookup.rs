@@ -89,10 +89,10 @@ impl PricingLookup {
         openrouter: HashMap<String, ModelPricing>,
     ) -> Self {
         let mut litellm_keys: Vec<String> = litellm.keys().cloned().collect();
-        litellm_keys.sort_by(|a, b| b.len().cmp(&a.len()));
+        litellm_keys.sort_by_key(|k| std::cmp::Reverse(k.len()));
 
         let mut openrouter_keys: Vec<String> = openrouter.keys().cloned().collect();
-        openrouter_keys.sort_by(|a, b| b.len().cmp(&a.len()));
+        openrouter_keys.sort_by_key(|k| std::cmp::Reverse(k.len()));
 
         let mut litellm_lower = HashMap::with_capacity(litellm.len());
         for key in &litellm_keys {
@@ -104,7 +104,7 @@ impl PricingLookup {
         for key in &openrouter_keys {
             let lower = key.to_lowercase();
             openrouter_lower.insert(lower.clone(), key.clone());
-            if let Some(model_part) = lower.split('/').last() {
+            if let Some(model_part) = lower.split('/').next_back() {
                 if model_part != lower {
                     openrouter_model_part.insert(model_part.to_string(), key.clone());
                 }
@@ -413,7 +413,7 @@ impl PricingLookup {
 
         for key in &self.openrouter_keys {
             let lower_key = key.to_lowercase();
-            let model_part = lower_key.split('/').last().unwrap_or(&lower_key);
+            let model_part = lower_key.split('/').next_back().unwrap_or(&lower_key);
             if family_matches(model_part, &family) && contains_model_id(model_part, model_id) {
                 family_matches_list.push(key);
             }
@@ -428,7 +428,7 @@ impl PricingLookup {
         let mut all_matches: Vec<&String> = Vec::new();
         for key in &self.openrouter_keys {
             let lower_key = key.to_lowercase();
-            let model_part = lower_key.split('/').last().unwrap_or(&lower_key);
+            let model_part = lower_key.split('/').next_back().unwrap_or(&lower_key);
             if contains_model_id(model_part, model_id) {
                 all_matches.push(key);
             }
@@ -526,7 +526,7 @@ fn extract_model_family(model_id: &str) -> String {
     }
 
     lower
-        .split(|c: char| c == '-' || c == '_' || c == '.')
+        .split(['-', '_', '.'])
         .next()
         .unwrap_or(&lower)
         .to_string()
@@ -621,7 +621,7 @@ fn is_fuzzy_eligible(model_id: &str) -> bool {
     if model_id.len() < MIN_FUZZY_MATCH_LEN {
         return false;
     }
-    !FUZZY_BLOCKLIST.iter().any(|blocked| model_id == *blocked)
+    !FUZZY_BLOCKLIST.contains(&model_id)
 }
 
 /// Attempts to find a model by progressively stripping trailing segments.
@@ -700,8 +700,8 @@ fn is_reseller_provider(key: &str) -> bool {
         .any(|prefix| lower.starts_with(prefix))
 }
 
-fn select_best_match<'a>(
-    matches: &[&'a String],
+fn select_best_match(
+    matches: &[&String],
     dataset: &HashMap<String, ModelPricing>,
     source: &str,
 ) -> Option<LookupResult> {
@@ -1795,14 +1795,18 @@ mod tests {
     #[test]
     fn test_prefix_and_suffix_combined() {
         let lookup = create_lookup();
-        let result = lookup.lookup("antigravity-claude-opus-4-5-thinking").unwrap();
+        let result = lookup
+            .lookup("antigravity-claude-opus-4-5-thinking")
+            .unwrap();
         assert_eq!(result.matched_key, "claude-opus-4-5");
     }
 
     #[test]
     fn test_prefix_and_suffix_with_tier() {
         let lookup = create_lookup();
-        let result = lookup.lookup("antigravity-claude-opus-4-5-thinking-high").unwrap();
+        let result = lookup
+            .lookup("antigravity-claude-opus-4-5-thinking-high")
+            .unwrap();
         assert_eq!(result.matched_key, "claude-opus-4-5");
     }
 

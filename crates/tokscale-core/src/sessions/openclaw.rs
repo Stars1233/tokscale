@@ -50,6 +50,7 @@ struct OpenClawUsage {
     #[serde(rename = "cacheWrite")]
     cache_write: Option<i64>,
     #[serde(rename = "totalTokens")]
+    #[allow(dead_code)]
     total_tokens: Option<i64>,
     cost: Option<OpenClawCost>,
 }

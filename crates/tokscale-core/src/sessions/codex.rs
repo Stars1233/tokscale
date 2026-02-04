@@ -87,10 +87,8 @@ pub fn parse_codex_file(path: &Path) -> Vec<UnifiedMessage> {
         if let Ok(entry) = simd_json::from_slice::<CodexEntry>(&mut bytes) {
             if let Some(payload) = entry.payload {
                 // Check session_meta for headless exec sessions
-                if entry.entry_type == "session_meta" {
-                    if payload.source.as_deref() == Some("exec") {
-                        session_is_headless = true;
-                    }
+                if entry.entry_type == "session_meta" && payload.source.as_deref() == Some("exec") {
+                    session_is_headless = true;
                 }
                 // Extract model from turn_context
                 if entry.entry_type == "turn_context" {

@@ -68,6 +68,7 @@ impl UnifiedMessage {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new_with_agent(
         source: impl Into<String>,
         model_id: impl Into<String>,
@@ -91,6 +92,7 @@ impl UnifiedMessage {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new_with_dedup(
         source: impl Into<String>,
         model_id: impl Into<String>,
@@ -114,6 +116,7 @@ impl UnifiedMessage {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn new_full(
         source: impl Into<String>,
         model_id: impl Into<String>,

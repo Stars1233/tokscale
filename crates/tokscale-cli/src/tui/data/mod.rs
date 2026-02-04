@@ -16,11 +16,12 @@ pub struct TokenBreakdown {
     pub output: u64,
     pub cache_read: u64,
     pub cache_write: u64,
+    pub reasoning: u64,
 }
 
 impl TokenBreakdown {
     pub fn total(&self) -> u64 {
-        self.input + self.output + self.cache_read + self.cache_write
+        self.input + self.output + self.cache_read + self.cache_write + self.reasoning
     }
 }
 
@@ -166,10 +167,6 @@ impl DataLoader {
         }
     }
 
-    pub fn sessions_path(&self) -> Option<&PathBuf> {
-        self._sessions_path.as_ref()
-    }
-
     pub fn load(&self, enabled_sources: &[Source]) -> Result<UsageData> {
         let home = dirs::home_dir()
             .ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?
@@ -177,7 +174,8 @@ impl DataLoader {
             .to_string();
 
         let rt = Runtime::new()?;
-        let pricing = rt.block_on(async { PricingService::get_or_init().await }).ok();
+        let pricing_result = rt.block_on(async { PricingService::get_or_init().await });
+        let pricing = pricing_result.as_ref().ok();
 
         let sources: Vec<String> = enabled_sources
             .iter()
@@ -272,7 +270,7 @@ impl DataLoader {
 
         if let Some(ref svc) = pricing {
             for msg in &mut all_messages {
-                msg.cost = svc.calculate_cost(
+                let calculated_cost = svc.calculate_cost(
                     &msg.model_id,
                     msg.tokens.input,
                     msg.tokens.output,
@@ -280,6 +278,11 @@ impl DataLoader {
                     msg.tokens.cache_write,
                     msg.tokens.reasoning,
                 );
+                // Only overwrite cost if pricing service returns a positive value
+                // Preserve original cost for sources like cursor/amp that provide pre-calculated costs
+                if calculated_cost > 0.0 {
+                    msg.cost = calculated_cost;
+                }
             }
         }
 
@@ -307,6 +310,7 @@ impl DataLoader {
             model_entry.tokens.output += msg.tokens.output.max(0) as u64;
             model_entry.tokens.cache_read += msg.tokens.cache_read.max(0) as u64;
             model_entry.tokens.cache_write += msg.tokens.cache_write.max(0) as u64;
+            model_entry.tokens.reasoning += msg.tokens.reasoning.max(0) as u64;
             model_entry.cost += msg.cost;
 
             let session_key = format!("{}:{}", msg.source, msg.session_id);
@@ -326,6 +330,7 @@ impl DataLoader {
                 daily_entry.tokens.output += msg.tokens.output.max(0) as u64;
                 daily_entry.tokens.cache_read += msg.tokens.cache_read.max(0) as u64;
                 daily_entry.tokens.cache_write += msg.tokens.cache_write.max(0) as u64;
+                daily_entry.tokens.reasoning += msg.tokens.reasoning.max(0) as u64;
                 daily_entry.cost += msg.cost;
 
                 let model_info = daily_entry
@@ -341,6 +346,7 @@ impl DataLoader {
                 model_info.tokens.output += msg.tokens.output.max(0) as u64;
                 model_info.tokens.cache_read += msg.tokens.cache_read.max(0) as u64;
                 model_info.tokens.cache_write += msg.tokens.cache_write.max(0) as u64;
+                model_info.tokens.reasoning += msg.tokens.reasoning.max(0) as u64;
                 model_info.cost += msg.cost;
             }
         }
