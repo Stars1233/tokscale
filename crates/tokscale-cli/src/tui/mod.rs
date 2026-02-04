@@ -22,40 +22,70 @@ use ratatui::prelude::*;
 
 pub fn run(theme: &str, refresh: u64, debug: bool) -> Result<()> {
     if debug {
-        tracing_subscriber::fmt()
+        let _ = tracing_subscriber::fmt()
             .with_env_filter("debug")
-            .init();
+            .try_init();
     }
 
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    
+    if let Err(e) = execute!(stdout, EnterAlternateScreen, EnableMouseCapture) {
+        let _ = disable_raw_mode();
+        return Err(e.into());
+    }
 
     let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    let terminal_result = Terminal::new(backend);
+    let mut terminal = match terminal_result {
+        Ok(t) => t,
+        Err(e) => {
+            restore_terminal_best_effort();
+            return Err(e.into());
+        }
+    };
 
     let config = TuiConfig {
         theme: theme.to_string(),
         refresh,
         sessions_path: None,
     };
-    let mut app = App::new(config)?;
+    let app_result = App::new(config);
+    let mut app = match app_result {
+        Ok(a) => a,
+        Err(e) => {
+            restore_terminal(&mut terminal);
+            return Err(e);
+        }
+    };
 
-    app.load_data()?;
+    if let Err(e) = app.load_data() {
+        restore_terminal(&mut terminal);
+        return Err(e);
+    }
 
     let mut events = EventHandler::new(Duration::from_millis(100));
 
     let result = run_loop(&mut terminal, &mut app, &mut events);
 
-    disable_raw_mode()?;
-    execute!(
+    restore_terminal(&mut terminal);
+
+    result
+}
+
+fn restore_terminal_best_effort() {
+    let _ = execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture);
+    let _ = disable_raw_mode();
+}
+
+fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) {
+    let _ = disable_raw_mode();
+    let _ = execute!(
         terminal.backend_mut(),
         LeaveAlternateScreen,
         DisableMouseCapture
-    )?;
-    terminal.show_cursor()?;
-
-    result
+    );
+    let _ = terminal.show_cursor();
 }
 
 fn run_loop(

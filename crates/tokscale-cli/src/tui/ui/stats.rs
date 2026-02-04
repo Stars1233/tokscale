@@ -223,7 +223,11 @@ fn render_stats_panel(frame: &mut Frame, app: &App, area: Rect) {
         .data
         .models
         .iter()
-        .max_by(|a, b| a.cost.partial_cmp(&b.cost).unwrap())
+        .max_by(|a, b| {
+            a.cost
+                .partial_cmp(&b.cost)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
         .map(|m| m.model.as_str())
         .unwrap_or("N/A");
 

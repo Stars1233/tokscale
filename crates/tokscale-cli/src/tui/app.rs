@@ -220,6 +220,11 @@ impl App {
     }
 
     pub fn handle_key_event(&mut self, key: KeyEvent) -> bool {
+        if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
+            self.should_quit = true;
+            return true;
+        }
+
         match key.code {
             KeyCode::Char('q') => {
                 self.should_quit = true;
@@ -538,12 +543,16 @@ impl App {
         let mut models: Vec<&ModelUsage> = self.data.models.iter().collect();
 
         match (self.sort_field, self.sort_direction) {
-            (SortField::Cost, SortDirection::Descending) => {
-                models.sort_by(|a, b| b.cost.partial_cmp(&a.cost).unwrap())
-            }
-            (SortField::Cost, SortDirection::Ascending) => {
-                models.sort_by(|a, b| a.cost.partial_cmp(&b.cost).unwrap())
-            }
+            (SortField::Cost, SortDirection::Descending) => models.sort_by(|a, b| {
+                b.cost
+                    .partial_cmp(&a.cost)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            }),
+            (SortField::Cost, SortDirection::Ascending) => models.sort_by(|a, b| {
+                a.cost
+                    .partial_cmp(&b.cost)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            }),
             (SortField::Tokens, SortDirection::Descending) => {
                 models.sort_by(|a, b| b.tokens.total().cmp(&a.tokens.total()))
             }
@@ -560,12 +569,16 @@ impl App {
         let mut daily: Vec<&DailyUsage> = self.data.daily.iter().collect();
 
         match (self.sort_field, self.sort_direction) {
-            (SortField::Cost, SortDirection::Descending) => {
-                daily.sort_by(|a, b| b.cost.partial_cmp(&a.cost).unwrap())
-            }
-            (SortField::Cost, SortDirection::Ascending) => {
-                daily.sort_by(|a, b| a.cost.partial_cmp(&b.cost).unwrap())
-            }
+            (SortField::Cost, SortDirection::Descending) => daily.sort_by(|a, b| {
+                b.cost
+                    .partial_cmp(&a.cost)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            }),
+            (SortField::Cost, SortDirection::Ascending) => daily.sort_by(|a, b| {
+                a.cost
+                    .partial_cmp(&b.cost)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            }),
             (SortField::Tokens, SortDirection::Descending) => {
                 daily.sort_by(|a, b| b.tokens.total().cmp(&a.tokens.total()))
             }

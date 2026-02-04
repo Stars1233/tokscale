@@ -142,7 +142,7 @@ impl Source {
         }
     }
 
-    fn to_core_source(&self) -> &'static str {
+    fn to_core_source(self) -> &'static str {
         match self {
             Source::OpenCode => "opencode",
             Source::Claude => "claude",
@@ -268,7 +268,7 @@ impl DataLoader {
             all_messages.extend(msgs);
         }
 
-        if let Some(ref svc) = pricing {
+        if let Some(svc) = pricing {
             for msg in &mut all_messages {
                 let calculated_cost = svc.calculate_cost(
                     &msg.model_id,
