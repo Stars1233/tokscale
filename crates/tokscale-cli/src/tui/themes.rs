@@ -82,68 +82,69 @@ pub struct Theme {
 impl Theme {
     pub fn from_name(name: ThemeName) -> Self {
         let colors = match name {
+            // Colors match frontend contribution graph palettes (higher grade = darker = more activity)
             ThemeName::Green => [
-                Color::Rgb(22, 27, 34),
-                Color::Rgb(14, 68, 41),
-                Color::Rgb(0, 109, 50),
-                Color::Rgb(38, 166, 65),
-                Color::Rgb(57, 211, 83),
+                Color::Rgb(22, 27, 34),    // grade0: empty
+                Color::Rgb(155, 233, 168), // grade1: #9be9a8
+                Color::Rgb(64, 196, 99),   // grade2: #40c463
+                Color::Rgb(48, 161, 78),   // grade3: #30a14e
+                Color::Rgb(33, 110, 57),   // grade4: #216e39
             ],
             ThemeName::Halloween => [
-                Color::Rgb(22, 27, 34),
-                Color::Rgb(99, 29, 0),
-                Color::Rgb(153, 68, 0),
-                Color::Rgb(255, 123, 0),
-                Color::Rgb(255, 166, 39),
+                Color::Rgb(22, 27, 34),   // grade0: empty
+                Color::Rgb(255, 238, 74), // grade1: #FFEE4A
+                Color::Rgb(255, 197, 1),  // grade2: #FFC501
+                Color::Rgb(254, 150, 0),  // grade3: #FE9600
+                Color::Rgb(3, 0, 28),     // grade4: #03001C
             ],
             ThemeName::Teal => [
-                Color::Rgb(22, 27, 34),
-                Color::Rgb(0, 68, 68),
-                Color::Rgb(0, 109, 109),
-                Color::Rgb(38, 166, 154),
-                Color::Rgb(57, 211, 196),
+                Color::Rgb(22, 27, 34),    // grade0: empty
+                Color::Rgb(126, 229, 229), // grade1: #7ee5e5
+                Color::Rgb(45, 197, 197),  // grade2: #2dc5c5
+                Color::Rgb(13, 158, 158),  // grade3: #0d9e9e
+                Color::Rgb(14, 109, 109),  // grade4: #0e6d6d
             ],
             ThemeName::Blue => [
-                Color::Rgb(22, 27, 34),
-                Color::Rgb(14, 41, 68),
-                Color::Rgb(0, 50, 109),
-                Color::Rgb(38, 65, 166),
-                Color::Rgb(57, 83, 211),
+                Color::Rgb(22, 27, 34),    // grade0: empty
+                Color::Rgb(121, 184, 255), // grade1: #79b8ff
+                Color::Rgb(56, 139, 253),  // grade2: #388bfd
+                Color::Rgb(31, 111, 235),  // grade3: #1f6feb
+                Color::Rgb(13, 65, 157),   // grade4: #0d419d
             ],
             ThemeName::Pink => [
-                Color::Rgb(22, 27, 34),
-                Color::Rgb(68, 14, 41),
-                Color::Rgb(109, 0, 50),
-                Color::Rgb(166, 38, 65),
-                Color::Rgb(211, 57, 83),
+                Color::Rgb(22, 27, 34),    // grade0: empty
+                Color::Rgb(240, 181, 210), // grade1: #f0b5d2
+                Color::Rgb(217, 97, 160),  // grade2: #d961a0
+                Color::Rgb(191, 75, 138),  // grade3: #bf4b8a
+                Color::Rgb(153, 40, 110),  // grade4: #99286e
             ],
             ThemeName::Purple => [
-                Color::Rgb(22, 27, 34),
-                Color::Rgb(41, 14, 68),
-                Color::Rgb(50, 0, 109),
-                Color::Rgb(65, 38, 166),
-                Color::Rgb(83, 57, 211),
+                Color::Rgb(22, 27, 34),    // grade0: empty
+                Color::Rgb(205, 180, 255), // grade1: #cdb4ff
+                Color::Rgb(163, 113, 247), // grade2: #a371f7
+                Color::Rgb(137, 87, 229),  // grade3: #8957e5
+                Color::Rgb(110, 64, 201),  // grade4: #6e40c9
             ],
             ThemeName::Orange => [
-                Color::Rgb(22, 27, 34),
-                Color::Rgb(68, 41, 14),
-                Color::Rgb(109, 50, 0),
-                Color::Rgb(166, 65, 38),
-                Color::Rgb(211, 83, 57),
+                Color::Rgb(22, 27, 34),    // grade0: empty
+                Color::Rgb(255, 214, 153), // grade1: #ffd699
+                Color::Rgb(255, 179, 71),  // grade2: #ffb347
+                Color::Rgb(255, 140, 0),   // grade3: #ff8c00
+                Color::Rgb(204, 85, 0),    // grade4: #cc5500
             ],
             ThemeName::Monochrome => [
-                Color::Rgb(22, 27, 34),
-                Color::Rgb(50, 55, 62),
-                Color::Rgb(80, 85, 92),
-                Color::Rgb(140, 145, 152),
-                Color::Rgb(200, 205, 212),
+                Color::Rgb(22, 27, 34),    // grade0: empty
+                Color::Rgb(158, 158, 158), // grade1: #9e9e9e
+                Color::Rgb(117, 117, 117), // grade2: #757575
+                Color::Rgb(66, 66, 66),    // grade3: #424242
+                Color::Rgb(33, 33, 33),    // grade4: #212121
             ],
             ThemeName::YlGnBu => [
-                Color::Rgb(22, 27, 34),
-                Color::Rgb(34, 94, 168),
-                Color::Rgb(29, 145, 192),
-                Color::Rgb(65, 182, 196),
-                Color::Rgb(127, 205, 187),
+                Color::Rgb(22, 27, 34),    // grade0: empty
+                Color::Rgb(161, 218, 180), // grade1: #a1dab4
+                Color::Rgb(65, 182, 196),  // grade2: #41b6c4
+                Color::Rgb(44, 127, 184),  // grade3: #2c7fb8
+                Color::Rgb(37, 52, 148),   // grade4: #253494
             ],
         };
 

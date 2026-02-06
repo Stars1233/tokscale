@@ -28,9 +28,17 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+toml = { workspace = true }
 chrono = { workspace = true }
 dirs = { workspace = true }
 rayon = { workspace = true }
 arboard = { workspace = true }
 reqwest = { workspace = true }
 hostname = "0.4"
+uuid = { version = "1.0", features = ["v4"] }
+rpassword = "7.0"
+sha2 = "0.10"
+
+[dev-dependencies]
+assert_cmd = "2.0"
+predicates = "3.0"

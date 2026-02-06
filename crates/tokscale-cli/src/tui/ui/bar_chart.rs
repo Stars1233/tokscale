@@ -3,7 +3,6 @@ use ratatui::prelude::*;
 use super::widgets::format_tokens;
 use crate::tui::app::App;
 
-const BAR_CHARS: &[char] = &[' ', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
 const MONTH_NAMES: &[&str] = &[
     "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
@@ -187,42 +186,26 @@ pub fn render_stacked_bar_chart(frame: &mut Frame, app: &App, area: Rect, data: 
     }
 }
 
-/// Determine the character and color for a cell in a stacked bar.
-/// This calculates which model "owns" the most of this row based on token overlap.
 fn get_stacked_bar_content(
     bar_data: &StackedBarData,
     total: f64,
     row_threshold: f64,
     prev_threshold: f64,
-    threshold_diff: f64,
+    _threshold_diff: f64,
     muted_color: Color,
     fallback_color: Color,
 ) -> (char, Color) {
-    // If total is below this row, show empty
     if total <= prev_threshold {
         return (' ', muted_color);
     }
 
-    // If no models, use fallback
     if bar_data.models.is_empty() {
-        if total >= row_threshold {
-            return ('█', fallback_color);
-        }
-        let ratio = if threshold_diff > 0.0 {
-            (total - prev_threshold) / threshold_diff
-        } else {
-            1.0
-        };
-        let block_index = (ratio * 8.0).floor() as usize;
-        let block_index = block_index.clamp(1, 8);
-        return (BAR_CHARS[block_index], fallback_color);
+        return ('█', fallback_color);
     }
 
-    // Sort models by name for consistent stacking order
     let mut sorted_models: Vec<&ModelSegment> = bar_data.models.iter().collect();
     sorted_models.sort_by(|a, b| a.model_id.cmp(&b.model_id));
 
-    // Calculate which model has the most overlap with this row
     let row_start = prev_threshold;
     let row_end = row_threshold;
 
@@ -238,7 +221,6 @@ fn get_stacked_bar_content(
         let m_end = current_height + model.tokens as f64;
         current_height += model.tokens as f64;
 
-        // Calculate overlap between model's range and this row's range
         let overlap_start = m_start.max(row_start);
         let overlap_end = m_end.min(row_end);
         let overlap = (overlap_end - overlap_start).max(0.0);
@@ -249,17 +231,5 @@ fn get_stacked_bar_content(
         }
     }
 
-    // Determine character based on how full this row is
-    if total >= row_threshold {
-        ('█', best_color)
-    } else {
-        let ratio = if threshold_diff > 0.0 {
-            (total - prev_threshold) / threshold_diff
-        } else {
-            1.0
-        };
-        let block_index = (ratio * 8.0).floor() as usize;
-        let block_index = block_index.clamp(1, 8);
-        (BAR_CHARS[block_index], best_color)
-    }
+    ('█', best_color)
 }

@@ -1,5 +1,7 @@
 use ratatui::prelude::*;
 
+use crate::tui::config::TokscaleConfig;
+
 pub fn format_tokens_compact(tokens: u64) -> String {
     if tokens >= 1_000_000_000 {
         format!("{:.1}B", tokens as f64 / 1_000_000_000.0)
@@ -41,8 +43,12 @@ pub fn format_cost(cost: f64) -> String {
 
 pub fn get_model_color(model: &str) -> Color {
     let provider = get_provider_from_model(model);
+    let config = TokscaleConfig::load();
+    if let Some(color) = config.get_provider_color(provider) {
+        return color;
+    }
     match provider {
-        "anthropic" => Color::Rgb(255, 107, 53), // #FF6B35
+        "anthropic" => Color::Rgb(218, 119, 86), // #DA7756 Claude brand coral
         "openai" => Color::Rgb(16, 185, 129),    // #10B981
         "google" => Color::Rgb(59, 130, 246),    // #3B82F6
         "cursor" => Color::Rgb(139, 92, 246),    // #8B5CF6
@@ -88,9 +94,13 @@ fn get_provider_from_model(model: &str) -> &'static str {
 }
 
 pub fn get_source_color(source: &str) -> Color {
+    let config = TokscaleConfig::load();
+    if let Some(color) = config.get_source_color(source) {
+        return color;
+    }
     match source.to_lowercase().as_str() {
         "opencode" => Color::Rgb(34, 197, 94), // #22c55e
-        "claude" => Color::Rgb(249, 115, 22),  // #f97316
+        "claude" => Color::Rgb(218, 119, 86),  // #DA7756 Claude brand coral
         "codex" => Color::Rgb(59, 130, 246),   // #3b82f6
         "cursor" => Color::Rgb(168, 85, 247),  // #a855f7
         "gemini" => Color::Rgb(6, 182, 212),   // #06b6d4

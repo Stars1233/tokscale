@@ -1,4 +1,5 @@
 mod app;
+pub mod config;
 pub mod data;
 mod event;
 mod settings;
@@ -20,7 +21,15 @@ use crossterm::{
 };
 use ratatui::prelude::*;
 
-pub fn run(theme: &str, refresh: u64, debug: bool) -> Result<()> {
+pub fn run(
+    theme: &str,
+    refresh: u64,
+    debug: bool,
+    sources: Option<Vec<String>>,
+    since: Option<String>,
+    until: Option<String>,
+    year: Option<String>,
+) -> Result<()> {
     if debug {
         let _ = tracing_subscriber::fmt()
             .with_env_filter("debug")
@@ -49,6 +58,10 @@ pub fn run(theme: &str, refresh: u64, debug: bool) -> Result<()> {
         theme: theme.to_string(),
         refresh,
         sessions_path: None,
+        sources,
+        since,
+        until,
+        year,
     };
     let app_result = App::new(config);
     let mut app = match app_result {
