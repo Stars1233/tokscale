@@ -8,7 +8,24 @@ const MONTH_NAMES: &[&str] = &[
     "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-pub fn render_bar_chart(frame: &mut Frame, app: &App, area: Rect, data: &[(String, f64, Color)]) {
+/// A single model's contribution to a bar
+#[derive(Debug, Clone)]
+pub struct ModelSegment {
+    pub model_id: String,
+    pub tokens: u64,
+    pub color: Color,
+}
+
+/// Data for a single bar in the stacked chart
+#[derive(Debug, Clone)]
+pub struct StackedBarData {
+    pub date: String,
+    pub models: Vec<ModelSegment>,
+    pub total: u64,
+}
+
+/// Render a stacked bar chart where each bar shows model breakdown
+pub fn render_stacked_bar_chart(frame: &mut Frame, app: &App, area: Rect, data: &[StackedBarData]) {
     if data.is_empty() {
         return;
     }
@@ -25,7 +42,7 @@ pub fn render_bar_chart(frame: &mut Frame, app: &App, area: Rect, data: &[(Strin
 
     let max_value = data
         .iter()
-        .map(|(_, v, _)| *v)
+        .map(|d| d.total as f64)
         .fold(0.0_f64, |a, b| a.max(b))
         .max(1.0);
 
@@ -41,6 +58,7 @@ pub fn render_bar_chart(frame: &mut Frame, app: &App, area: Rect, data: &[(Strin
         (end - start).max(1)
     };
 
+    // Title
     let title = if is_very_narrow {
         "Tokens"
     } else {
@@ -56,10 +74,12 @@ pub fn render_bar_chart(frame: &mut Frame, app: &App, area: Rect, data: &[(Strin
         }
     }
 
+    // Render bars row by row (from top to bottom visually, which is high values to low)
     for row_from_bottom in (0..chart_height).rev() {
         let row_index = chart_height - 1 - row_from_bottom;
         let y = area.y + 1 + row_index as u16;
 
+        // Y-axis label (only at top)
         let y_label = if row_from_bottom == chart_height - 1 {
             format_tokens(max_value as u64)
         } else {
@@ -75,28 +95,27 @@ pub fn render_bar_chart(frame: &mut Frame, app: &App, area: Rect, data: &[(Strin
             }
         }
 
+        // Render each bar
         let mut x_pos = area.x + y_label_width;
-        for (bar_index, (_, value, color)) in data.iter().enumerate() {
+        for (bar_index, bar_data) in data.iter().enumerate() {
             let bar_width = get_bar_width(bar_index);
 
             let row_threshold = ((row_from_bottom + 1) as f64 / chart_height as f64) * max_value;
             let prev_threshold = (row_from_bottom as f64 / chart_height as f64) * max_value;
             let threshold_diff = row_threshold - prev_threshold;
 
-            let (ch, fg_color) = if *value <= prev_threshold {
-                (' ', app.theme.muted)
-            } else if *value >= row_threshold {
-                ('█', *color)
-            } else {
-                let ratio = if threshold_diff > 0.0 {
-                    (value - prev_threshold) / threshold_diff
-                } else {
-                    1.0
-                };
-                let block_index = (ratio * 8.0).floor() as usize;
-                let block_index = block_index.clamp(1, 8);
-                (BAR_CHARS[block_index], *color)
-            };
+            let total = bar_data.total as f64;
+
+            // Get the character and color for this cell using stacked model logic
+            let (ch, fg_color) = get_stacked_bar_content(
+                bar_data,
+                total,
+                row_threshold,
+                prev_threshold,
+                threshold_diff,
+                app.theme.muted,
+                app.theme.highlight,
+            );
 
             for _ in 0..bar_width {
                 if x_pos < area.x + area.width {
@@ -107,6 +126,7 @@ pub fn render_bar_chart(frame: &mut Frame, app: &App, area: Rect, data: &[(Strin
         }
     }
 
+    // X-axis
     let axis_y = area.y + 1 + chart_height as u16;
     if axis_y < area.y + area.height {
         let zero_label = format!("{:>width$}│", "0", width = (y_label_width - 1) as usize);
@@ -125,13 +145,14 @@ pub fn render_bar_chart(frame: &mut Frame, app: &App, area: Rect, data: &[(Strin
         }
     }
 
+    // X-axis labels
     let label_y = axis_y + 1;
     if label_y < area.y + area.height && !data.is_empty() {
         let num_labels = if is_very_narrow { 2 } else { 3 };
         let label_interval = (bar_count / num_labels).max(1);
 
         for i in (0..bar_count).step_by(label_interval) {
-            let (date_str, _, _) = &data[i];
+            let date_str = &data[i].date;
 
             let label = if let Some((month_str, day_str)) = date_str.split_once('/') {
                 if let (Ok(month), Ok(day)) = (month_str.parse::<usize>(), day_str.parse::<u32>()) {
@@ -163,5 +184,82 @@ pub fn render_bar_chart(frame: &mut Frame, app: &App, area: Rect, data: &[(Strin
                 }
             }
         }
+    }
+}
+
+/// Determine the character and color for a cell in a stacked bar.
+/// This calculates which model "owns" the most of this row based on token overlap.
+fn get_stacked_bar_content(
+    bar_data: &StackedBarData,
+    total: f64,
+    row_threshold: f64,
+    prev_threshold: f64,
+    threshold_diff: f64,
+    muted_color: Color,
+    fallback_color: Color,
+) -> (char, Color) {
+    // If total is below this row, show empty
+    if total <= prev_threshold {
+        return (' ', muted_color);
+    }
+
+    // If no models, use fallback
+    if bar_data.models.is_empty() {
+        if total >= row_threshold {
+            return ('█', fallback_color);
+        }
+        let ratio = if threshold_diff > 0.0 {
+            (total - prev_threshold) / threshold_diff
+        } else {
+            1.0
+        };
+        let block_index = (ratio * 8.0).floor() as usize;
+        let block_index = block_index.clamp(1, 8);
+        return (BAR_CHARS[block_index], fallback_color);
+    }
+
+    // Sort models by name for consistent stacking order
+    let mut sorted_models: Vec<&ModelSegment> = bar_data.models.iter().collect();
+    sorted_models.sort_by(|a, b| a.model_id.cmp(&b.model_id));
+
+    // Calculate which model has the most overlap with this row
+    let row_start = prev_threshold;
+    let row_end = row_threshold;
+
+    let mut current_height: f64 = 0.0;
+    let mut max_overlap: f64 = 0.0;
+    let mut best_color = sorted_models
+        .first()
+        .map(|m| m.color)
+        .unwrap_or(fallback_color);
+
+    for model in &sorted_models {
+        let m_start = current_height;
+        let m_end = current_height + model.tokens as f64;
+        current_height += model.tokens as f64;
+
+        // Calculate overlap between model's range and this row's range
+        let overlap_start = m_start.max(row_start);
+        let overlap_end = m_end.min(row_end);
+        let overlap = (overlap_end - overlap_start).max(0.0);
+
+        if overlap > max_overlap {
+            max_overlap = overlap;
+            best_color = model.color;
+        }
+    }
+
+    // Determine character based on how full this row is
+    if total >= row_threshold {
+        ('█', best_color)
+    } else {
+        let ratio = if threshold_diff > 0.0 {
+            (total - prev_threshold) / threshold_diff
+        } else {
+            1.0
+        };
+        let block_index = (ratio * 8.0).floor() as usize;
+        let block_index = block_index.clamp(1, 8);
+        (BAR_CHARS[block_index], best_color)
     }
 }

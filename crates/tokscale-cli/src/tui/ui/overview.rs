@@ -3,7 +3,7 @@ use ratatui::widgets::{
     Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState,
 };
 
-use super::bar_chart::render_bar_chart;
+use super::bar_chart::{render_stacked_bar_chart, ModelSegment, StackedBarData};
 use super::widgets::{format_tokens, get_model_color};
 use crate::tui::app::App;
 
@@ -44,31 +44,34 @@ fn render_chart(frame: &mut Frame, app: &App, area: Rect) {
     let mut sorted_daily: Vec<_> = daily.iter().collect();
     sorted_daily.sort_by(|a, b| a.date.cmp(&b.date));
 
-    let data: Vec<(String, f64, Color)> = sorted_daily
+    let data: Vec<StackedBarData> = sorted_daily
         .iter()
         .rev()
         .take(60)
         .rev()
         .map(|d| {
-            let label = d.date.format("%m/%d").to_string();
-            let value = d.tokens.total() as f64;
+            let date = d.date.format("%m/%d").to_string();
+            let total = d.tokens.total();
 
-            let color = if d.models.is_empty() {
-                app.theme.highlight
-            } else {
-                let dominant_model = d
-                    .models
-                    .iter()
-                    .max_by_key(|(_, info)| info.tokens.total())
-                    .map(|(model_name, _)| model_name.as_str())
-                    .unwrap_or("");
-                get_model_color(dominant_model)
-            };
-            (label, value, color)
+            let models: Vec<ModelSegment> = d
+                .models
+                .iter()
+                .map(|(model_name, info)| ModelSegment {
+                    model_id: model_name.clone(),
+                    tokens: info.tokens.total(),
+                    color: get_model_color(model_name),
+                })
+                .collect();
+
+            StackedBarData {
+                date,
+                models,
+                total,
+            }
         })
         .collect();
 
-    render_bar_chart(frame, app, area, &data);
+    render_stacked_bar_chart(frame, app, area, &data);
 }
 
 fn render_legend(frame: &mut Frame, app: &App, area: Rect) {
