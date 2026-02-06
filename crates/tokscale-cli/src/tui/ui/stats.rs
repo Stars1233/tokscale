@@ -335,44 +335,6 @@ fn render_stats_panel(frame: &mut Frame, app: &App, area: Rect) {
 
     y += 1;
 
-    let streak_label = if is_narrow {
-        "Streak:"
-    } else {
-        "Current streak:"
-    };
-    let current_streak_line = Line::from(vec![
-        Span::styled(streak_label, Style::default().fg(app.theme.muted)),
-        Span::raw(" "),
-        Span::styled(
-            format!("{} days", app.data.current_streak),
-            Style::default().fg(Color::Cyan),
-        ),
-    ]);
-    frame.render_widget(
-        Paragraph::new(current_streak_line),
-        Rect::new(inner.x, y, col1_width, 1),
-    );
-
-    let longest_label = if is_narrow {
-        "Max streak:"
-    } else {
-        "Longest streak:"
-    };
-    let longest_streak_line = Line::from(vec![
-        Span::styled(longest_label, Style::default().fg(app.theme.muted)),
-        Span::raw(" "),
-        Span::styled(
-            format!("{} days", app.data.longest_streak),
-            Style::default().fg(Color::Cyan),
-        ),
-    ]);
-    frame.render_widget(
-        Paragraph::new(longest_streak_line),
-        Rect::new(col2_x, y, inner.width.saturating_sub(col1_width), 1),
-    );
-
-    y += 1;
-
     let active_label = if is_narrow { "Active:" } else { "Active days:" };
     let active_days_line = Line::from(vec![
         Span::styled(active_label, Style::default().fg(app.theme.muted)),
