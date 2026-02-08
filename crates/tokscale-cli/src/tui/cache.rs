@@ -1,0 +1,429 @@
+//! TUI data caching for instant startup.
+//!
+//! This module provides disk-based caching for TUI data to enable instant UI display
+//! while fresh data loads in the background (matching TypeScript implementation behavior).
+
+use std::collections::HashSet;
+use std::fs::{self, File};
+use std::io::{BufReader, BufWriter};
+use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use serde::{Deserialize, Serialize};
+
+use super::data::{
+    ContributionDay, DailyModelInfo, DailyUsage, GraphData, ModelUsage, Source, TokenBreakdown,
+    UsageData,
+};
+
+/// Cache staleness threshold: 5 minutes (matches TS implementation)
+const CACHE_STALE_THRESHOLD_MS: u64 = 5 * 60 * 1000;
+
+/// Get the cache directory path
+fn cache_dir() -> Option<PathBuf> {
+    dirs::cache_dir().map(|d| d.join("tokscale"))
+}
+
+/// Get the cache file path
+fn cache_file() -> Option<PathBuf> {
+    cache_dir().map(|d| d.join("tui-data-cache.json"))
+}
+
+/// Cached TUI data structure (serializable)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CachedTUIData {
+    timestamp: u64,
+    enabled_sources: Vec<String>,
+    data: CachedUsageData,
+}
+
+/// Serializable version of UsageData
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CachedUsageData {
+    models: Vec<CachedModelUsage>,
+    daily: Vec<CachedDailyUsage>,
+    graph: Option<CachedGraphData>,
+    total_tokens: u64,
+    total_cost: f64,
+    current_streak: u32,
+    longest_streak: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CachedTokenBreakdown {
+    input: u64,
+    output: u64,
+    cache_read: u64,
+    cache_write: u64,
+    reasoning: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CachedModelUsage {
+    model: String,
+    provider: String,
+    source: String,
+    tokens: CachedTokenBreakdown,
+    cost: f64,
+    session_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CachedDailyModelInfo {
+    source: String,
+    tokens: CachedTokenBreakdown,
+    cost: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CachedDailyUsage {
+    date: String, // NaiveDate serialized as string
+    tokens: CachedTokenBreakdown,
+    cost: f64,
+    models: Vec<(String, CachedDailyModelInfo)>, // HashMap as vec of tuples
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CachedContributionDay {
+    date: String,
+    tokens: u64,
+    cost: f64,
+    intensity: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CachedGraphData {
+    weeks: Vec<Vec<Option<CachedContributionDay>>>,
+}
+
+// Conversion implementations
+
+impl From<&TokenBreakdown> for CachedTokenBreakdown {
+    fn from(t: &TokenBreakdown) -> Self {
+        Self {
+            input: t.input,
+            output: t.output,
+            cache_read: t.cache_read,
+            cache_write: t.cache_write,
+            reasoning: t.reasoning,
+        }
+    }
+}
+
+impl From<CachedTokenBreakdown> for TokenBreakdown {
+    fn from(t: CachedTokenBreakdown) -> Self {
+        Self {
+            input: t.input,
+            output: t.output,
+            cache_read: t.cache_read,
+            cache_write: t.cache_write,
+            reasoning: t.reasoning,
+        }
+    }
+}
+
+impl From<&ModelUsage> for CachedModelUsage {
+    fn from(m: &ModelUsage) -> Self {
+        Self {
+            model: m.model.clone(),
+            provider: m.provider.clone(),
+            source: m.source.clone(),
+            tokens: (&m.tokens).into(),
+            cost: m.cost,
+            session_count: m.session_count,
+        }
+    }
+}
+
+impl From<CachedModelUsage> for ModelUsage {
+    fn from(m: CachedModelUsage) -> Self {
+        Self {
+            model: m.model,
+            provider: m.provider,
+            source: m.source,
+            tokens: m.tokens.into(),
+            cost: m.cost,
+            session_count: m.session_count,
+        }
+    }
+}
+
+impl From<&DailyModelInfo> for CachedDailyModelInfo {
+    fn from(d: &DailyModelInfo) -> Self {
+        Self {
+            source: d.source.clone(),
+            tokens: (&d.tokens).into(),
+            cost: d.cost,
+        }
+    }
+}
+
+impl From<CachedDailyModelInfo> for DailyModelInfo {
+    fn from(d: CachedDailyModelInfo) -> Self {
+        Self {
+            source: d.source,
+            tokens: d.tokens.into(),
+            cost: d.cost,
+        }
+    }
+}
+
+impl From<&DailyUsage> for CachedDailyUsage {
+    fn from(d: &DailyUsage) -> Self {
+        Self {
+            date: d.date.to_string(),
+            tokens: (&d.tokens).into(),
+            cost: d.cost,
+            models: d
+                .models
+                .iter()
+                .map(|(k, v)| (k.clone(), v.into()))
+                .collect(),
+        }
+    }
+}
+
+impl TryFrom<CachedDailyUsage> for DailyUsage {
+    type Error = chrono::ParseError;
+
+    fn try_from(d: CachedDailyUsage) -> Result<Self, Self::Error> {
+        use chrono::NaiveDate;
+        Ok(Self {
+            date: NaiveDate::parse_from_str(&d.date, "%Y-%m-%d")?,
+            tokens: d.tokens.into(),
+            cost: d.cost,
+            models: d.models.into_iter().map(|(k, v)| (k, v.into())).collect(),
+        })
+    }
+}
+
+impl From<&ContributionDay> for CachedContributionDay {
+    fn from(c: &ContributionDay) -> Self {
+        Self {
+            date: c.date.to_string(),
+            tokens: c.tokens,
+            cost: c.cost,
+            intensity: c.intensity,
+        }
+    }
+}
+
+impl TryFrom<CachedContributionDay> for ContributionDay {
+    type Error = chrono::ParseError;
+
+    fn try_from(c: CachedContributionDay) -> Result<Self, Self::Error> {
+        use chrono::NaiveDate;
+        Ok(Self {
+            date: NaiveDate::parse_from_str(&c.date, "%Y-%m-%d")?,
+            tokens: c.tokens,
+            cost: c.cost,
+            intensity: c.intensity,
+        })
+    }
+}
+
+impl From<&GraphData> for CachedGraphData {
+    fn from(g: &GraphData) -> Self {
+        Self {
+            weeks: g
+                .weeks
+                .iter()
+                .map(|week| {
+                    week.iter()
+                        .map(|day| day.as_ref().map(|d| d.into()))
+                        .collect()
+                })
+                .collect(),
+        }
+    }
+}
+
+impl TryFrom<CachedGraphData> for GraphData {
+    type Error = chrono::ParseError;
+
+    fn try_from(g: CachedGraphData) -> Result<Self, Self::Error> {
+        let weeks: Result<Vec<Vec<Option<ContributionDay>>>, _> = g
+            .weeks
+            .into_iter()
+            .map(|week| {
+                week.into_iter()
+                    .map(|day| day.map(|d| d.try_into()).transpose())
+                    .collect()
+            })
+            .collect();
+        Ok(Self { weeks: weeks? })
+    }
+}
+
+impl From<&UsageData> for CachedUsageData {
+    fn from(u: &UsageData) -> Self {
+        Self {
+            models: u.models.iter().map(|m| m.into()).collect(),
+            daily: u.daily.iter().map(|d| d.into()).collect(),
+            graph: u.graph.as_ref().map(|g| g.into()),
+            total_tokens: u.total_tokens,
+            total_cost: u.total_cost,
+            current_streak: u.current_streak,
+            longest_streak: u.longest_streak,
+        }
+    }
+}
+
+impl TryFrom<CachedUsageData> for UsageData {
+    type Error = chrono::ParseError;
+
+    fn try_from(u: CachedUsageData) -> Result<Self, Self::Error> {
+        let daily: Result<Vec<DailyUsage>, _> = u.daily.into_iter().map(|d| d.try_into()).collect();
+        let graph: Option<Result<GraphData, _>> = u.graph.map(|g| g.try_into());
+
+        Ok(Self {
+            models: u.models.into_iter().map(|m| m.into()).collect(),
+            daily: daily?,
+            graph: graph.transpose()?,
+            total_tokens: u.total_tokens,
+            total_cost: u.total_cost,
+            loading: false,
+            error: None,
+            current_streak: u.current_streak,
+            longest_streak: u.longest_streak,
+        })
+    }
+}
+
+/// Check if sources match between enabled and cached
+fn sources_match(enabled_sources: &HashSet<Source>, cached_sources: &[String]) -> bool {
+    if enabled_sources.len() != cached_sources.len() {
+        return false;
+    }
+    for source in enabled_sources {
+        if !cached_sources.contains(&source.as_str().to_lowercase()) {
+            return false;
+        }
+    }
+    true
+}
+
+/// Load cached TUI data from disk
+pub fn load_cached_data(enabled_sources: &HashSet<Source>) -> Option<UsageData> {
+    let cache_path = cache_file()?;
+
+    if !cache_path.exists() {
+        return None;
+    }
+
+    let file = File::open(&cache_path).ok()?;
+    let reader = BufReader::new(file);
+    let cached: CachedTUIData = serde_json::from_reader(reader).ok()?;
+
+    // Check if sources match
+    if !sources_match(enabled_sources, &cached.enabled_sources) {
+        return None;
+    }
+
+    // Convert cached data to UsageData
+    cached.data.try_into().ok()
+}
+
+/// Save TUI data to disk cache
+pub fn save_cached_data(data: &UsageData, enabled_sources: &HashSet<Source>) {
+    let Some(cache_path) = cache_file() else {
+        return;
+    };
+
+    // Ensure cache directory exists
+    if let Some(dir) = cache_path.parent() {
+        if let Err(_) = fs::create_dir_all(dir) {
+            return;
+        }
+    }
+
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64;
+
+    let cached = CachedTUIData {
+        timestamp,
+        enabled_sources: enabled_sources
+            .iter()
+            .map(|s| s.as_str().to_lowercase())
+            .collect(),
+        data: data.into(),
+    };
+
+    // Write to temp file first, then rename (atomic)
+    let temp_path = cache_path.with_extension("json.tmp");
+    let file = match File::create(&temp_path) {
+        Ok(f) => f,
+        Err(_) => return,
+    };
+    let writer = BufWriter::new(file);
+
+    if serde_json::to_writer(writer, &cached).is_ok() {
+        let _ = fs::rename(&temp_path, &cache_path);
+    } else {
+        let _ = fs::remove_file(&temp_path);
+    }
+}
+
+/// Check if cache is stale (older than threshold)
+pub fn is_cache_stale(enabled_sources: &HashSet<Source>) -> bool {
+    let Some(cache_path) = cache_file() else {
+        return true;
+    };
+
+    if !cache_path.exists() {
+        return true;
+    }
+
+    let file = match File::open(&cache_path) {
+        Ok(f) => f,
+        Err(_) => return true,
+    };
+    let reader = BufReader::new(file);
+    let cached: CachedTUIData = match serde_json::from_reader(reader) {
+        Ok(c) => c,
+        Err(_) => return true,
+    };
+
+    // Check if sources match
+    if !sources_match(enabled_sources, &cached.enabled_sources) {
+        return true;
+    }
+
+    // Check age
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64;
+
+    let cache_age = now.saturating_sub(cached.timestamp);
+    cache_age > CACHE_STALE_THRESHOLD_MS
+}
+
+/// Get the cache timestamp if available
+pub fn get_cache_timestamp(enabled_sources: &HashSet<Source>) -> Option<u64> {
+    let cache_path = cache_file()?;
+
+    if !cache_path.exists() {
+        return None;
+    }
+
+    let file = File::open(&cache_path).ok()?;
+    let reader = BufReader::new(file);
+    let cached: CachedTUIData = serde_json::from_reader(reader).ok()?;
+
+    if !sources_match(enabled_sources, &cached.enabled_sources) {
+        return None;
+    }
+
+    Some(cached.timestamp)
+}

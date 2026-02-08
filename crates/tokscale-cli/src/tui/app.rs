@@ -128,6 +128,8 @@ pub struct App {
     pub click_areas: Vec<ClickArea>,
 
     pub spinner_frame: usize,
+
+    pub background_loading: bool,
 }
 
 impl App {
@@ -202,6 +204,89 @@ impl App {
             terminal_height: 24,
             click_areas: Vec::new(),
             spinner_frame: 0,
+            background_loading: false,
+        })
+    }
+
+    pub fn new_with_cached_data(config: TuiConfig, cached_data: Option<UsageData>) -> Result<Self> {
+        let settings = Settings::load();
+        let theme_name: ThemeName = config
+            .theme
+            .parse()
+            .unwrap_or_else(|_| settings.theme_name());
+        let theme = Theme::from_name(theme_name);
+
+        let mut enabled_sources = HashSet::new();
+
+        if let Some(ref cli_sources) = config.sources {
+            for source_str in cli_sources {
+                match source_str.as_str() {
+                    "opencode" => enabled_sources.insert(Source::OpenCode),
+                    "claude" => enabled_sources.insert(Source::Claude),
+                    "codex" => enabled_sources.insert(Source::Codex),
+                    "cursor" => enabled_sources.insert(Source::Cursor),
+                    "gemini" => enabled_sources.insert(Source::Gemini),
+                    "amp" => enabled_sources.insert(Source::Amp),
+                    "droid" => enabled_sources.insert(Source::Droid),
+                    "openclaw" => enabled_sources.insert(Source::OpenClaw),
+                    "pi" => enabled_sources.insert(Source::Pi),
+                    _ => false,
+                };
+            }
+        } else {
+            for source in Source::all() {
+                enabled_sources.insert(*source);
+            }
+        }
+
+        let auto_refresh_interval = if config.refresh > 0 {
+            Duration::from_secs(config.refresh)
+        } else if let Some(interval) = settings.get_auto_refresh_interval() {
+            interval
+        } else {
+            Duration::from_secs(30)
+        };
+
+        let auto_refresh = config.refresh > 0 || settings.auto_refresh_enabled;
+
+        let data_loader = DataLoader::with_filters(
+            config.sessions_path.map(std::path::PathBuf::from),
+            config.since,
+            config.until,
+            config.year,
+        );
+
+        let data = cached_data.unwrap_or_default();
+        let has_data = !data.models.is_empty();
+
+        Ok(Self {
+            should_quit: false,
+            current_tab: config.initial_tab.unwrap_or(Tab::Overview),
+            theme,
+            settings,
+            data,
+            data_loader,
+            enabled_sources,
+            sort_field: SortField::Cost,
+            sort_direction: SortDirection::Descending,
+            scroll_offset: 0,
+            selected_index: 0,
+            max_visible_items: 20,
+            selected_graph_cell: None,
+            auto_refresh,
+            auto_refresh_interval,
+            last_refresh: Instant::now(),
+            status_message: if has_data {
+                Some("Loaded from cache".to_string())
+            } else {
+                None
+            },
+            status_message_time: if has_data { Some(Instant::now()) } else { None },
+            terminal_width: 80,
+            terminal_height: 24,
+            click_areas: Vec::new(),
+            spinner_frame: 0,
+            background_loading: false,
         })
     }
 
@@ -222,6 +307,21 @@ impl App {
             }
         }
         Ok(())
+    }
+
+    pub fn set_background_loading(&mut self, loading: bool) {
+        self.background_loading = loading;
+        self.data.loading = loading;
+    }
+
+    pub fn update_data(&mut self, data: UsageData) {
+        self.data = data;
+        self.last_refresh = Instant::now();
+        self.clamp_selection();
+    }
+
+    pub fn set_error(&mut self, error: Option<String>) {
+        self.data.error = error;
     }
 
     pub fn on_tick(&mut self) {
