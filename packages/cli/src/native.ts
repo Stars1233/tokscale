@@ -10,6 +10,7 @@ import type {
   GraphOptions as TSGraphOptions,
   SourceType,
 } from "./graph-types.js";
+import { loadSettings } from "./tui/config/settings.js";
 
 // =============================================================================
 // Types matching Rust exports
@@ -388,13 +389,14 @@ import { randomUUID } from "node:crypto";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const DEFAULT_TIMEOUT_MS = 300_000;
-const NATIVE_TIMEOUT_MS = parseInt(
-  process.env.TOKSCALE_NATIVE_TIMEOUT_MS || String(DEFAULT_TIMEOUT_MS),
-  10
-);
-
 const SIGKILL_GRACE_MS = 500;
+
+function getNativeTimeoutMs(): number {
+  const settings = loadSettings();
+  return process.env.TOKSCALE_NATIVE_TIMEOUT_MS
+    ? parseInt(process.env.TOKSCALE_NATIVE_TIMEOUT_MS, 10)
+    : (settings.nativeTimeoutMs ?? 300_000);
+}
 
 interface BunSubprocess {
   stdout: { text: () => Promise<string> };
@@ -421,6 +423,7 @@ function safeKill(proc: unknown, signal?: string): void {
 }
 
 async function runInSubprocess<T>(method: string, args: unknown[]): Promise<T> {
+  const NATIVE_TIMEOUT_MS = getNativeTimeoutMs();
   const runnerPath = join(__dirname, "native-runner.js");
   const input = JSON.stringify({ method, args });
 

@@ -385,18 +385,18 @@ tokscale cursor logout --all --purge-cache
 
 ### 環境変数
 
-大規模データセットや特別な要件を持つ上級ユーザー向け：
+環境変数は設定ファイルの値をオーバーライドします。CI/CDや一時的な使用向け：
 
 | 変数 | デフォルト | 説明 |
 |----------|---------|-------------|
-| `TOKSCALE_NATIVE_TIMEOUT_MS` | `300000`（5分） | ネイティブサブプロセス処理の最大時間 |
+| `TOKSCALE_NATIVE_TIMEOUT_MS` | `300000`（5分） | `nativeTimeoutMs` 設定をオーバーライド |
 
 ```bash
 # 例：非常に大きなデータセット用にタイムアウトを増加
 TOKSCALE_NATIVE_TIMEOUT_MS=600000 tokscale graph --output data.json
 ```
 
-> **注**: この制限はハングを防ぐための安全対策です。ほとんどのユーザーは変更する必要がありません。
+> **注**: 恒久的な変更には、`~/.config/tokscale/settings.json`で`nativeTimeoutMs`を設定することをお勧めします。環境変数は一時的なオーバーライドやCI/CDに適しています。
 
 ### ヘッドレスモード
 

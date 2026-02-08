@@ -385,18 +385,18 @@ tokscale cursor logout --all --purge-cache
 
 ### 环境变量
 
-适用于大数据集或特殊需求的高级用户：
+环境变量会覆盖配置文件中的值。适用于 CI/CD 或一次性使用：
 
 | 变量 | 默认值 | 描述 |
 |----------|---------|-------------|
-| `TOKSCALE_NATIVE_TIMEOUT_MS` | `300000`（5 分钟） | 原生子进程处理的最大时间 |
+| `TOKSCALE_NATIVE_TIMEOUT_MS` | `300000`（5 分钟） | 覆盖 `nativeTimeoutMs` 配置 |
 
 ```bash
 # 示例：为非常大的数据集增加超时时间
 TOKSCALE_NATIVE_TIMEOUT_MS=600000 tokscale graph --output data.json
 ```
 
-> **注意**：此限制是防止卡住的安全措施。大多数用户不需要更改。
+> **注意**：如需永久更改，建议在 `~/.config/tokscale/settings.json` 中设置 `nativeTimeoutMs`。环境变量适用于一次性覆盖或 CI/CD。
 
 ### Headless 模式
 
