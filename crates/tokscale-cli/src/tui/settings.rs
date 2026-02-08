@@ -7,40 +7,49 @@ use serde::{Deserialize, Serialize};
 
 use super::themes::ThemeName;
 
-const DEFAULT_SUBPROCESS_TIMEOUT_MS: u64 = 300_000; // 5 minutes
-const MIN_SUBPROCESS_TIMEOUT_MS: u64 = 5_000; // 5 seconds
-const MAX_SUBPROCESS_TIMEOUT_MS: u64 = 3_600_000; // 1 hour
+const DEFAULT_AUTO_REFRESH_MS: u64 = 60_000;
+const MIN_AUTO_REFRESH_MS: u64 = 30_000;
+const MAX_AUTO_REFRESH_MS: u64 = 3_600_000;
+
+const DEFAULT_NATIVE_TIMEOUT_MS: u64 = 300_000;
+const MIN_NATIVE_TIMEOUT_MS: u64 = 5_000;
+const MAX_NATIVE_TIMEOUT_MS: u64 = 3_600_000;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
-    pub theme: String,
-    pub auto_refresh_interval: u64,
-    pub enabled_sources: Vec<String>,
-    #[serde(default = "default_subprocess_timeout")]
-    pub subprocess_timeout_ms: u64,
+    #[serde(default = "default_color_palette")]
+    pub color_palette: String,
+    #[serde(default)]
+    pub auto_refresh_enabled: bool,
+    #[serde(default = "default_auto_refresh_ms")]
+    pub auto_refresh_ms: u64,
+    #[serde(default)]
+    pub include_unused_models: bool,
+    #[serde(default = "default_native_timeout_ms")]
+    pub native_timeout_ms: u64,
 }
 
-fn default_subprocess_timeout() -> u64 {
-    DEFAULT_SUBPROCESS_TIMEOUT_MS
+fn default_color_palette() -> String {
+    "blue".to_string()
+}
+
+fn default_auto_refresh_ms() -> u64 {
+    DEFAULT_AUTO_REFRESH_MS
+}
+
+fn default_native_timeout_ms() -> u64 {
+    DEFAULT_NATIVE_TIMEOUT_MS
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            theme: "green".to_string(),
-            auto_refresh_interval: 0,
-            enabled_sources: vec![
-                "OpenCode".to_string(),
-                "Claude".to_string(),
-                "Codex".to_string(),
-                "Cursor".to_string(),
-                "Gemini".to_string(),
-                "Amp".to_string(),
-                "Droid".to_string(),
-                "OpenClaw".to_string(),
-            ],
-            subprocess_timeout_ms: DEFAULT_SUBPROCESS_TIMEOUT_MS,
+            color_palette: default_color_palette(),
+            auto_refresh_enabled: false,
+            auto_refresh_ms: DEFAULT_AUTO_REFRESH_MS,
+            include_unused_models: false,
+            native_timeout_ms: DEFAULT_NATIVE_TIMEOUT_MS,
         }
     }
 }
@@ -63,6 +72,15 @@ impl Settings {
             .ok()
             .and_then(|path| fs::read_to_string(path).ok())
             .and_then(|content| serde_json::from_str(&content).ok())
+            .map(|mut s: Settings| {
+                s.auto_refresh_ms = s
+                    .auto_refresh_ms
+                    .clamp(MIN_AUTO_REFRESH_MS, MAX_AUTO_REFRESH_MS);
+                s.native_timeout_ms = s
+                    .native_timeout_ms
+                    .clamp(MIN_NATIVE_TIMEOUT_MS, MAX_NATIVE_TIMEOUT_MS);
+                s
+            })
             .unwrap_or_default()
     }
 
@@ -74,23 +92,29 @@ impl Settings {
     }
 
     pub fn theme_name(&self) -> ThemeName {
-        self.theme.parse().unwrap_or(ThemeName::Green)
+        self.color_palette.parse().unwrap_or(ThemeName::Blue)
     }
 
     pub fn set_theme(&mut self, theme: ThemeName) {
-        self.theme = theme.as_str().to_string();
+        self.color_palette = theme.as_str().to_string();
     }
 
-    /// Get subprocess timeout as Duration, with env var override.
-    /// Priority: TOKSCALE_SUBPROCESS_TIMEOUT_MS env var > settings.json > default (5 min)
-    pub fn get_subprocess_timeout(&self) -> Duration {
-        let timeout_ms = if let Ok(env_val) = std::env::var("TOKSCALE_SUBPROCESS_TIMEOUT_MS") {
-            env_val.parse::<u64>().unwrap_or(self.subprocess_timeout_ms)
+    pub fn get_auto_refresh_interval(&self) -> Option<Duration> {
+        if self.auto_refresh_enabled && self.auto_refresh_ms > 0 {
+            Some(Duration::from_millis(self.auto_refresh_ms))
         } else {
-            self.subprocess_timeout_ms
+            None
+        }
+    }
+
+    pub fn get_native_timeout(&self) -> Duration {
+        let timeout_ms = if let Ok(env_val) = std::env::var("TOKSCALE_NATIVE_TIMEOUT_MS") {
+            env_val.parse::<u64>().unwrap_or(self.native_timeout_ms)
+        } else {
+            self.native_timeout_ms
         };
 
-        let clamped = timeout_ms.clamp(MIN_SUBPROCESS_TIMEOUT_MS, MAX_SUBPROCESS_TIMEOUT_MS);
+        let clamped = timeout_ms.clamp(MIN_NATIVE_TIMEOUT_MS, MAX_NATIVE_TIMEOUT_MS);
         Duration::from_millis(clamped)
     }
 }

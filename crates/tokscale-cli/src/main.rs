@@ -754,7 +754,7 @@ fn run_wrapped_command(
     use std::io::Read;
     
     let settings = tui::settings::Settings::load();
-    let timeout = settings.get_subprocess_timeout();
+    let timeout = settings.get_native_timeout();
     
     println!("{}", format!("  timeout: {}s", timeout.as_secs()).bright_black());
     println!();
@@ -812,7 +812,7 @@ fn run_wrapped_command(
     
     if timed_out.load(Ordering::SeqCst) && !status.success() && status.code().is_none() {
         eprintln!("{}", format!("\n  Wrapped generator timed out after {}s", timeout.as_secs()).red());
-        eprintln!("{}", "  Increase timeout with TOKSCALE_SUBPROCESS_TIMEOUT_MS or settings.json".bright_black());
+        eprintln!("{}", "  Increase timeout with TOKSCALE_NATIVE_TIMEOUT_MS or settings.json".bright_black());
         println!();
         std::process::exit(124);
     }
@@ -1529,7 +1529,7 @@ fn run_headless_command(
     };
     
     let settings = tui::settings::Settings::load();
-    let timeout = settings.get_subprocess_timeout();
+    let timeout = settings.get_native_timeout();
     
     use colored::Colorize;
     println!("\n  {}", "Headless capture".cyan());
@@ -1603,7 +1603,7 @@ fn run_headless_command(
     
     if timed_out.load(Ordering::SeqCst) && !status.success() {
         eprintln!("{}", format!("\n  Subprocess timed out after {}s", timeout.as_secs()).red());
-        eprintln!("{}", "  Partial output saved. Increase timeout with TOKSCALE_SUBPROCESS_TIMEOUT_MS or settings.json".bright_black());
+        eprintln!("{}", "  Partial output saved. Increase timeout with TOKSCALE_NATIVE_TIMEOUT_MS or settings.json".bright_black());
         println!();
         std::process::exit(124);
     }

@@ -140,10 +140,8 @@ impl App {
 
         let mut enabled_sources = HashSet::new();
 
-        // If sources are specified via CLI, use those
         if let Some(ref cli_sources) = config.sources {
             for source_str in cli_sources {
-                // Map source string to Source enum
                 match source_str.as_str() {
                     "opencode" => enabled_sources.insert(Source::OpenCode),
                     "claude" => enabled_sources.insert(Source::Claude),
@@ -157,18 +155,6 @@ impl App {
                 };
             }
         } else {
-            // Otherwise use settings
-            for source in Source::all() {
-                if settings
-                    .enabled_sources
-                    .contains(&source.as_str().to_string())
-                {
-                    enabled_sources.insert(*source);
-                }
-            }
-        }
-
-        if enabled_sources.is_empty() {
             for source in Source::all() {
                 enabled_sources.insert(*source);
             }
@@ -176,11 +162,13 @@ impl App {
 
         let auto_refresh_interval = if config.refresh > 0 {
             Duration::from_secs(config.refresh)
-        } else if settings.auto_refresh_interval > 0 {
-            Duration::from_secs(settings.auto_refresh_interval)
+        } else if let Some(interval) = settings.get_auto_refresh_interval() {
+            interval
         } else {
             Duration::from_secs(30)
         };
+
+        let auto_refresh = config.refresh > 0 || settings.auto_refresh_enabled;
 
         let data_loader = DataLoader::with_filters(
             config.sessions_path.map(std::path::PathBuf::from),
@@ -203,7 +191,7 @@ impl App {
             selected_index: 0,
             max_visible_items: 20,
             selected_graph_cell: None,
-            auto_refresh: config.refresh > 0,
+            auto_refresh,
             auto_refresh_interval,
             last_refresh: Instant::now(),
             status_message: None,
@@ -465,43 +453,36 @@ impl App {
                 self.enabled_sources.insert(source);
                 self.set_status(&format!("Enabled {}", source.as_str()));
             }
-            self.update_settings_sources();
             let _ = self.load_data();
-        }
-    }
-
-    fn update_settings_sources(&mut self) {
-        self.settings.enabled_sources = self
-            .enabled_sources
-            .iter()
-            .map(|s| s.as_str().to_string())
-            .collect();
-        if let Err(e) = self.settings.save() {
-            self.set_status(&format!("Settings save failed: {}", e));
         }
     }
 
     fn toggle_auto_refresh(&mut self) {
         self.auto_refresh = !self.auto_refresh;
-        if self.auto_refresh {
-            self.set_status(&format!(
+        self.settings.auto_refresh_enabled = self.auto_refresh;
+        let save_result = self.settings.save();
+        let msg = if self.auto_refresh {
+            format!(
                 "Auto-refresh ON ({}s)",
                 self.auto_refresh_interval.as_secs()
-            ));
+            )
         } else {
-            self.set_status("Auto-refresh OFF");
+            "Auto-refresh OFF".to_string()
+        };
+        if let Err(e) = save_result {
+            self.set_status(&format!("{} (save failed: {})", msg, e));
+        } else {
+            self.set_status(&msg);
         }
     }
 
     fn increase_refresh_interval(&mut self) {
-        let secs = self.auto_refresh_interval.as_secs();
-        self.auto_refresh_interval = Duration::from_secs(secs.saturating_add(10).min(300));
-        self.settings.auto_refresh_interval = self.auto_refresh_interval.as_secs();
+        let ms = self.auto_refresh_interval.as_millis() as u64;
+        let new_ms = ms.saturating_add(10_000).min(300_000);
+        self.auto_refresh_interval = Duration::from_millis(new_ms);
+        self.settings.auto_refresh_ms = new_ms;
         let save_result = self.settings.save();
-        let msg = format!(
-            "Refresh interval: {}s",
-            self.auto_refresh_interval.as_secs()
-        );
+        let msg = format!("Refresh interval: {}s", new_ms / 1000);
         if let Err(e) = save_result {
             self.set_status(&format!("{} (save failed: {})", msg, e));
         } else {
@@ -510,14 +491,12 @@ impl App {
     }
 
     fn decrease_refresh_interval(&mut self) {
-        let secs = self.auto_refresh_interval.as_secs();
-        self.auto_refresh_interval = Duration::from_secs(secs.saturating_sub(10).max(10));
-        self.settings.auto_refresh_interval = self.auto_refresh_interval.as_secs();
+        let ms = self.auto_refresh_interval.as_millis() as u64;
+        let new_ms = ms.saturating_sub(10_000).max(30_000);
+        self.auto_refresh_interval = Duration::from_millis(new_ms);
+        self.settings.auto_refresh_ms = new_ms;
         let save_result = self.settings.save();
-        let msg = format!(
-            "Refresh interval: {}s",
-            self.auto_refresh_interval.as_secs()
-        );
+        let msg = format!("Refresh interval: {}s", new_ms / 1000);
         if let Err(e) = save_result {
             self.set_status(&format!("{} (save failed: {})", msg, e));
         } else {
