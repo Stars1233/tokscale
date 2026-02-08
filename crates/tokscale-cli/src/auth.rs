@@ -7,8 +7,9 @@ use std::path::PathBuf;
 pub struct Credentials {
     pub token: String,
     pub username: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "avatarUrl", skip_serializing_if = "Option::is_none")]
     pub avatar_url: Option<String>,
+    #[serde(rename = "createdAt")]
     pub created_at: String,
 }
 

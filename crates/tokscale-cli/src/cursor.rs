@@ -33,9 +33,11 @@ pub struct AccountInfo {
     pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "userId", skip_serializing_if = "Option::is_none")]
     pub user_id: Option<String>,
+    #[serde(rename = "createdAt")]
     pub created_at: String,
+    #[serde(rename = "isActive")]
     pub is_active: bool,
 }
 
