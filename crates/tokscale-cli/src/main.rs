@@ -261,29 +261,29 @@ enum Commands {
     },
     #[command(about = "Submit usage data to the Tokscale social platform")]
     Submit {
-        #[arg(long, help = "Show only OpenCode usage")]
+        #[arg(long, help = "Include only OpenCode data")]
         opencode: bool,
-        #[arg(long, help = "Show only Claude Code usage")]
+        #[arg(long, help = "Include only Claude Code data")]
         claude: bool,
-        #[arg(long, help = "Show only Codex CLI usage")]
+        #[arg(long, help = "Include only Codex CLI data")]
         codex: bool,
-        #[arg(long, help = "Show only Gemini CLI usage")]
+        #[arg(long, help = "Include only Gemini CLI data")]
         gemini: bool,
-        #[arg(long, help = "Show only Cursor IDE usage")]
+        #[arg(long, help = "Include only Cursor IDE data")]
         cursor: bool,
-        #[arg(long, help = "Show only Amp usage")]
+        #[arg(long, help = "Include only Amp data")]
         amp: bool,
-        #[arg(long, help = "Show only Droid usage")]
+        #[arg(long, help = "Include only Droid data")]
         droid: bool,
-        #[arg(long, help = "Show only OpenClaw usage")]
+        #[arg(long, help = "Include only OpenClaw data")]
         openclaw: bool,
-        #[arg(long, help = "Show only Pi usage")]
+        #[arg(long, help = "Include only Pi data")]
         pi: bool,
-        #[arg(long, help = "Show only today's usage")]
+        #[arg(long, help = "Submit only today's usage")]
         today: bool,
-        #[arg(long, help = "Show last 7 days")]
+        #[arg(long, help = "Submit last 7 days")]
         week: bool,
-        #[arg(long, help = "Show current month")]
+        #[arg(long, help = "Submit current month")]
         month: bool,
         #[arg(long, help = "Start date (YYYY-MM-DD)")]
         since: Option<String>,
@@ -409,14 +409,15 @@ fn main() -> Result<()> {
             until,
             year,
             benchmark,
-            no_spinner: _,
+            no_spinner,
         }) => {
             let sources = build_source_filter(SourceFlags {
                 opencode, claude, codex, gemini, cursor, amp, droid, openclaw, pi,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
+            let year = normalize_year_filter(today, week, month, year);
             if json || light {
-                run_models_report(json, sources, since, until, year, benchmark)
+                run_models_report(json, sources, since, until, year, benchmark, no_spinner)
             } else {
                 tui::run(&cli.theme, cli.refresh, cli.debug, sources, since, until, year, Some(Tab::Models))
             }
@@ -440,20 +441,21 @@ fn main() -> Result<()> {
             until,
             year,
             benchmark,
-            no_spinner: _,
+            no_spinner,
         }) => {
             let sources = build_source_filter(SourceFlags {
                 opencode, claude, codex, gemini, cursor, amp, droid, openclaw, pi,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
+            let year = normalize_year_filter(today, week, month, year);
             if json || light {
-                run_monthly_report(json, sources, since, until, year, benchmark)
+                run_monthly_report(json, sources, since, until, year, benchmark, no_spinner)
             } else {
                 tui::run(&cli.theme, cli.refresh, cli.debug, sources, since, until, year, Some(Tab::Daily))
             }
         }
-        Some(Commands::Pricing { model_id, json, provider, no_spinner: _ }) => {
-            run_pricing_lookup(&model_id, json, provider.as_deref())
+        Some(Commands::Pricing { model_id, json, provider, no_spinner }) => {
+            run_pricing_lookup(&model_id, json, provider.as_deref(), no_spinner)
         }
         Some(Commands::Sources { json }) => {
             run_sources_command(json)
@@ -485,13 +487,14 @@ fn main() -> Result<()> {
             until,
             year,
             benchmark,
-            no_spinner: _,
+            no_spinner,
         }) => {
             let sources = build_source_filter(SourceFlags {
                 opencode, claude, codex, gemini, cursor, amp, droid, openclaw, pi,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
-            run_graph_command(output, sources, since, until, year, benchmark)
+            let year = normalize_year_filter(today, week, month, year);
+            run_graph_command(output, sources, since, until, year, benchmark, no_spinner)
         }
         Some(Commands::Tui {
             opencode,
@@ -514,6 +517,7 @@ fn main() -> Result<()> {
                 opencode, claude, codex, gemini, cursor, amp, droid, openclaw, pi,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
+            let year = normalize_year_filter(today, week, month, year);
             tui::run(&cli.theme, cli.refresh, cli.debug, sources, since, until, year, None)
         }
         Some(Commands::Submit {
@@ -538,6 +542,7 @@ fn main() -> Result<()> {
                 opencode, claude, codex, gemini, cursor, amp, droid, openclaw, pi,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
+            let year = normalize_year_filter(today, week, month, year);
             run_submit_command(sources, since, until, year, dry_run)
         }
         Some(Commands::Headless {
@@ -588,13 +593,14 @@ fn main() -> Result<()> {
                 pi: cli.pi,
             });
             let (since, until) = build_date_filter(cli.today, cli.week, cli.month, cli.since, cli.until);
+            let year = normalize_year_filter(cli.today, cli.week, cli.month, cli.year);
 
             if cli.json {
-                run_models_report(cli.json, sources, since, until, cli.year, cli.benchmark)
+                run_models_report(cli.json, sources, since, until, year, cli.benchmark, true)
             } else if cli.light {
-                run_models_report(false, sources, since, until, cli.year, cli.benchmark)
+                run_models_report(false, sources, since, until, year, cli.benchmark, true)
             } else {
-                tui::run(&cli.theme, cli.refresh, cli.debug, sources, since, until, cli.year, None)
+                tui::run(&cli.theme, cli.refresh, cli.debug, sources, since, until, year, None)
             }
         }
     }
@@ -638,15 +644,17 @@ fn build_date_filter(
     since: Option<String>,
     until: Option<String>,
 ) -> (Option<String>, Option<String>) {
-    use chrono::{Local, Datelike, Duration};
+    use chrono::{Utc, Datelike, Duration};
     
+    // Use UTC for date shortcuts to match TypeScript behavior
+    // TS uses: new Date().toISOString().split("T")[0]
     if today {
-        let date = Local::now().format("%Y-%m-%d").to_string();
+        let date = Utc::now().format("%Y-%m-%d").to_string();
         return (Some(date.clone()), Some(date));
     }
     
     if week {
-        let end = Local::now();
+        let end = Utc::now();
         let start = end - Duration::days(6);
         return (
             Some(start.format("%Y-%m-%d").to_string()),
@@ -655,7 +663,7 @@ fn build_date_filter(
     }
     
     if month {
-        let now = Local::now();
+        let now = Utc::now();
         let start = now.with_day(1).unwrap();
         return (
             Some(start.format("%Y-%m-%d").to_string()),
@@ -666,6 +674,19 @@ fn build_date_filter(
     (since, until)
 }
 
+fn normalize_year_filter(
+    today: bool,
+    week: bool,
+    month: bool,
+    year: Option<String>,
+) -> Option<String> {
+    if today || week || month {
+        None
+    } else {
+        year
+    }
+}
+
 fn run_models_report(
     json: bool,
     sources: Option<Vec<String>>,
@@ -673,11 +694,15 @@ fn run_models_report(
     until: Option<String>,
     year: Option<String>,
     benchmark: bool,
+    no_spinner: bool,
 ) -> Result<()> {
     use tokio::runtime::Runtime;
     use tokscale_core::{get_model_report, ReportOptions};
     use std::time::Instant;
 
+    if !no_spinner {
+        eprintln!("  Scanning session data...");
+    }
     let start = Instant::now();
     let rt = Runtime::new()?;
     let report = rt.block_on(async {
@@ -693,7 +718,60 @@ fn run_models_report(
     let processing_time_ms = start.elapsed().as_millis();
 
     if json {
-        println!("{}", serde_json::to_string_pretty(&report)?);
+        #[derive(serde::Serialize)]
+        #[serde(rename_all = "camelCase")]
+        struct ModelUsageJson {
+            source: String,
+            model: String,
+            provider: String,
+            input: i64,
+            output: i64,
+            cache_read: i64,
+            cache_write: i64,
+            reasoning: i64,
+            message_count: i32,
+            cost: f64,
+        }
+
+        #[derive(serde::Serialize)]
+        #[serde(rename_all = "camelCase")]
+        struct ModelReportJson {
+            entries: Vec<ModelUsageJson>,
+            total_input: i64,
+            total_output: i64,
+            total_cache_read: i64,
+            total_cache_write: i64,
+            total_messages: i32,
+            total_cost: f64,
+            processing_time_ms: u32,
+        }
+
+        let output = ModelReportJson {
+            entries: report
+                .entries
+                .into_iter()
+                .map(|e| ModelUsageJson {
+                    source: e.source,
+                    model: e.model,
+                    provider: e.provider,
+                    input: e.input,
+                    output: e.output,
+                    cache_read: e.cache_read,
+                    cache_write: e.cache_write,
+                    reasoning: e.reasoning,
+                    message_count: e.message_count,
+                    cost: e.cost,
+                })
+                .collect(),
+            total_input: report.total_input,
+            total_output: report.total_output,
+            total_cache_read: report.total_cache_read,
+            total_cache_write: report.total_cache_write,
+            total_messages: report.total_messages,
+            total_cost: report.total_cost,
+            processing_time_ms: report.processing_time_ms,
+        };
+        println!("{}", serde_json::to_string_pretty(&output)?);
     } else {
         use comfy_table::{Table, ContentArrangement};
 
@@ -734,11 +812,15 @@ fn run_monthly_report(
     until: Option<String>,
     year: Option<String>,
     benchmark: bool,
+    no_spinner: bool,
 ) -> Result<()> {
     use tokio::runtime::Runtime;
     use tokscale_core::{get_monthly_report, ReportOptions};
     use std::time::Instant;
 
+    if !no_spinner {
+        eprintln!("  Scanning session data...");
+    }
     let start = Instant::now();
     let rt = Runtime::new()?;
     let report = rt.block_on(async {
@@ -754,7 +836,47 @@ fn run_monthly_report(
     let processing_time_ms = start.elapsed().as_millis();
 
     if json {
-        println!("{}", serde_json::to_string_pretty(&report)?);
+        #[derive(serde::Serialize)]
+        #[serde(rename_all = "camelCase")]
+        struct MonthlyUsageJson {
+            month: String,
+            models: Vec<String>,
+            input: i64,
+            output: i64,
+            cache_read: i64,
+            cache_write: i64,
+            message_count: i32,
+            cost: f64,
+        }
+
+        #[derive(serde::Serialize)]
+        #[serde(rename_all = "camelCase")]
+        struct MonthlyReportJson {
+            entries: Vec<MonthlyUsageJson>,
+            total_cost: f64,
+            processing_time_ms: u32,
+        }
+
+        let output = MonthlyReportJson {
+            entries: report
+                .entries
+                .into_iter()
+                .map(|e| MonthlyUsageJson {
+                    month: e.month,
+                    models: e.models,
+                    input: e.input,
+                    output: e.output,
+                    cache_read: e.cache_read,
+                    cache_write: e.cache_write,
+                    message_count: e.message_count,
+                    cost: e.cost,
+                })
+                .collect(),
+            total_cost: report.total_cost,
+            processing_time_ms: report.processing_time_ms,
+        };
+
+        println!("{}", serde_json::to_string_pretty(&output)?);
     } else {
         use comfy_table::{Table, ContentArrangement};
 
@@ -960,69 +1082,150 @@ fn run_wrapped_command(
     Ok(())
 }
 
-fn run_pricing_lookup(model_id: &str, json: bool, provider: Option<&str>) -> Result<()> {
+fn run_pricing_lookup(model_id: &str, json: bool, provider: Option<&str>, no_spinner: bool) -> Result<()> {
+    use indicatif::ProgressBar;
+    use indicatif::ProgressStyle;
     use tokio::runtime::Runtime;
     use tokscale_core::pricing::PricingService;
+    use colored::Colorize;
+
+    let provider_normalized = provider.map(|p| p.to_lowercase());
+    if let Some(ref p) = provider_normalized {
+        if p != "litellm" && p != "openrouter" {
+            println!("\n  {}", format!("Invalid provider: {}", provider.unwrap_or("")).red());
+            println!("{}\n", "  Valid providers: litellm, openrouter".bright_black());
+            std::process::exit(1);
+        }
+    }
+
+    let spinner = if no_spinner {
+        None
+    } else {
+        let provider_label = provider
+            .map(|p| format!(" from {}", p))
+            .unwrap_or_default();
+        let pb = ProgressBar::new_spinner();
+        pb.set_style(ProgressStyle::default_spinner());
+        pb.set_message(format!("Fetching pricing data{}...", provider_label));
+        pb.enable_steady_tick(std::time::Duration::from_millis(100));
+        Some(pb)
+    };
 
     let rt = Runtime::new()?;
-    let result = rt.block_on(async {
+    let result = match rt.block_on(async {
         let svc = PricingService::get_or_init().await?;
-        Ok::<_, String>(svc.lookup_with_source(model_id, provider))
-    }).map_err(|e| anyhow::anyhow!(e))?;
+        Ok::<_, String>(svc.lookup_with_source(model_id, provider_normalized.as_deref()))
+    }) {
+        Ok(result) => result,
+        Err(err) => {
+            if let Some(pb) = spinner {
+                pb.finish_and_clear();
+            }
+            if json {
+                #[derive(serde::Serialize)]
+                #[serde(rename_all = "camelCase")]
+                struct ErrorOutput {
+                    error: String,
+                    model_id: String,
+                }
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&ErrorOutput {
+                        error: err,
+                        model_id: model_id.to_string(),
+                    })?
+                );
+                std::process::exit(1);
+            }
+            return Err(anyhow::anyhow!(err));
+        }
+    };
+
+    if let Some(pb) = spinner {
+        pb.finish_and_clear();
+    }
 
     if json {
         match result {
             Some(pricing) => {
                 #[derive(serde::Serialize)]
                 #[serde(rename_all = "camelCase")]
+                struct PricingValues {
+                    input_cost_per_token: f64,
+                    output_cost_per_token: f64,
+                    #[serde(skip_serializing_if = "Option::is_none")]
+                    cache_read_input_token_cost: Option<f64>,
+                    #[serde(skip_serializing_if = "Option::is_none")]
+                    cache_creation_input_token_cost: Option<f64>,
+                }
+
+                #[derive(serde::Serialize)]
+                #[serde(rename_all = "camelCase")]
                 struct PricingOutput {
-                    model: String,
+                    model_id: String,
                     matched_key: String,
                     source: String,
-                    #[serde(skip_serializing_if = "Option::is_none")]
-                    input_cost_per_token: Option<f64>,
-                    #[serde(skip_serializing_if = "Option::is_none")]
-                    output_cost_per_token: Option<f64>,
+                    pricing: PricingValues,
                 }
-                
+
                 let output = PricingOutput {
-                    model: model_id.to_string(),
+                    model_id: model_id.to_string(),
                     matched_key: pricing.matched_key,
                     source: pricing.source,
-                    input_cost_per_token: pricing.pricing.input_cost_per_token,
-                    output_cost_per_token: pricing.pricing.output_cost_per_token,
+                    pricing: PricingValues {
+                        input_cost_per_token: pricing.pricing.input_cost_per_token.unwrap_or(0.0),
+                        output_cost_per_token: pricing.pricing.output_cost_per_token.unwrap_or(0.0),
+                        cache_read_input_token_cost: pricing.pricing.cache_read_input_token_cost,
+                        cache_creation_input_token_cost: pricing.pricing.cache_creation_input_token_cost,
+                    },
                 };
-                
+
                 println!("{}", serde_json::to_string_pretty(&output)?);
             }
             None => {
                 #[derive(serde::Serialize)]
+                #[serde(rename_all = "camelCase")]
                 struct ErrorOutput {
                     error: String,
+                    model_id: String,
                 }
-                
+
                 let output = ErrorOutput {
                     error: "Model not found".to_string(),
+                    model_id: model_id.to_string(),
                 };
-                
+
                 println!("{}", serde_json::to_string_pretty(&output)?);
+                std::process::exit(1);
             }
         }
     } else {
         match result {
             Some(pricing) => {
-                println!("Model: {}", model_id);
-                println!("Matched: {}", pricing.matched_key);
-                println!("Source: {}", pricing.source);
-                if let Some(input) = pricing.pricing.input_cost_per_token {
-                    println!("Input: ${:.6}/token (${:.2}/1M)", input, input * 1_000_000.0);
+                println!("\n  Pricing for: {}", model_id.bold());
+                println!("  Matched key: {}", pricing.matched_key);
+                let source_label = if pricing.source.eq_ignore_ascii_case("litellm") {
+                    "LiteLLM"
+                } else {
+                    "OpenRouter"
+                };
+                println!("  Source: {}", source_label);
+                println!();
+                let input = pricing.pricing.input_cost_per_token.unwrap_or(0.0);
+                let output = pricing.pricing.output_cost_per_token.unwrap_or(0.0);
+                println!("  Input:  ${:.2} / 1M tokens", input * 1_000_000.0);
+                println!("  Output: ${:.2} / 1M tokens", output * 1_000_000.0);
+                if let Some(cache_read) = pricing.pricing.cache_read_input_token_cost {
+                    println!("  Cache Read:  ${:.2} / 1M tokens", cache_read * 1_000_000.0);
                 }
-                if let Some(output) = pricing.pricing.output_cost_per_token {
-                    println!("Output: ${:.6}/token (${:.2}/1M)", output, output * 1_000_000.0);
+                if let Some(cache_write) = pricing.pricing.cache_creation_input_token_cost {
+                    println!("  Cache Write: ${:.2} / 1M tokens", cache_write * 1_000_000.0);
                 }
+                println!();
             }
             None => {
-                println!("Model not found: {}", model_id);
+                println!("\n  {}\n", format!("Model not found: {}", model_id).red());
+                std::process::exit(1);
             }
         }
     }
@@ -1332,6 +1535,169 @@ fn format_number(n: i32) -> String {
     }
 }
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TsTokenBreakdown {
+    input: i64,
+    output: i64,
+    cache_read: i64,
+    cache_write: i64,
+    reasoning: i64,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TsSourceContribution {
+    source: String,
+    model_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    provider_id: Option<String>,
+    tokens: TsTokenBreakdown,
+    cost: f64,
+    messages: i32,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TsDailyTotals {
+    tokens: i64,
+    cost: f64,
+    messages: i32,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TsDailyContribution {
+    date: String,
+    totals: TsDailyTotals,
+    intensity: u8,
+    token_breakdown: TsTokenBreakdown,
+    sources: Vec<TsSourceContribution>,
+}
+
+#[derive(serde::Serialize)]
+struct DateRange {
+    start: String,
+    end: String,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TsYearSummary {
+    year: String,
+    total_tokens: i64,
+    total_cost: f64,
+    range: DateRange,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TsDataSummary {
+    total_tokens: i64,
+    total_cost: f64,
+    total_days: i32,
+    active_days: i32,
+    average_per_day: f64,
+    max_cost_in_single_day: f64,
+    sources: Vec<String>,
+    models: Vec<String>,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TsExportMeta {
+    generated_at: String,
+    version: String,
+    date_range: DateRange,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TsTokenContributionData {
+    meta: TsExportMeta,
+    summary: TsDataSummary,
+    years: Vec<TsYearSummary>,
+    contributions: Vec<TsDailyContribution>,
+}
+
+fn to_ts_token_contribution_data(graph: &tokscale_core::GraphResult) -> TsTokenContributionData {
+    TsTokenContributionData {
+        meta: TsExportMeta {
+            generated_at: graph.meta.generated_at.clone(),
+            version: graph.meta.version.clone(),
+            date_range: DateRange {
+                start: graph.meta.date_range_start.clone(),
+                end: graph.meta.date_range_end.clone(),
+            },
+        },
+        summary: TsDataSummary {
+            total_tokens: graph.summary.total_tokens,
+            total_cost: graph.summary.total_cost,
+            total_days: graph.summary.total_days,
+            active_days: graph.summary.active_days,
+            average_per_day: graph.summary.average_per_day,
+            max_cost_in_single_day: graph.summary.max_cost_in_single_day,
+            sources: graph.summary.sources.clone(),
+            models: graph.summary.models.clone(),
+        },
+        years: graph
+            .years
+            .iter()
+            .map(|y| TsYearSummary {
+                year: y.year.clone(),
+                total_tokens: y.total_tokens,
+                total_cost: y.total_cost,
+                range: DateRange {
+                    start: y.range_start.clone(),
+                    end: y.range_end.clone(),
+                },
+            })
+            .collect(),
+        contributions: graph
+            .contributions
+            .iter()
+            .map(|d| TsDailyContribution {
+                date: d.date.clone(),
+                totals: TsDailyTotals {
+                    tokens: d.totals.tokens,
+                    cost: d.totals.cost,
+                    messages: d.totals.messages,
+                },
+                intensity: d.intensity,
+                token_breakdown: TsTokenBreakdown {
+                    input: d.token_breakdown.input,
+                    output: d.token_breakdown.output,
+                    cache_read: d.token_breakdown.cache_read,
+                    cache_write: d.token_breakdown.cache_write,
+                    reasoning: d.token_breakdown.reasoning,
+                },
+                sources: d
+                    .sources
+                    .iter()
+                    .map(|s| TsSourceContribution {
+                        source: s.source.clone(),
+                        model_id: s.model_id.clone(),
+                        provider_id: if s.provider_id.is_empty() {
+                            None
+                        } else {
+                            Some(s.provider_id.clone())
+                        },
+                        tokens: TsTokenBreakdown {
+                            input: s.tokens.input,
+                            output: s.tokens.output,
+                            cache_read: s.tokens.cache_read,
+                            cache_write: s.tokens.cache_write,
+                            reasoning: s.tokens.reasoning,
+                        },
+                        cost: s.cost,
+                        messages: s.messages,
+                    })
+                    .collect(),
+            })
+            .collect(),
+    }
+}
+
 fn run_login_command() -> Result<()> {
     use tokio::runtime::Runtime;
     
@@ -1349,6 +1715,50 @@ fn run_whoami_command() -> Result<()> {
     auth::whoami()
 }
 
+fn prompt_star_repo() -> Result<()> {
+    use colored::Colorize;
+    use std::io::{self, Write};
+    use std::process::Command;
+
+    let gh_available = Command::new("gh")
+        .arg("--version")
+        .output()
+        .map(|out| out.status.success())
+        .unwrap_or(false);
+
+    if !gh_available {
+        return Ok(());
+    }
+
+    println!("{}", "  Please consider starring tokscale on GitHub!".bright_black());
+    print!("  Star now with gh CLI? [y/N]: ");
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    let answer = input.trim().to_lowercase();
+    if answer != "y" && answer != "yes" {
+        println!();
+        return Ok(());
+    }
+
+    let status = Command::new("gh")
+        .args(["repo", "star", "junhoyeo/tokscale"])
+        .status();
+    match status {
+        Ok(s) if s.success() => {
+            println!("{}", "  ✓ Starred! Thank you for your support.".green());
+            println!();
+        }
+        _ => {
+            println!("{}", "  Failed to star via gh CLI. Continuing to submit...".yellow());
+            println!();
+        }
+    }
+
+    Ok(())
+}
+
 fn run_graph_command(
     output: Option<String>,
     sources: Option<Vec<String>>,
@@ -1356,64 +1766,68 @@ fn run_graph_command(
     until: Option<String>,
     year: Option<String>,
     benchmark: bool,
+    no_spinner: bool,
 ) -> Result<()> {
-    use tokscale_core::{parse_local_sources, LocalParseOptions, aggregate_by_date, generate_graph_result, UnifiedMessage, TokenBreakdown};
+    use colored::Colorize;
+    use tokscale_core::{generate_graph, ReportOptions};
     use std::time::Instant;
-    
-    let home_dir = dirs::home_dir()
-        .ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?;
-    
+
+    let show_progress = output.is_some() && !no_spinner;
+    let include_cursor = sources.as_ref().map_or(true, |s| s.iter().any(|src| src == "cursor"));
+    let has_cursor_cache = cursor::has_cursor_usage_cache();
+    let mut cursor_sync_result: Option<cursor::SyncCursorResult> = None;
+
+    if include_cursor && cursor::is_cursor_logged_in() {
+        let rt_sync = tokio::runtime::Runtime::new()?;
+        cursor_sync_result = Some(rt_sync.block_on(async { cursor::sync_cursor_cache().await }));
+    }
+
+    if show_progress {
+        eprintln!("  Scanning session data...");
+    }
     let start = Instant::now();
-    
-    let parsed = parse_local_sources(LocalParseOptions {
-        home_dir: Some(home_dir.to_string_lossy().to_string()),
-        sources: sources.clone(),
-        since: since.clone(),
-        until: until.clone(),
-        year: year.clone(),
+
+    if show_progress {
+        eprintln!("  Generating graph data...");
+    }
+    let rt = tokio::runtime::Runtime::new()?;
+    let graph_result = rt.block_on(async {
+        generate_graph(ReportOptions {
+            home_dir: None,
+            sources,
+            since,
+            until,
+            year,
+        })
+        .await
     }).map_err(|e| anyhow::anyhow!(e))?;
-    
-    let unified_messages: Vec<UnifiedMessage> = parsed.messages.into_iter().map(|msg| {
-        let tokens = TokenBreakdown {
-            input: msg.input,
-            output: msg.output,
-            cache_read: msg.cache_read,
-            cache_write: msg.cache_write,
-            reasoning: msg.reasoning,
-        };
-        
-        UnifiedMessage::new_with_agent(
-            msg.source,
-            msg.model_id,
-            msg.provider_id,
-            msg.session_id,
-            msg.timestamp,
-            tokens,
-            0.0,
-            msg.agent,
-        )
-    }).collect();
-    
-    let contributions = aggregate_by_date(unified_messages);
+
     let processing_time_ms = start.elapsed().as_millis() as u32;
-    let graph_result = generate_graph_result(contributions, processing_time_ms);
-    
-    let json_output = serde_json::to_string_pretty(&graph_result)?;
+    let output_data = to_ts_token_contribution_data(&graph_result);
+    let json_output = serde_json::to_string_pretty(&output_data)?;
     
     if let Some(output_path) = output {
         std::fs::write(&output_path, json_output)?;
-        
-        use colored::Colorize;
+
         eprintln!("{}", format!("✓ Graph data written to {}", output_path).green());
         eprintln!("{}", format!("  {} days, {} sources, {} models",
-            graph_result.contributions.len(),
-            graph_result.summary.sources.len(),
-            graph_result.summary.models.len()
+            output_data.contributions.len(),
+            output_data.summary.sources.len(),
+            output_data.summary.models.len()
         ).bright_black());
-        eprintln!("{}", format!("  Total: {}", format_currency(graph_result.summary.total_cost)).bright_black());
+        eprintln!("{}", format!("  Total: {}", format_currency(output_data.summary.total_cost)).bright_black());
         
         if benchmark {
             eprintln!("{}", format!("  Processing time: {}ms (Rust native)", processing_time_ms).bright_black());
+            if let Some(sync) = cursor_sync_result {
+                if sync.synced {
+                    eprintln!("{}", format!("  Cursor: {} usage events synced (full lifetime data)", sync.rows).bright_black());
+                } else if let Some(err) = sync.error {
+                    if has_cursor_cache {
+                        eprintln!("{}", format!("  Cursor: sync failed - {}", err).yellow());
+                    }
+                }
+            }
         }
     } else {
         println!("{}", json_output);
@@ -1424,7 +1838,6 @@ fn run_graph_command(
 
 #[derive(serde::Deserialize)]
 struct SubmitResponse {
-    success: bool,
     #[serde(rename = "submissionId")]
     submission_id: Option<String>,
     #[allow(dead_code)]
@@ -1455,6 +1868,7 @@ fn run_submit_command(
     dry_run: bool,
 ) -> Result<()> {
     use colored::Colorize;
+    use std::io::IsTerminal;
     use tokio::runtime::Runtime;
     use tokscale_core::{generate_graph, ReportOptions};
 
@@ -1467,10 +1881,14 @@ fn run_submit_command(
         }
     };
 
+    if std::io::stdin().is_terminal() && std::io::stdout().is_terminal() {
+        let _ = prompt_star_repo();
+    }
+
     println!("\n  {}\n", "Tokscale - Submit Usage Data".cyan());
     
-    // Sync cursor cache before generating graph (matches TypeScript behavior)
     let include_cursor = sources.as_ref().map_or(true, |s| s.iter().any(|src| src == "cursor"));
+    let has_cursor_cache = cursor::has_cursor_usage_cache();
     if include_cursor && cursor::is_cursor_logged_in() {
         println!("{}", "  Syncing Cursor usage data...".bright_black());
         let rt_sync = Runtime::new()?;
@@ -1478,7 +1896,9 @@ fn run_submit_command(
         if sync_result.synced {
             println!("{}", format!("  Cursor: {} usage events synced", sync_result.rows).bright_black());
         } else if let Some(err) = sync_result.error {
-            println!("{}", format!("  Cursor sync warning: {}", err).yellow());
+            if has_cursor_cache {
+                println!("{}", format!("  Cursor sync failed; using cached data: {}", err).yellow());
+            }
         }
     }
     
@@ -1522,12 +1942,14 @@ fn run_submit_command(
 
     let api_url = auth::get_api_base_url();
 
+    let submit_payload = to_ts_token_contribution_data(&graph_result);
+
     let response = rt.block_on(async {
         reqwest::Client::new()
             .post(format!("{}/api/submit", api_url))
             .header("Content-Type", "application/json")
             .header("Authorization", format!("Bearer {}", credentials.token))
-            .json(&graph_result)
+            .json(&submit_payload)
             .send()
             .await
     });
@@ -1537,7 +1959,6 @@ fn run_submit_command(
             let status = resp.status();
             let body: SubmitResponse = rt.block_on(async { resp.json().await })
                 .unwrap_or_else(|_| SubmitResponse {
-                    success: false,
                     submission_id: None,
                     username: None,
                     metrics: None,
@@ -1546,7 +1967,7 @@ fn run_submit_command(
                     details: None,
                 });
 
-            if !status.is_success() || !body.success {
+            if !status.is_success() {
                 eprintln!("\n  {}", format!("Error: {}", body.error.unwrap_or_else(|| "Submission failed".to_string())).red());
                 if let Some(details) = body.details {
                     for detail in details {
@@ -1588,9 +2009,9 @@ fn run_submit_command(
                 }
             }
         }
-        Err(_) => {
+        Err(err) => {
             eprintln!("\n  {}", "Error: Failed to connect to server.".red());
-            eprintln!("{}", "  Check your internet connection and try again.\n".bright_black());
+            eprintln!("{}\n", format!("  {}", err).bright_black());
             std::process::exit(1);
         }
     }
