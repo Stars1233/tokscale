@@ -302,7 +302,7 @@ impl App {
             KeyCode::Char('e') => {
                 self.export_to_json();
             }
-            KeyCode::Char(c @ '1'..='8') => {
+            KeyCode::Char(c @ '1'..='9') => {
                 self.toggle_source(c);
             }
             KeyCode::Enter => {
