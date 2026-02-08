@@ -1,10 +1,15 @@
 use std::fs;
 use std::path::PathBuf;
+use std::time::Duration;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 use super::themes::ThemeName;
+
+const DEFAULT_SUBPROCESS_TIMEOUT_MS: u64 = 300_000; // 5 minutes
+const MIN_SUBPROCESS_TIMEOUT_MS: u64 = 5_000; // 5 seconds
+const MAX_SUBPROCESS_TIMEOUT_MS: u64 = 3_600_000; // 1 hour
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -12,6 +17,12 @@ pub struct Settings {
     pub theme: String,
     pub auto_refresh_interval: u64,
     pub enabled_sources: Vec<String>,
+    #[serde(default = "default_subprocess_timeout")]
+    pub subprocess_timeout_ms: u64,
+}
+
+fn default_subprocess_timeout() -> u64 {
+    DEFAULT_SUBPROCESS_TIMEOUT_MS
 }
 
 impl Default for Settings {
@@ -29,6 +40,7 @@ impl Default for Settings {
                 "Droid".to_string(),
                 "OpenClaw".to_string(),
             ],
+            subprocess_timeout_ms: DEFAULT_SUBPROCESS_TIMEOUT_MS,
         }
     }
 }
@@ -67,5 +79,18 @@ impl Settings {
 
     pub fn set_theme(&mut self, theme: ThemeName) {
         self.theme = theme.as_str().to_string();
+    }
+
+    /// Get subprocess timeout as Duration, with env var override.
+    /// Priority: TOKSCALE_SUBPROCESS_TIMEOUT_MS env var > settings.json > default (5 min)
+    pub fn get_subprocess_timeout(&self) -> Duration {
+        let timeout_ms = if let Ok(env_val) = std::env::var("TOKSCALE_SUBPROCESS_TIMEOUT_MS") {
+            env_val.parse::<u64>().unwrap_or(self.subprocess_timeout_ms)
+        } else {
+            self.subprocess_timeout_ms
+        };
+
+        let clamped = timeout_ms.clamp(MIN_SUBPROCESS_TIMEOUT_MS, MAX_SUBPROCESS_TIMEOUT_MS);
+        Duration::from_millis(clamped)
     }
 }

@@ -749,20 +749,82 @@ fn run_wrapped_command(
         args.push("--disable-pinned".to_string());
     }
     
-    // Execute the wrapped generator
-    let output_result = Command::new(runtime)
-        .args(&args)
-        .output()
-        .map_err(|e| anyhow::anyhow!("Failed to execute wrapped generator: {}", e))?;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Arc;
+    use std::io::Read;
     
-    if !output_result.status.success() {
+    let settings = tui::settings::Settings::load();
+    let timeout = settings.get_subprocess_timeout();
+    
+    println!("{}", format!("  timeout: {}s", timeout.as_secs()).bright_black());
+    println!();
+    
+    let mut child = Command::new(runtime)
+        .args(&args)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|e| anyhow::anyhow!("Failed to spawn wrapped generator: {}", e))?;
+    
+    let timed_out = Arc::new(AtomicBool::new(false));
+    let timed_out_clone = Arc::clone(&timed_out);
+    let child_id = child.id();
+    
+    // Watchdog: kills subprocess after timeout expires
+    let timeout_handle = std::thread::spawn(move || {
+        std::thread::sleep(timeout);
+        if !timed_out_clone.load(Ordering::SeqCst) {
+            timed_out_clone.store(true, Ordering::SeqCst);
+            #[cfg(unix)]
+            {
+                let _ = std::process::Command::new("kill")
+                    .arg("-9")
+                    .arg(child_id.to_string())
+                    .output();
+            }
+            #[cfg(windows)]
+            {
+                let _ = std::process::Command::new("taskkill")
+                    .args(["/F", "/PID", &child_id.to_string()])
+                    .output();
+            }
+        }
+    });
+    
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
+    
+    let mut stdout_content = String::new();
+    let mut stderr_content = String::new();
+    
+    if let Some(mut out) = stdout {
+        let _ = out.read_to_string(&mut stdout_content);
+    }
+    if let Some(mut err) = stderr {
+        let _ = err.read_to_string(&mut stderr_content);
+    }
+    
+    let status = child.wait()
+        .map_err(|e| anyhow::anyhow!("Failed to wait for wrapped generator: {}", e))?;
+    
+    timed_out.store(true, Ordering::SeqCst);
+    let _ = timeout_handle.join();
+    
+    if timed_out.load(Ordering::SeqCst) && !status.success() && status.code().is_none() {
+        eprintln!("{}", format!("\n  Wrapped generator timed out after {}s", timeout.as_secs()).red());
+        eprintln!("{}", "  Increase timeout with TOKSCALE_SUBPROCESS_TIMEOUT_MS or settings.json".bright_black());
+        println!();
+        std::process::exit(124);
+    }
+    
+    if !status.success() {
         eprintln!("{}", "\nError generating wrapped image:".red());
-        eprintln!("{}", String::from_utf8_lossy(&output_result.stderr));
-        std::process::exit(1);
+        eprintln!("{}", stderr_content);
+        std::process::exit(status.code().unwrap_or(1));
     }
     
     // Parse output to get the file path
-    let output_path = String::from_utf8_lossy(&output_result.stdout).trim().to_string();
+    let output_path = stdout_content.trim().to_string();
     
     if !output_path.is_empty() {
         println!("{}", format!("\n  ✓ Generated wrapped image: {}\n", output_path).green());
@@ -1417,10 +1479,11 @@ fn run_headless_command(
 ) -> Result<()> {
     use std::process::Command;
     use std::io::{Write, Read};
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Arc;
     use uuid::Uuid;
     use chrono::Utc;
     
-    // Validate source - only "codex" is supported
     let source_lower = source.to_lowercase();
     if source_lower != "codex" {
         eprintln!("\n  Error: Unknown headless source '{}'.", source);
@@ -1428,7 +1491,6 @@ fn run_headless_command(
         std::process::exit(1);
     }
     
-    // Determine format (default to jsonl)
     let resolved_format = match format {
         Some(f) if f == "json" || f == "jsonl" => f,
         Some(f) => {
@@ -1438,25 +1500,20 @@ fn run_headless_command(
         None => "jsonl".to_string(),
     };
     
-    // Build final args - auto-add --json for codex unless --no-auto-flags
     let mut final_args = args.clone();
     if !no_auto_flags && source_lower == "codex" && !final_args.contains(&"--json".to_string()) {
         final_args.push("--json".to_string());
     }
     
-    // Get headless roots
     let home_dir = dirs::home_dir()
         .ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?;
     let headless_roots = get_headless_roots(&home_dir);
     
-    // Build output path
     let output_path = if let Some(custom_output) = output {
-        // Use custom output path
         let parent = Path::new(&custom_output).parent().unwrap_or_else(|| Path::new("."));
         std::fs::create_dir_all(parent)?;
         custom_output
     } else {
-        // Generate timestamped filename in headless directory
         let root = headless_roots.first().cloned().unwrap_or_else(|| {
             home_dir.join(".config/tokscale/headless")
         });
@@ -1471,14 +1528,16 @@ fn run_headless_command(
         dir.join(filename).to_string_lossy().to_string()
     };
     
-    // Print info
+    let settings = tui::settings::Settings::load();
+    let timeout = settings.get_subprocess_timeout();
+    
     use colored::Colorize;
     println!("\n  {}", "Headless capture".cyan());
     println!("  {}", format!("source: {}", source_lower).bright_black());
     println!("  {}", format!("output: {}", output_path).bright_black());
+    println!("  {}", format!("timeout: {}s", timeout.as_secs()).bright_black());
     println!();
     
-    // Spawn subprocess with inherited stdin/stderr and piped stdout
     let mut child = Command::new(&source_lower)
         .args(&final_args)
         .stdout(std::process::Stdio::piped())
@@ -1487,41 +1546,73 @@ fn run_headless_command(
         .spawn()
         .map_err(|e| anyhow::anyhow!("Failed to spawn '{}': {}", source_lower, e))?;
     
-    // Get stdout
     let stdout = child.stdout.take()
         .ok_or_else(|| anyhow::anyhow!("Failed to capture stdout from command"))?;
     
-    // Create output file
     let mut output_file = std::fs::File::create(&output_path)
         .map_err(|e| anyhow::anyhow!("Failed to create output file '{}': {}", output_path, e))?;
     
-    // Copy stdout to file
+    let timed_out = Arc::new(AtomicBool::new(false));
+    let timed_out_clone = Arc::clone(&timed_out);
+    let child_id = child.id();
+    
+    let timeout_handle = std::thread::spawn(move || {
+        std::thread::sleep(timeout);
+        if !timed_out_clone.load(Ordering::SeqCst) {
+            timed_out_clone.store(true, Ordering::SeqCst);
+            #[cfg(unix)]
+            {
+                use std::os::unix::process::CommandExt;
+                let _ = std::process::Command::new("kill")
+                    .arg("-9")
+                    .arg(child_id.to_string())
+                    .exec();
+            }
+            #[cfg(windows)]
+            {
+                let _ = std::process::Command::new("taskkill")
+                    .args(["/F", "/PID", &child_id.to_string()])
+                    .output();
+            }
+        }
+    });
+    
     let mut reader = std::io::BufReader::new(stdout);
     let mut buffer = [0; 8192];
     loop {
         match reader.read(&mut buffer) {
-            Ok(0) => break, // EOF
+            Ok(0) => break,
             Ok(n) => {
                 output_file.write_all(&buffer[..n])
                     .map_err(|e| anyhow::anyhow!("Failed to write to output file: {}", e))?;
             }
             Err(e) => {
+                if timed_out.load(Ordering::SeqCst) {
+                    break;
+                }
                 return Err(anyhow::anyhow!("Failed to read from subprocess stdout: {}", e));
             }
         }
     }
     
-    // Wait for process to complete
     let status = child.wait()
         .map_err(|e| anyhow::anyhow!("Failed to wait for subprocess: {}", e))?;
     
+    timed_out.store(true, Ordering::SeqCst);
+    let _ = timeout_handle.join();
+    
+    if timed_out.load(Ordering::SeqCst) && !status.success() {
+        eprintln!("{}", format!("\n  Subprocess timed out after {}s", timeout.as_secs()).red());
+        eprintln!("{}", "  Partial output saved. Increase timeout with TOKSCALE_SUBPROCESS_TIMEOUT_MS or settings.json".bright_black());
+        println!();
+        std::process::exit(124);
+    }
+    
     let exit_code = status.code().unwrap_or(1);
     
-    // Print success message
     println!("{}", format!("✓ Saved headless output to {}", output_path).green());
     println!();
     
-    // Exit with same code as subprocess
     if exit_code != 0 {
         std::process::exit(exit_code);
     }

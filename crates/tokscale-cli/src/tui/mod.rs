@@ -2,7 +2,7 @@ mod app;
 pub mod config;
 pub mod data;
 mod event;
-mod settings;
+pub mod settings;
 mod themes;
 mod ui;
 
