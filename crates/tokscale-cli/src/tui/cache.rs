@@ -20,8 +20,9 @@ use super::data::{
 const CACHE_STALE_THRESHOLD_MS: u64 = 5 * 60 * 1000;
 
 /// Get the cache directory path
+/// Uses `~/.cache/tokscale/` to match TypeScript implementation for cache sharing
 fn cache_dir() -> Option<PathBuf> {
-    dirs::cache_dir().map(|d| d.join("tokscale"))
+    dirs::home_dir().map(|h| h.join(".cache").join("tokscale"))
 }
 
 /// Get the cache file path
