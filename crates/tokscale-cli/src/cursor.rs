@@ -304,7 +304,15 @@ pub fn remove_account(name_or_id: &str, purge_cache: bool) -> Result<()> {
     }
 
     if was_active {
-            if let Some(first_id) = store.accounts.keys().next().cloned() {
+        if let Some(first_id) = store.accounts.keys().next().cloned() {
+            let new_account_file = cache_dir.join(format!(
+                "usage.{}.csv",
+                sanitize_account_id_for_filename(&first_id)
+            ));
+            let active_file = cache_dir.join("usage.csv");
+            if new_account_file.exists() {
+                let _ = fs::rename(&new_account_file, &active_file);
+            }
             store.active_account_id = first_id;
         }
     }
@@ -344,8 +352,41 @@ pub fn set_active_account(name_or_id: &str) -> Result<()> {
     let resolved = resolve_account_id(&store, name_or_id)
         .ok_or_else(|| anyhow::anyhow!("Account not found: {}", name_or_id))?;
 
+    let old_active_id = store.active_account_id.clone();
+    
+    if resolved != old_active_id {
+        reconcile_cache_files(&old_active_id, &resolved)?;
+    }
+
     store.active_account_id = resolved;
     save_credentials_store(&store)?;
+
+    Ok(())
+}
+
+fn reconcile_cache_files(old_account_id: &str, new_account_id: &str) -> Result<()> {
+    let cache_dir = get_cursor_cache_dir();
+    if !cache_dir.exists() {
+        return Ok(());
+    }
+
+    let active_file = cache_dir.join("usage.csv");
+    let old_account_file = cache_dir.join(format!(
+        "usage.{}.csv",
+        sanitize_account_id_for_filename(old_account_id)
+    ));
+    let new_account_file = cache_dir.join(format!(
+        "usage.{}.csv",
+        sanitize_account_id_for_filename(new_account_id)
+    ));
+
+    if active_file.exists() {
+        let _ = fs::rename(&active_file, &old_account_file);
+    }
+
+    if new_account_file.exists() {
+        let _ = fs::rename(&new_account_file, &active_file);
+    }
 
     Ok(())
 }
