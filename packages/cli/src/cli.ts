@@ -121,6 +121,7 @@ interface FilterOptions {
   amp?: boolean;
   droid?: boolean;
   openclaw?: boolean;
+  pi?: boolean;
 }
 
 interface DateFilterOptions {
@@ -446,6 +447,7 @@ async function main() {
     .option("--amp", "Show only Amp usage")
     .option("--droid", "Show only Factory Droid usage")
     .option("--openclaw", "Show only OpenClaw usage")
+    .option("--pi", "Show only Pi usage")
     .option("--today", "Show only today's usage")
     .option("--week", "Show last 7 days")
     .option("--month", "Show current month")
@@ -483,6 +485,7 @@ async function main() {
     .option("--amp", "Show only Amp usage")
     .option("--droid", "Show only Factory Droid usage")
     .option("--openclaw", "Show only OpenClaw usage")
+    .option("--pi", "Show only Pi usage")
     .option("--today", "Show only today's usage")
     .option("--week", "Show last 7 days")
     .option("--month", "Show current month")
@@ -723,6 +726,7 @@ async function main() {
     .option("--amp", "Include only Amp data")
     .option("--droid", "Include only Factory Droid data")
     .option("--openclaw", "Include only OpenClaw data")
+    .option("--pi", "Include only Pi data")
     .option("--today", "Show only today's usage")
     .option("--week", "Show last 7 days")
     .option("--month", "Show current month")
@@ -748,6 +752,7 @@ async function main() {
     .option("--amp", "Include only Amp data")
     .option("--droid", "Include only Factory Droid data")
     .option("--openclaw", "Include only OpenClaw data")
+    .option("--pi", "Include only Pi data")
     .option("--no-spinner", "Disable loading spinner (for scripting)")
     .option("--short", "Display total tokens in abbreviated format (e.g., 7.14B)")
     .addOption(new Option("--agents", "Show Top OpenCode Agents (default)").conflicts("clients"))
@@ -793,6 +798,7 @@ async function main() {
     .option("--amp", "Include only Amp data")
     .option("--droid", "Include only Factory Droid data")
     .option("--openclaw", "Include only OpenClaw data")
+    .option("--pi", "Include only Pi data")
     .option("--since <date>", "Start date (YYYY-MM-DD)")
     .option("--until <date>", "End date (YYYY-MM-DD)")
     .option("--year <year>", "Filter to specific year")
@@ -829,6 +835,7 @@ async function main() {
     .option("--amp", "Show only Amp usage")
     .option("--droid", "Show only Factory Droid usage")
     .option("--openclaw", "Show only OpenClaw usage")
+    .option("--pi", "Show only Pi usage")
     .option("--today", "Show only today's usage")
     .option("--week", "Show last 7 days")
     .option("--month", "Show current month")
@@ -985,7 +992,7 @@ async function main() {
 }
 
 function getEnabledSources(options: FilterOptions): SourceType[] | undefined {
-  const hasFilter = options.opencode || options.claude || options.codex || options.gemini || options.cursor || options.amp || options.droid || options.openclaw;
+  const hasFilter = options.opencode || options.claude || options.codex || options.gemini || options.cursor || options.amp || options.droid || options.openclaw || options.pi;
   if (!hasFilter) return undefined; // All sources
 
   const sources: SourceType[] = [];
@@ -997,6 +1004,7 @@ function getEnabledSources(options: FilterOptions): SourceType[] | undefined {
   if (options.amp) sources.push("amp");
   if (options.droid) sources.push("droid");
   if (options.openclaw) sources.push("openclaw");
+  if (options.pi) sources.push("pi");
   return sources;
 }
 
@@ -1086,7 +1094,7 @@ async function showModelReport(options: FilterOptions & DateFilterOptions & { be
   const useSpinner = extraOptions?.spinner !== false;
   const spinner = useSpinner ? createSpinner({ color: "cyan" }) : null;
 
-  const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid', 'openclaw'])
+  const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid', 'openclaw', 'pi'])
     .filter(s => s !== 'cursor');
 
   spinner?.start(pc.gray("Scanning session data..."));
@@ -1116,7 +1124,7 @@ async function showModelReport(options: FilterOptions & DateFilterOptions & { be
 
   let report: ModelReport;
   try {
-    const emptyMessages: ParsedMessages = { messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, ampCount: 0, droidCount: 0, openclawCount: 0, processingTimeMs: 0 };
+    const emptyMessages: ParsedMessages = { messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, ampCount: 0, droidCount: 0, openclawCount: 0, piCount: 0, processingTimeMs: 0 };
     report = await finalizeReportAsync({
       localMessages: localMessages || emptyMessages,
       includeCursor: includeCursor && (cursorSync.synced || hasCursorUsageCache()),
@@ -1223,7 +1231,7 @@ async function showMonthlyReport(options: FilterOptions & DateFilterOptions & { 
 
   const dateFilters = getDateFilters(options);
   const enabledSources = getEnabledSources(options);
-  const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid', 'openclaw'])
+  const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid', 'openclaw', 'pi'])
     .filter(s => s !== 'cursor');
   const includeCursor = !enabledSources || enabledSources.includes('cursor');
 
@@ -1332,7 +1340,7 @@ async function outputJsonReport(
   const enabledSources = getEnabledSources(options);
   const onlyCursor = enabledSources?.length === 1 && enabledSources[0] === 'cursor';
   const includeCursor = !enabledSources || enabledSources.includes('cursor');
-  const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid', 'openclaw'])
+  const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid', 'openclaw', 'pi'])
     .filter(s => s !== 'cursor');
 
   const { cursorSync, localMessages } = await loadDataSourcesParallel(
@@ -1345,7 +1353,7 @@ async function outputJsonReport(
     process.exit(1);
   }
 
-  const emptyMessages: ParsedMessages = { messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, ampCount: 0, droidCount: 0, openclawCount: 0, processingTimeMs: 0 };
+  const emptyMessages: ParsedMessages = { messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, ampCount: 0, droidCount: 0, openclawCount: 0, piCount: 0, processingTimeMs: 0 };
 
   if (reportType === "models") {
     const report = await finalizeReportAsync({
@@ -1380,7 +1388,7 @@ async function handleGraphCommand(options: GraphCommandOptions) {
 
   const dateFilters = getDateFilters(options);
   const enabledSources = getEnabledSources(options);
-  const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid', 'openclaw'])
+  const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid', 'openclaw', 'pi'])
     .filter(s => s !== 'cursor');
   const includeCursor = !enabledSources || enabledSources.includes('cursor');
 
