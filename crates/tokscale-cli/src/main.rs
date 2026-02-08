@@ -173,6 +173,8 @@ enum Commands {
         json: bool,
         #[arg(long, help = "Force specific provider (litellm or openrouter)")]
         provider: Option<String>,
+        #[arg(long, help = "Disable spinner")]
+        no_spinner: bool,
     },
     #[command(about = "Show local scan locations and session counts")]
     Sources {
@@ -221,6 +223,8 @@ enum Commands {
         year: Option<String>,
         #[arg(long, help = "Show processing time")]
         benchmark: bool,
+        #[arg(long, help = "Disable spinner")]
+        no_spinner: bool,
     },
     #[command(about = "Launch interactive TUI with optional filters")]
     Tui {
@@ -448,7 +452,7 @@ fn main() -> Result<()> {
                 tui::run(&cli.theme, cli.refresh, cli.debug, sources, since, until, year, Some(Tab::Daily))
             }
         }
-        Some(Commands::Pricing { model_id, json, provider }) => {
+        Some(Commands::Pricing { model_id, json, provider, no_spinner: _ }) => {
             run_pricing_lookup(&model_id, json, provider.as_deref())
         }
         Some(Commands::Sources { json }) => {
@@ -481,6 +485,7 @@ fn main() -> Result<()> {
             until,
             year,
             benchmark,
+            no_spinner: _,
         }) => {
             let sources = build_source_filter(SourceFlags {
                 opencode, claude, codex, gemini, cursor, amp, droid, openclaw, pi,
