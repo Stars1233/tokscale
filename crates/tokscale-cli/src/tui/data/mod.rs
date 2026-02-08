@@ -162,12 +162,32 @@ impl Source {
 
 pub struct DataLoader {
     _sessions_path: Option<PathBuf>,
+    pub since: Option<String>,
+    pub until: Option<String>,
+    pub year: Option<String>,
 }
 
 impl DataLoader {
     pub fn new(sessions_path: Option<PathBuf>) -> Self {
         Self {
             _sessions_path: sessions_path,
+            since: None,
+            until: None,
+            year: None,
+        }
+    }
+
+    pub fn with_filters(
+        sessions_path: Option<PathBuf>,
+        since: Option<String>,
+        until: Option<String>,
+        year: Option<String>,
+    ) -> Self {
+        Self {
+            _sessions_path: sessions_path,
+            since,
+            until,
+            year,
         }
     }
 
@@ -290,7 +310,10 @@ impl DataLoader {
             }
         }
 
-        self.aggregate_messages(all_messages)
+        // Apply date filters if specified
+        let filtered_messages = self.apply_date_filters(all_messages);
+
+        self.aggregate_messages(filtered_messages)
     }
 
     fn aggregate_messages(&self, messages: Vec<UnifiedMessage>) -> Result<UsageData> {
@@ -447,6 +470,51 @@ impl DataLoader {
             current_streak,
             longest_streak,
         })
+    }
+
+    fn apply_date_filters(&self, messages: Vec<UnifiedMessage>) -> Vec<UnifiedMessage> {
+        // If no filters are specified, return all messages
+        if self.since.is_none() && self.until.is_none() && self.year.is_none() {
+            return messages;
+        }
+
+        messages
+            .into_iter()
+            .filter(|msg| {
+                if let Some(date) = parse_date(&msg.date) {
+                    // Check year filter
+                    if let Some(ref year_str) = self.year {
+                        if let Ok(year) = year_str.parse::<i32>() {
+                            if date.year() != year {
+                                return false;
+                            }
+                        }
+                    }
+
+                    // Check since filter
+                    if let Some(ref since_str) = self.since {
+                        if let Some(since_date) = parse_date(since_str) {
+                            if date < since_date {
+                                return false;
+                            }
+                        }
+                    }
+
+                    // Check until filter
+                    if let Some(ref until_str) = self.until {
+                        if let Some(until_date) = parse_date(until_str) {
+                            if date > until_date {
+                                return false;
+                            }
+                        }
+                    }
+
+                    true
+                } else {
+                    false
+                }
+            })
+            .collect()
     }
 }
 

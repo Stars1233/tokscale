@@ -14,6 +14,10 @@ pub struct TuiConfig {
     pub theme: String,
     pub refresh: u64,
     pub sessions_path: Option<String>,
+    pub sources: Option<Vec<String>>,
+    pub since: Option<String>,
+    pub until: Option<String>,
+    pub year: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -135,12 +139,32 @@ impl App {
         let theme = Theme::from_name(theme_name);
 
         let mut enabled_sources = HashSet::new();
-        for source in Source::all() {
-            if settings
-                .enabled_sources
-                .contains(&source.as_str().to_string())
-            {
-                enabled_sources.insert(*source);
+
+        // If sources are specified via CLI, use those
+        if let Some(ref cli_sources) = config.sources {
+            for source_str in cli_sources {
+                // Map source string to Source enum
+                match source_str.as_str() {
+                    "opencode" => enabled_sources.insert(Source::OpenCode),
+                    "claude" => enabled_sources.insert(Source::Claude),
+                    "codex" => enabled_sources.insert(Source::Codex),
+                    "cursor" => enabled_sources.insert(Source::Cursor),
+                    "gemini" => enabled_sources.insert(Source::Gemini),
+                    "amp" => enabled_sources.insert(Source::Amp),
+                    "droid" => enabled_sources.insert(Source::Droid),
+                    "openclaw" => enabled_sources.insert(Source::OpenClaw),
+                    _ => false,
+                };
+            }
+        } else {
+            // Otherwise use settings
+            for source in Source::all() {
+                if settings
+                    .enabled_sources
+                    .contains(&source.as_str().to_string())
+                {
+                    enabled_sources.insert(*source);
+                }
             }
         }
 
@@ -158,7 +182,12 @@ impl App {
             Duration::from_secs(30)
         };
 
-        let data_loader = DataLoader::new(config.sessions_path.map(std::path::PathBuf::from));
+        let data_loader = DataLoader::with_filters(
+            config.sessions_path.map(std::path::PathBuf::from),
+            config.since,
+            config.until,
+            config.year,
+        );
 
         Ok(Self {
             should_quit: false,
