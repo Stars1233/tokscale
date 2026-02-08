@@ -8,6 +8,7 @@ use std::path::PathBuf;
 
 const USAGE_CSV_ENDPOINT: &str =
     "https://cursor.com/api/dashboard/export-usage-events-csv?strategy=tokens";
+const USAGE_SUMMARY_ENDPOINT: &str = "https://cursor.com/api/usage-summary";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CursorCredentials {
@@ -56,9 +57,45 @@ pub fn get_cursor_credentials_path() -> PathBuf {
     home.join(".config/tokscale/cursor-credentials.json")
 }
 
+fn get_old_cursor_credentials_path() -> PathBuf {
+    let home = dirs::home_dir().expect("Could not determine home directory");
+    home.join(".tokscale/cursor-credentials.json")
+}
+
 pub fn get_cursor_cache_dir() -> PathBuf {
     let home = dirs::home_dir().expect("Could not determine home directory");
     home.join(".config/tokscale/cursor-cache")
+}
+
+fn get_old_cursor_cache_dir() -> PathBuf {
+    let home = dirs::home_dir().expect("Could not determine home directory");
+    home.join(".tokscale/cursor-cache")
+}
+
+fn migrate_cache_dir_from_old_path() {
+    let old_dir = get_old_cursor_cache_dir();
+    let new_dir = get_cursor_cache_dir();
+    if !new_dir.exists() && old_dir.exists() {
+        if fs::create_dir_all(&new_dir).is_ok() {
+            let _ = copy_dir_recursive(&old_dir, &new_dir);
+            let _ = fs::remove_dir_all(&old_dir);
+        }
+    }
+}
+
+fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> Result<()> {
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let path = entry.path();
+        let target = dst.join(entry.file_name());
+        if path.is_dir() {
+            fs::create_dir_all(&target)?;
+            copy_dir_recursive(&path, &target)?;
+        } else {
+            fs::copy(&path, &target)?;
+        }
+    }
+    Ok(())
 }
 
 fn build_cursor_headers(session_token: &str) -> reqwest::header::HeaderMap {
@@ -74,11 +111,53 @@ fn build_cursor_headers(session_token: &str) -> reqwest::header::HeaderMap {
     headers.insert("Referer", "https://www.cursor.com/settings".parse().unwrap());
     headers.insert(
         "User-Agent",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             .parse()
             .unwrap(),
     );
     headers
+}
+
+fn count_cursor_csv_rows(csv_text: &str) -> usize {
+    let mut reader = csv::ReaderBuilder::new()
+        .has_headers(true)
+        .flexible(true)
+        .from_reader(csv_text.as_bytes());
+    reader.records().filter_map(|r| r.ok()).count()
+}
+
+fn atomic_write_file(path: &std::path::Path, contents: &str) -> Result<()> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| anyhow::anyhow!("Invalid cache path"))?;
+    if !parent.exists() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let temp_name = format!(
+        ".tmp-{}-{}",
+        path.file_name().and_then(|name| name.to_str()).unwrap_or("cursor"),
+        std::process::id()
+    );
+    let temp_path = parent.join(temp_name);
+
+    fs::write(&temp_path, contents)?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&temp_path, fs::Permissions::from_mode(0o600))?;
+    }
+
+    if let Err(err) = fs::rename(&temp_path, path) {
+        if path.exists() {
+            let _ = fs::remove_file(path);
+            fs::rename(&temp_path, path)?;
+        } else {
+            return Err(err.into());
+        }
+    }
+    Ok(())
 }
 
 fn ensure_config_dir() -> Result<()> {
@@ -145,25 +224,61 @@ fn sanitize_account_id_for_filename(account_id: &str) -> String {
 
 pub fn load_credentials_store() -> Option<CursorCredentialsStore> {
     let path = get_cursor_credentials_path();
-    if !path.exists() {
-        return None;
-    }
-
-    let content = fs::read_to_string(&path).ok()?;
-    let store: CursorCredentialsStore = serde_json::from_str(&content).ok()?;
-
-    if store.version == 1 && !store.accounts.is_empty() {
-        Some(store)
+    let old_path = get_old_cursor_credentials_path();
+    let read_path = if path.exists() {
+        path
+    } else if old_path.exists() {
+        old_path
     } else {
-        None
+        return None;
+    };
+
+    let content = fs::read_to_string(&read_path).ok()?;
+
+    if let Ok(mut store) = serde_json::from_str::<CursorCredentialsStore>(&content) {
+        if store.version == 1 && !store.accounts.is_empty() {
+            let mut changed = false;
+            if !store.accounts.contains_key(&store.active_account_id) {
+                if let Some(first_id) = store.accounts.keys().next().cloned() {
+                    store.active_account_id = first_id;
+                    changed = true;
+                }
+            }
+            if changed || read_path != get_cursor_credentials_path() {
+                let _ = save_credentials_store(&store);
+            }
+            if read_path != get_cursor_credentials_path() {
+                let _ = fs::remove_file(get_old_cursor_credentials_path());
+            }
+            return Some(store);
+        }
     }
+
+    if let Ok(single) = serde_json::from_str::<CursorCredentials>(&content) {
+        let account_id = derive_account_id(&single.session_token);
+        let mut accounts = HashMap::new();
+        accounts.insert(account_id.clone(), single);
+        let migrated = CursorCredentialsStore {
+            version: 1,
+            active_account_id: account_id,
+            accounts,
+        };
+
+        let _ = save_credentials_store(&migrated);
+        if read_path != get_cursor_credentials_path() {
+            let _ = fs::remove_file(get_old_cursor_credentials_path());
+        }
+        return Some(migrated);
+    }
+
+    None
 }
 
 pub fn save_credentials_store(store: &CursorCredentialsStore) -> Result<()> {
     ensure_config_dir()?;
     let path = get_cursor_credentials_path();
     let json = serde_json::to_string_pretty(store)?;
-    fs::write(&path, json)?;
+    atomic_write_file(&path, &json)?;
 
     #[cfg(unix)]
     {
@@ -308,7 +423,7 @@ pub fn remove_account(name_or_id: &str, purge_cache: bool) -> Result<()> {
             if purge_cache {
                 let _ = fs::remove_file(&per_account);
             } else {
-                archive_cache_file(&per_account, &format!("usage.{}", resolved))?;
+                let _ = archive_cache_file(&per_account, &format!("usage.{}", resolved));
             }
         }
         if was_active {
@@ -317,7 +432,7 @@ pub fn remove_account(name_or_id: &str, purge_cache: bool) -> Result<()> {
                 if purge_cache {
                     let _ = fs::remove_file(&active_file);
                 } else {
-                    archive_cache_file(&active_file, &format!("usage.active.{}", resolved))?;
+                    let _ = archive_cache_file(&active_file, &format!("usage.active.{}", resolved));
                 }
             }
         }
@@ -385,7 +500,7 @@ pub fn set_active_account(name_or_id: &str) -> Result<()> {
     let old_active_id = store.active_account_id.clone();
     
     if resolved != old_active_id {
-        reconcile_cache_files(&old_active_id, &resolved)?;
+        let _ = reconcile_cache_files(&old_active_id, &resolved);
     }
 
     store.active_account_id = resolved;
@@ -411,11 +526,17 @@ fn reconcile_cache_files(old_account_id: &str, new_account_id: &str) -> Result<(
     ));
 
     if active_file.exists() {
-        let _ = fs::rename(&active_file, &old_account_file);
+        if old_account_file.exists() {
+            let _ = archive_cache_file(&old_account_file, old_account_id);
+        }
+        fs::rename(&active_file, &old_account_file)?;
     }
 
     if new_account_file.exists() {
-        let _ = fs::rename(&new_account_file, &active_file);
+        if active_file.exists() {
+            let _ = archive_cache_file(&active_file, "usage.active");
+        }
+        fs::rename(&new_account_file, &active_file)?;
     }
 
     Ok(())
@@ -424,6 +545,39 @@ fn reconcile_cache_files(old_account_id: &str, new_account_id: &str) -> Result<(
 pub fn load_active_credentials() -> Option<CursorCredentials> {
     let store = load_credentials_store()?;
     store.accounts.get(&store.active_account_id).cloned()
+}
+
+fn is_cursor_usage_csv_filename(name: &str) -> bool {
+    if name == "usage.csv" {
+        return true;
+    }
+    if !name.starts_with("usage.") || !name.ends_with(".csv") {
+        return false;
+    }
+    if name.starts_with("usage.backup") {
+        return false;
+    }
+    let stem = name.trim_start_matches("usage.").trim_end_matches(".csv");
+    !stem.is_empty()
+        && stem
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '_' || c == '-')
+}
+
+pub fn has_cursor_usage_cache() -> bool {
+    migrate_cache_dir_from_old_path();
+    let cache_dir = get_cursor_cache_dir();
+    if !cache_dir.exists() {
+        return false;
+    }
+
+    match fs::read_dir(cache_dir) {
+        Ok(entries) => entries
+            .filter_map(|entry| entry.ok())
+            .filter_map(|entry| entry.file_name().into_string().ok())
+            .any(|name| is_cursor_usage_csv_filename(&name)),
+        Err(_) => false,
+    }
 }
 
 pub fn is_cursor_logged_in() -> bool {
@@ -436,22 +590,88 @@ pub fn load_credentials_for(name_or_id: &str) -> Option<CursorCredentials> {
     store.accounts.get(&resolved).cloned()
 }
 
+#[derive(Debug)]
+pub struct ValidateSessionResult {
+    pub valid: bool,
+    pub membership_type: Option<String>,
+    pub error: Option<String>,
+}
+
 pub async fn validate_cursor_session(
     token: &str,
-) -> Result<bool> {
+) -> ValidateSessionResult {
     let client = reqwest::Client::new();
-    let response = client
-        .post("https://www.cursor.com/api/usage/report")
-        .header(
-            "Cookie",
-            format!("WorkosCursorSessionToken={}", token),
-        )
-        .json(&serde_json::json!({}))
+    let response = match client
+        .get(USAGE_SUMMARY_ENDPOINT)
+        .headers(build_cursor_headers(token))
         .send()
         .await
-        .context("Failed to connect to Cursor API")?;
+    {
+        Ok(resp) => resp,
+        Err(e) => {
+            return ValidateSessionResult {
+                valid: false,
+                membership_type: None,
+                error: Some(format!("Failed to connect: {}", e)),
+            };
+        }
+    };
 
-    Ok(response.status().is_success())
+    if response.status() == reqwest::StatusCode::UNAUTHORIZED
+        || response.status() == reqwest::StatusCode::FORBIDDEN
+    {
+        return ValidateSessionResult {
+            valid: false,
+            membership_type: None,
+            error: Some("Session token expired or invalid".to_string()),
+        };
+    }
+
+    if !response.status().is_success() {
+        return ValidateSessionResult {
+            valid: false,
+            membership_type: None,
+            error: Some(format!("API returned status {}", response.status())),
+        };
+    }
+
+    let data: serde_json::Value = match response.json().await {
+        Ok(d) => d,
+        Err(e) => {
+            return ValidateSessionResult {
+                valid: false,
+                membership_type: None,
+                error: Some(format!("Failed to parse response: {}", e)),
+            };
+        }
+    };
+
+    let has_billing_start = data
+        .get("billingCycleStart")
+        .and_then(|v| v.as_str())
+        .is_some();
+    let has_billing_end = data
+        .get("billingCycleEnd")
+        .and_then(|v| v.as_str())
+        .is_some();
+
+    if has_billing_start && has_billing_end {
+        let membership_type = data
+            .get("membershipType")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+        ValidateSessionResult {
+            valid: true,
+            membership_type,
+            error: None,
+        }
+    } else {
+        ValidateSessionResult {
+            valid: false,
+            membership_type: None,
+            error: Some("Invalid response format".to_string()),
+        }
+    }
 }
 
 pub async fn fetch_cursor_usage_csv(session_token: &str) -> Result<String> {
@@ -484,6 +704,8 @@ pub async fn fetch_cursor_usage_csv(session_token: &str) -> Result<String> {
 }
 
 pub async fn sync_cursor_cache() -> SyncCursorResult {
+    migrate_cache_dir_from_old_path();
+
     let store = match load_credentials_store() {
         Some(s) => s,
         None => {
@@ -510,6 +732,11 @@ pub async fn sync_cursor_cache() -> SyncCursorResult {
             rows: 0,
             error: Some(format!("Failed to create cache dir: {}", e)),
         };
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(&cache_dir, fs::Permissions::from_mode(0o700));
     }
 
     let active_dup = cache_dir.join(format!(
@@ -538,10 +765,10 @@ pub async fn sync_cursor_cache() -> SyncCursorResult {
                     ))
                 };
 
-                let row_count = csv_text.lines().count().saturating_sub(1);
+                let row_count = count_cursor_csv_rows(&csv_text);
 
-                if let Err(e) = fs::write(&file_path, &csv_text) {
-                    errors.push(format!("{}: Failed to write cache: {}", account_id, e));
+                if let Err(e) = atomic_write_file(&file_path, &csv_text) {
+                    errors.push(format!("{}: {}", account_id, e));
                 } else {
                     total_rows += row_count;
                     success_count += 1;
@@ -573,7 +800,7 @@ pub async fn sync_cursor_cache() -> SyncCursorResult {
             None
         } else {
             Some(format!(
-                "Some accounts failed ({}/{})",
+                "Some accounts failed to sync ({}/{})",
                 errors.len(),
                 store.accounts.len()
             ))
@@ -638,12 +865,13 @@ pub fn run_cursor_login(name: Option<String>) -> Result<()> {
     println!();
     println!("{}", "  Validating session token...".bright_black());
 
-    let valid = rt.block_on(async { validate_cursor_session(&token).await })?;
+    let result = rt.block_on(async { validate_cursor_session(&token).await });
 
-    if !valid {
+    if !result.valid {
+        let msg = result.error.unwrap_or_else(|| "Invalid session token".to_string());
         println!(
             "\n  {}\n",
-            "Invalid session token. Please check and try again.".red()
+            format!("{}. Please check and try again.", msg).red()
         );
         std::process::exit(1);
     }
@@ -764,14 +992,18 @@ pub fn run_cursor_status(name: Option<String>) -> Result<()> {
 
     println!("{}", "  Validating session...".bright_black());
 
-    let valid = rt.block_on(async {
+    let result = rt.block_on(async {
         validate_cursor_session(&credentials.session_token).await
-    })?;
+    });
 
-    if valid {
+    if result.valid {
         println!("  {}", "Session: Valid".green());
+        if let Some(membership) = result.membership_type {
+            println!("{}", format!("  Membership: {}", membership).bright_black());
+        }
     } else {
-        println!("  {}", "Session: Invalid / Expired".red());
+        let msg = result.error.unwrap_or_else(|| "Invalid / Expired".to_string());
+        println!("  {}", format!("Session: {}", msg).red());
     }
     println!();
 
