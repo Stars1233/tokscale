@@ -381,7 +381,7 @@ export interface FinalizeOptions {
 
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { writeFileSync, unlinkSync, mkdirSync } from "node:fs";
+import { writeFileSync, readFileSync, unlinkSync, mkdirSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 
@@ -395,11 +395,6 @@ const NATIVE_TIMEOUT_MS = parseInt(
 );
 
 const SIGKILL_GRACE_MS = 500;
-const DEFAULT_MAX_OUTPUT_BYTES = 100 * 1024 * 1024;
-const MAX_OUTPUT_BYTES = parseInt(
-  process.env.TOKSCALE_MAX_OUTPUT_BYTES || String(DEFAULT_MAX_OUTPUT_BYTES),
-  10
-);
 
 interface BunSubprocess {
   stdout: { text: () => Promise<string> };
@@ -431,84 +426,40 @@ async function runInSubprocess<T>(method: string, args: unknown[]): Promise<T> {
 
   const tmpDir = join(tmpdir(), "tokscale");
   mkdirSync(tmpDir, { recursive: true });
-  const inputFile = join(tmpDir, `input-${randomUUID()}.json`);
-  
+  const id = randomUUID();
+  const inputFile = join(tmpDir, `input-${id}.json`);
+  const outputFile = join(tmpDir, `output-${id}.json`);
+
   writeFileSync(inputFile, input, "utf-8");
 
   const BunGlobal = (globalThis as Record<string, unknown>).Bun as BunGlobalType;
 
   let proc: BunSubprocess;
   try {
-    proc = BunGlobal.spawn([process.execPath, runnerPath, inputFile], {
+    proc = BunGlobal.spawn([process.execPath, runnerPath, inputFile, outputFile], {
       stdout: "pipe",
       stderr: "pipe",
     });
   } catch (e) {
-    unlinkSync(inputFile);
+    try { unlinkSync(inputFile); } catch {}
     throw new Error(`Failed to spawn subprocess: ${(e as Error).message}`);
   }
 
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   let sigkillId: ReturnType<typeof setTimeout> | null = null;
   let weInitiatedKill = false;
-  let aborted = false;
 
   const cleanup = async () => {
     if (timeoutId) clearTimeout(timeoutId);
     if (sigkillId) clearTimeout(sigkillId);
     try { unlinkSync(inputFile); } catch {}
-    if (aborted) {
-      safeKill(proc, "SIGKILL");
-      await proc.exited.catch(() => {});
-    }
-  };
-
-  const abort = () => {
-    aborted = true;
-    weInitiatedKill = true;
+    try { unlinkSync(outputFile); } catch {}
   };
 
   try {
-    const stdoutChunks: Uint8Array[] = [];
-    const stderrChunks: Uint8Array[] = [];
-    let stdoutBytes = 0;
-    let stderrBytes = 0;
-
-    const readStream = async (
-      stream: BunSubprocess["stdout"],
-      chunks: Uint8Array[],
-      getBytesRef: () => number,
-      setBytesRef: (n: number) => void
-    ): Promise<string> => {
-      const reader = (stream as unknown as ReadableStream<Uint8Array>).getReader();
-      try {
-        while (!aborted) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const newTotal = getBytesRef() + value.length;
-          if (newTotal > MAX_OUTPUT_BYTES) {
-            abort();
-            throw new Error(`Output exceeded ${MAX_OUTPUT_BYTES} bytes`);
-          }
-          setBytesRef(newTotal);
-          chunks.push(value);
-        }
-      } finally {
-        await reader.cancel().catch(() => {});
-        reader.releaseLock();
-      }
-      const combined = new Uint8Array(getBytesRef());
-      let offset = 0;
-      for (const chunk of chunks) {
-        combined.set(chunk, offset);
-        offset += chunk.length;
-      }
-      return new TextDecoder().decode(combined);
-    };
-
     const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutId = setTimeout(() => {
-        abort();
+        weInitiatedKill = true;
         safeKill(proc, "SIGTERM");
         sigkillId = setTimeout(() => {
           safeKill(proc, "SIGKILL");
@@ -519,15 +470,10 @@ async function runInSubprocess<T>(method: string, args: unknown[]): Promise<T> {
       }, NATIVE_TIMEOUT_MS);
     });
 
-    const workPromise = Promise.all([
-      readStream(proc.stdout, stdoutChunks, () => stdoutBytes, (n) => { stdoutBytes = n; }),
-      readStream(proc.stderr, stderrChunks, () => stderrBytes, (n) => { stderrBytes = n; }),
-      proc.exited,
-    ]);
+    const exitCode = await Promise.race([proc.exited, timeoutPromise]);
 
-    const [stdout, stderr, exitCode] = await Promise.race([workPromise, timeoutPromise]);
+    if (timeoutId) clearTimeout(timeoutId);
 
-    // Note: proc.killed is always true after exit in Bun (even for normal exits), so we only check signalCode
     if (weInitiatedKill || proc.signalCode) {
       throw new Error(
         `Subprocess '${method}' was killed (signal: ${proc.signalCode || "SIGTERM"})`
@@ -535,6 +481,7 @@ async function runInSubprocess<T>(method: string, args: unknown[]): Promise<T> {
     }
 
     if (exitCode !== 0) {
+      const stderr = await proc.stderr.text();
       let errorMsg = stderr || `Process exited with code ${exitCode}`;
       try {
         const parsed = JSON.parse(stderr);
@@ -543,11 +490,16 @@ async function runInSubprocess<T>(method: string, args: unknown[]): Promise<T> {
       throw new Error(`Subprocess '${method}' failed: ${errorMsg}`);
     }
 
+    if (!existsSync(outputFile)) {
+      throw new Error(`Subprocess '${method}' did not produce output file`);
+    }
+
     try {
-      return JSON.parse(stdout) as T;
+      const output = readFileSync(outputFile, "utf-8");
+      return JSON.parse(output) as T;
     } catch (e) {
       throw new Error(
-        `Failed to parse subprocess output: ${(e as Error).message}\nstdout: ${stdout.slice(0, 500)}`
+        `Failed to parse subprocess output: ${(e as Error).message}`
       );
     }
   } finally {

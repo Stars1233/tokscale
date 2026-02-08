@@ -390,17 +390,13 @@ tokscale cursor logout --all --purge-cache
 | 変数 | デフォルト | 説明 |
 |----------|---------|-------------|
 | `TOKSCALE_NATIVE_TIMEOUT_MS` | `300000`（5分） | ネイティブサブプロセス処理の最大時間 |
-| `TOKSCALE_MAX_OUTPUT_BYTES` | `104857600`（100MB） | ネイティブサブプロセスからの最大出力サイズ |
 
 ```bash
 # 例：非常に大きなデータセット用にタイムアウトを増加
 TOKSCALE_NATIVE_TIMEOUT_MS=600000 tokscale graph --output data.json
-
-# 例：長年のデータを持つパワーユーザー用に出力制限を増加
-TOKSCALE_MAX_OUTPUT_BYTES=104857600 tokscale --json > report.json
 ```
 
-> **注**: これらの制限はハングやメモリ問題を防ぐための安全対策です。ほとんどのユーザーは変更する必要がありません。
+> **注**: この制限はハングを防ぐための安全対策です。ほとんどのユーザーは変更する必要がありません。
 
 ### ヘッドレスモード
 

@@ -421,17 +421,13 @@ For advanced users with large datasets or specific requirements:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `TOKSCALE_NATIVE_TIMEOUT_MS` | `300000` (5 min) | Maximum time for native subprocess processing |
-| `TOKSCALE_MAX_OUTPUT_BYTES` | `104857600` (100MB) | Maximum output size from native subprocess |
 
 ```bash
 # Example: Increase timeout for very large datasets
 TOKSCALE_NATIVE_TIMEOUT_MS=600000 tokscale graph --output data.json
-
-# Example: Increase output limit for power users with years of data
-TOKSCALE_MAX_OUTPUT_BYTES=104857600 tokscale --json > report.json
 ```
 
-> **Note**: These limits are safety measures to prevent hangs and memory issues. Most users won't need to change them.
+> **Note**: This limit is a safety measure to prevent hangs. Most users won't need to change it.
 
 ### Headless Mode
 
