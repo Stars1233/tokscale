@@ -6,7 +6,7 @@ pub mod settings;
 mod themes;
 mod ui;
 
-pub use app::{App, TuiConfig};
+pub use app::{App, Tab, TuiConfig};
 pub use data::{DataLoader, Source};
 pub use event::{Event, EventHandler};
 
@@ -29,6 +29,7 @@ pub fn run(
     since: Option<String>,
     until: Option<String>,
     year: Option<String>,
+    initial_tab: Option<Tab>,
 ) -> Result<()> {
     if debug {
         let _ = tracing_subscriber::fmt()
@@ -62,6 +63,7 @@ pub fn run(
         since,
         until,
         year,
+        initial_tab,
     };
     let app_result = App::new(config);
     let mut app = match app_result {

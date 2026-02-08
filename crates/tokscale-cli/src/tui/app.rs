@@ -18,6 +18,7 @@ pub struct TuiConfig {
     pub since: Option<String>,
     pub until: Option<String>,
     pub year: Option<String>,
+    pub initial_tab: Option<Tab>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -179,7 +180,7 @@ impl App {
 
         Ok(Self {
             should_quit: false,
-            current_tab: Tab::Overview,
+            current_tab: config.initial_tab.unwrap_or(Tab::Overview),
             theme,
             settings,
             data: UsageData::default(),

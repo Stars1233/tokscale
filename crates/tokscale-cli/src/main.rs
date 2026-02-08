@@ -6,6 +6,7 @@ use anyhow::Result;
 use chrono::Datelike;
 use clap::{Parser, Subcommand};
 use std::path::{Path, PathBuf};
+use tui::Tab;
 
 #[derive(Parser)]
 #[command(name = "tokscale")]
@@ -372,7 +373,7 @@ fn main() -> Result<()> {
     match cli.command {
         Some(Commands::Models {
             json,
-            light: _,
+            light,
             opencode,
             claude,
             codex,
@@ -394,11 +395,15 @@ fn main() -> Result<()> {
                 opencode, claude, codex, gemini, cursor, amp, droid, openclaw,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
-            run_models_report(json, sources, since, until, year)
+            if json || light {
+                run_models_report(json, sources, since, until, year)
+            } else {
+                tui::run(&cli.theme, cli.refresh, cli.debug, sources, since, until, year, Some(Tab::Models))
+            }
         }
         Some(Commands::Monthly {
             json,
-            light: _,
+            light,
             opencode,
             claude,
             codex,
@@ -420,7 +425,11 @@ fn main() -> Result<()> {
                 opencode, claude, codex, gemini, cursor, amp, droid, openclaw,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
-            run_monthly_report(json, sources, since, until, year)
+            if json || light {
+                run_monthly_report(json, sources, since, until, year)
+            } else {
+                tui::run(&cli.theme, cli.refresh, cli.debug, sources, since, until, year, Some(Tab::Daily))
+            }
         }
         Some(Commands::Pricing { model_id, json, provider }) => {
             run_pricing_lookup(&model_id, json, provider.as_deref())
@@ -481,7 +490,7 @@ fn main() -> Result<()> {
                 opencode, claude, codex, gemini, cursor, amp, droid, openclaw,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
-            tui::run(&cli.theme, cli.refresh, cli.debug, sources, since, until, year)
+            tui::run(&cli.theme, cli.refresh, cli.debug, sources, since, until, year, None)
         }
         Some(Commands::Submit {
             opencode,
@@ -558,7 +567,7 @@ fn main() -> Result<()> {
             } else if cli.light {
                 run_models_report(false, sources, since, until, cli.year)
             } else {
-                tui::run(&cli.theme, cli.refresh, cli.debug, sources, since, until, cli.year)
+                tui::run(&cli.theme, cli.refresh, cli.debug, sources, since, until, cli.year, None)
             }
         }
     }
