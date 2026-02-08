@@ -153,9 +153,9 @@ interface NativeParsedMessages {
   codexCount: number;
   geminiCount: number;
   ampCount: number;
-  droidCount?: number;
-  openclawCount?: number;
-  piCount?: number;
+  droidCount: number;
+  openclawCount: number;
+  piCount: number;
   processingTimeMs: number;
 }
 

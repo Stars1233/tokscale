@@ -65,6 +65,7 @@ const SOURCE_DISPLAY_NAMES: Record<string, string> = {
   amp: "Amp",
   droid: "Droid",
   openclaw: "OpenClaw",
+  pi: "Pi",
 };
 
 const ASSETS_BASE_URL = "https://tokscale.ai/assets/logos";
@@ -97,6 +98,7 @@ const CLIENT_LOGO_URLS: Record<string, string> = {
   "Amp": `${ASSETS_BASE_URL}/amp.png`,
   "Droid": `${ASSETS_BASE_URL}/droid.png`,
   "OpenClaw": `${ASSETS_BASE_URL}/openclaw.png`,
+  "Pi": `${ASSETS_BASE_URL}/pi.png`,
 };
 
 const PROVIDER_LOGO_URLS: Record<string, string> = {

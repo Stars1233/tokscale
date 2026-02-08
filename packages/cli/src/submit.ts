@@ -25,6 +25,7 @@ interface SubmitOptions {
   amp?: boolean;
   droid?: boolean;
   openclaw?: boolean;
+  pi?: boolean;
   since?: string;
   until?: string;
   year?: string;
@@ -193,7 +194,7 @@ export async function submit(options: SubmitOptions = {}): Promise<void> {
 
   console.log(pc.gray("  Scanning local session data..."));
 
-  const hasFilter = options.opencode || options.claude || options.codex || options.gemini || options.cursor || options.amp || options.droid || options.openclaw;
+  const hasFilter = options.opencode || options.claude || options.codex || options.gemini || options.cursor || options.amp || options.droid || options.openclaw || options.pi;
   let sources: SourceType[] | undefined;
   let includeCursor = true;
   if (hasFilter) {
@@ -206,6 +207,7 @@ export async function submit(options: SubmitOptions = {}): Promise<void> {
     if (options.amp) sources.push("amp");
     if (options.droid) sources.push("droid");
     if (options.openclaw) sources.push("openclaw");
+    if (options.pi) sources.push("pi");
     includeCursor = sources.includes("cursor");
   }
 

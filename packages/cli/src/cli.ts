@@ -532,12 +532,13 @@ async function main() {
         path.join(homeDir, ".moltbot", "agents"),
         path.join(homeDir, ".moldbot", "agents"),
       ];
+      const piSessions = path.join(homeDir, ".pi", "agent", "sessions");
 
       let localMessages: ParsedMessages | null = null;
       try {
         localMessages = await parseLocalSourcesAsync({
           homeDir,
-          sources: ["opencode", "claude", "codex", "gemini", "amp", "droid", "openclaw"],
+          sources: ["opencode", "claude", "codex", "gemini", "amp", "droid", "openclaw", "pi"],
         });
       } catch (e) {
         console.error(`Error: ${(e as Error).message}`);
@@ -633,6 +634,15 @@ async function main() {
           sessionsPath: openclawSessions,
           legacyPaths: openclawLegacyPaths,
           messageCount: localMessages.openclawCount,
+          headlessSupported: false,
+          headlessPaths: [],
+          headlessMessageCount: 0,
+        },
+        {
+          source: "pi",
+          label: "Pi",
+          sessionsPath: piSessions,
+          messageCount: localMessages.piCount,
           headlessSupported: false,
           headlessPaths: [],
           headlessMessageCount: 0,
@@ -813,6 +823,7 @@ async function main() {
         amp: options.amp,
         droid: options.droid,
         openclaw: options.openclaw,
+        pi: options.pi,
         since: options.since,
         until: options.until,
         year: options.year,
