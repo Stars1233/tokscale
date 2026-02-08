@@ -974,6 +974,7 @@ fn run_pricing_lookup(model_id: &str, json: bool, provider: Option<&str>) -> Res
         match result {
             Some(pricing) => {
                 #[derive(serde::Serialize)]
+                #[serde(rename_all = "camelCase")]
                 struct PricingOutput {
                     model: String,
                     matched_key: String,
@@ -1078,6 +1079,7 @@ fn run_sources_command(json: bool) -> Result<()> {
         .count() as i32;
     
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct SourceRow {
         source: String,
         label: String,
@@ -1093,12 +1095,14 @@ fn run_sources_command(json: bool) -> Result<()> {
     }
     
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct LegacyPath {
         path: String,
         exists: bool,
     }
     
     #[derive(serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct HeadlessPath {
         path: String,
         exists: bool,
@@ -1227,6 +1231,7 @@ fn run_sources_command(json: bool) -> Result<()> {
     
     if json {
         #[derive(serde::Serialize)]
+        #[serde(rename_all = "camelCase")]
         struct Output {
             headless_roots: Vec<String>,
             sources: Vec<SourceRow>,
