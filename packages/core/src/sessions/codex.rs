@@ -119,7 +119,7 @@ pub fn parse_codex_file(path: &Path) -> Vec<UnifiedMessage> {
 
                     let model = current_model
                         .clone()
-                        .unwrap_or_else(|| "unknown".to_string());
+                        .unwrap_or_else(|| "gpt-5.2-codex".to_string());
 
                     // Calculate delta tokens
                     // Note: OpenAI's input_tokens INCLUDES cached tokens (they are a subset).
@@ -264,7 +264,7 @@ fn parse_codex_headless_line(
     let model = usage
         .model
         .or_else(|| current_model.clone())
-        .unwrap_or_else(|| "unknown".to_string());
+        .unwrap_or_else(|| "gpt-5.2-codex".to_string());
     let timestamp = usage.timestamp_ms.unwrap_or(fallback_timestamp);
 
     if usage.input == 0 && usage.output == 0 && usage.cached == 0 {
