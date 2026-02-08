@@ -408,8 +408,8 @@ interface BunSubprocess {
 }
 
 interface BunSpawnOptions {
-  stdout: string;
-  stderr: string;
+  stdout: "pipe" | "ignore";
+  stderr: "pipe" | "ignore";
 }
 
 interface BunGlobalType {
@@ -440,7 +440,7 @@ async function runInSubprocess<T>(method: string, args: unknown[]): Promise<T> {
   let proc: BunSubprocess;
   try {
     proc = BunGlobal.spawn([process.execPath, runnerPath, inputFile, outputFile], {
-      stdout: "pipe",
+      stdout: "ignore",
       stderr: "pipe",
     });
   } catch (e) {
