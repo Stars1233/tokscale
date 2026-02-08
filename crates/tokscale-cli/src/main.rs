@@ -408,7 +408,7 @@ fn main() -> Result<()> {
             since,
             until,
             year,
-            benchmark: _,
+            benchmark,
             no_spinner: _,
         }) => {
             let sources = build_source_filter(SourceFlags {
@@ -416,7 +416,7 @@ fn main() -> Result<()> {
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             if json || light {
-                run_models_report(json, sources, since, until, year)
+                run_models_report(json, sources, since, until, year, benchmark)
             } else {
                 tui::run(&cli.theme, cli.refresh, cli.debug, sources, since, until, year, Some(Tab::Models))
             }
@@ -439,7 +439,7 @@ fn main() -> Result<()> {
             since,
             until,
             year,
-            benchmark: _,
+            benchmark,
             no_spinner: _,
         }) => {
             let sources = build_source_filter(SourceFlags {
@@ -447,7 +447,7 @@ fn main() -> Result<()> {
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             if json || light {
-                run_monthly_report(json, sources, since, until, year)
+                run_monthly_report(json, sources, since, until, year, benchmark)
             } else {
                 tui::run(&cli.theme, cli.refresh, cli.debug, sources, since, until, year, Some(Tab::Daily))
             }
@@ -590,9 +590,9 @@ fn main() -> Result<()> {
             let (since, until) = build_date_filter(cli.today, cli.week, cli.month, cli.since, cli.until);
 
             if cli.json {
-                run_models_report(cli.json, sources, since, until, cli.year)
+                run_models_report(cli.json, sources, since, until, cli.year, cli.benchmark)
             } else if cli.light {
-                run_models_report(false, sources, since, until, cli.year)
+                run_models_report(false, sources, since, until, cli.year, cli.benchmark)
             } else {
                 tui::run(&cli.theme, cli.refresh, cli.debug, sources, since, until, cli.year, None)
             }
@@ -672,10 +672,13 @@ fn run_models_report(
     since: Option<String>,
     until: Option<String>,
     year: Option<String>,
+    benchmark: bool,
 ) -> Result<()> {
     use tokio::runtime::Runtime;
     use tokscale_core::{get_model_report, ReportOptions};
+    use std::time::Instant;
 
+    let start = Instant::now();
     let rt = Runtime::new()?;
     let report = rt.block_on(async {
         get_model_report(ReportOptions {
@@ -687,6 +690,7 @@ fn run_models_report(
         })
         .await
     }).map_err(|e| anyhow::anyhow!(e))?;
+    let processing_time_ms = start.elapsed().as_millis();
 
     if json {
         println!("{}", serde_json::to_string_pretty(&report)?);
@@ -713,6 +717,11 @@ fn run_models_report(
             format_tokens(report.total_input + report.total_output + report.total_cache_read),
             format_currency(report.total_cost)
         );
+
+        if benchmark {
+            use colored::Colorize;
+            println!("{}", format!("  Processing time: {}ms (Rust native)", processing_time_ms).bright_black());
+        }
     }
 
     Ok(())
@@ -724,10 +733,13 @@ fn run_monthly_report(
     since: Option<String>,
     until: Option<String>,
     year: Option<String>,
+    benchmark: bool,
 ) -> Result<()> {
     use tokio::runtime::Runtime;
     use tokscale_core::{get_monthly_report, ReportOptions};
+    use std::time::Instant;
 
+    let start = Instant::now();
     let rt = Runtime::new()?;
     let report = rt.block_on(async {
         get_monthly_report(ReportOptions {
@@ -739,6 +751,7 @@ fn run_monthly_report(
         })
         .await
     }).map_err(|e| anyhow::anyhow!(e))?;
+    let processing_time_ms = start.elapsed().as_millis();
 
     if json {
         println!("{}", serde_json::to_string_pretty(&report)?);
@@ -770,6 +783,11 @@ fn run_monthly_report(
             format_tokens(total_input + total_output + total_cache_read),
             format_currency(report.total_cost)
         );
+
+        if benchmark {
+            use colored::Colorize;
+            println!("{}", format!("  Processing time: {}ms (Rust native)", processing_time_ms).bright_black());
+        }
     }
 
     Ok(())
