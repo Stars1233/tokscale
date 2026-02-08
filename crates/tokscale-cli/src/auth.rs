@@ -98,7 +98,7 @@ pub fn clear_credentials() -> Result<bool> {
     }
 }
 
-fn get_api_base_url() -> String {
+pub fn get_api_base_url() -> String {
     std::env::var("TOKSCALE_API_URL").unwrap_or_else(|_| "https://tokscale.ai".to_string())
 }
 
