@@ -217,9 +217,9 @@ The interactive TUI mode provides:
 
 - **4 Views**: Overview (chart + top models), Models, Daily, Stats (contribution graph)
 - **Keyboard Navigation**:
-  - `1-4` or `←/→/Tab`: Switch views
+  - `←/→/Tab`: Switch views
   - `↑/↓`: Navigate lists
-  - `c/n/t`: Sort by cost/name/tokens
+  - `c/t/d`: Sort by cost/tokens/date
   - `1-8`: Toggle sources (OpenCode/Claude/Codex/Cursor/Gemini/Amp/Droid/OpenClaw)
   - `p`: Cycle through 9 color themes
   - `r`: Refresh data
