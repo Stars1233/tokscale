@@ -390,17 +390,13 @@ tokscale cursor logout --all --purge-cache
 | 变量 | 默认值 | 描述 |
 |----------|---------|-------------|
 | `TOKSCALE_NATIVE_TIMEOUT_MS` | `300000`（5 分钟） | 原生子进程处理的最大时间 |
-| `TOKSCALE_MAX_OUTPUT_BYTES` | `104857600`（100MB） | 原生子进程的最大输出大小 |
 
 ```bash
 # 示例：为非常大的数据集增加超时时间
 TOKSCALE_NATIVE_TIMEOUT_MS=600000 tokscale graph --output data.json
-
-# 示例：为有多年数据的资深用户增加输出限制
-TOKSCALE_MAX_OUTPUT_BYTES=104857600 tokscale --json > report.json
 ```
 
-> **注意**：这些限制是防止卡住和内存问题的安全措施。大多数用户不需要更改它们。
+> **注意**：此限制是防止卡住的安全措施。大多数用户不需要更改。
 
 ### Headless 模式
 
