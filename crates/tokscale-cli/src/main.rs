@@ -57,6 +57,9 @@ struct Cli {
     #[arg(long, help = "Show only OpenClaw usage")]
     openclaw: bool,
 
+    #[arg(long, help = "Show only Pi usage")]
+    pi: bool,
+
     #[arg(long, help = "Show only today's usage")]
     today: bool,
 
@@ -103,6 +106,8 @@ enum Commands {
         droid: bool,
         #[arg(long, help = "Show only OpenClaw usage")]
         openclaw: bool,
+        #[arg(long, help = "Show only Pi usage")]
+        pi: bool,
         #[arg(long, help = "Show only today's usage")]
         today: bool,
         #[arg(long, help = "Show last 7 days")]
@@ -142,6 +147,8 @@ enum Commands {
         droid: bool,
         #[arg(long, help = "Show only OpenClaw usage")]
         openclaw: bool,
+        #[arg(long, help = "Show only Pi usage")]
+        pi: bool,
         #[arg(long, help = "Show only today's usage")]
         today: bool,
         #[arg(long, help = "Show last 7 days")]
@@ -198,6 +205,8 @@ enum Commands {
         droid: bool,
         #[arg(long, help = "Show only OpenClaw usage")]
         openclaw: bool,
+        #[arg(long, help = "Show only Pi usage")]
+        pi: bool,
         #[arg(long, help = "Show only today's usage")]
         today: bool,
         #[arg(long, help = "Show last 7 days")]
@@ -231,6 +240,8 @@ enum Commands {
         droid: bool,
         #[arg(long, help = "Show only OpenClaw usage")]
         openclaw: bool,
+        #[arg(long, help = "Show only Pi usage")]
+        pi: bool,
         #[arg(long, help = "Show only today's usage")]
         today: bool,
         #[arg(long, help = "Show last 7 days")]
@@ -262,6 +273,8 @@ enum Commands {
         droid: bool,
         #[arg(long, help = "Show only OpenClaw usage")]
         openclaw: bool,
+        #[arg(long, help = "Show only Pi usage")]
+        pi: bool,
         #[arg(long, help = "Show only today's usage")]
         today: bool,
         #[arg(long, help = "Show last 7 days")]
@@ -312,6 +325,8 @@ enum Commands {
         droid: bool,
         #[arg(long, help = "Show only OpenClaw usage")]
         openclaw: bool,
+        #[arg(long, help = "Show only Pi usage")]
+        pi: bool,
         #[arg(long, help = "Display total tokens in abbreviated format (e.g., 7.14B)")]
         short: bool,
         #[arg(long, help = "Show Top OpenCode Agents (default)")]
@@ -382,6 +397,7 @@ fn main() -> Result<()> {
             amp,
             droid,
             openclaw,
+            pi,
             today,
             week,
             month,
@@ -392,7 +408,7 @@ fn main() -> Result<()> {
             no_spinner: _,
         }) => {
             let sources = build_source_filter(SourceFlags {
-                opencode, claude, codex, gemini, cursor, amp, droid, openclaw,
+                opencode, claude, codex, gemini, cursor, amp, droid, openclaw, pi,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             if json || light {
@@ -412,6 +428,7 @@ fn main() -> Result<()> {
             amp,
             droid,
             openclaw,
+            pi,
             today,
             week,
             month,
@@ -422,7 +439,7 @@ fn main() -> Result<()> {
             no_spinner: _,
         }) => {
             let sources = build_source_filter(SourceFlags {
-                opencode, claude, codex, gemini, cursor, amp, droid, openclaw,
+                opencode, claude, codex, gemini, cursor, amp, droid, openclaw, pi,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             if json || light {
@@ -456,6 +473,7 @@ fn main() -> Result<()> {
             amp,
             droid,
             openclaw,
+            pi,
             today,
             week,
             month,
@@ -465,7 +483,7 @@ fn main() -> Result<()> {
             benchmark,
         }) => {
             let sources = build_source_filter(SourceFlags {
-                opencode, claude, codex, gemini, cursor, amp, droid, openclaw,
+                opencode, claude, codex, gemini, cursor, amp, droid, openclaw, pi,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             run_graph_command(output, sources, since, until, year, benchmark)
@@ -479,6 +497,7 @@ fn main() -> Result<()> {
             amp,
             droid,
             openclaw,
+            pi,
             today,
             week,
             month,
@@ -487,7 +506,7 @@ fn main() -> Result<()> {
             year,
         }) => {
             let sources = build_source_filter(SourceFlags {
-                opencode, claude, codex, gemini, cursor, amp, droid, openclaw,
+                opencode, claude, codex, gemini, cursor, amp, droid, openclaw, pi,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             tui::run(&cli.theme, cli.refresh, cli.debug, sources, since, until, year, None)
@@ -501,6 +520,7 @@ fn main() -> Result<()> {
             amp,
             droid,
             openclaw,
+            pi,
             today,
             week,
             month,
@@ -510,7 +530,7 @@ fn main() -> Result<()> {
             dry_run,
         }) => {
             let sources = build_source_filter(SourceFlags {
-                opencode, claude, codex, gemini, cursor, amp, droid, openclaw,
+                opencode, claude, codex, gemini, cursor, amp, droid, openclaw, pi,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             run_submit_command(sources, since, until, year, dry_run)
@@ -535,6 +555,7 @@ fn main() -> Result<()> {
             amp,
             droid,
             openclaw,
+            pi,
             short,
             agents,
             clients,
@@ -542,7 +563,7 @@ fn main() -> Result<()> {
             no_spinner: _,
         }) => {
             let sources = build_source_filter(SourceFlags {
-                opencode, claude, codex, gemini, cursor, amp, droid, openclaw,
+                opencode, claude, codex, gemini, cursor, amp, droid, openclaw, pi,
             });
             run_wrapped_command(output, year, sources, short, agents, clients, disable_pinned)
         }
@@ -559,6 +580,7 @@ fn main() -> Result<()> {
                 amp: cli.amp,
                 droid: cli.droid,
                 openclaw: cli.openclaw,
+                pi: cli.pi,
             });
             let (since, until) = build_date_filter(cli.today, cli.week, cli.month, cli.since, cli.until);
 
@@ -582,6 +604,7 @@ struct SourceFlags {
     amp: bool,
     droid: bool,
     openclaw: bool,
+    pi: bool,
 }
 
 fn build_source_filter(flags: SourceFlags) -> Option<Vec<String>> {
@@ -594,6 +617,7 @@ fn build_source_filter(flags: SourceFlags) -> Option<Vec<String>> {
     if flags.amp { sources.push("amp".to_string()); }
     if flags.droid { sources.push("droid".to_string()); }
     if flags.openclaw { sources.push("openclaw".to_string()); }
+    if flags.pi { sources.push("pi".to_string()); }
     
     if sources.is_empty() {
         None
@@ -1018,6 +1042,7 @@ fn run_sources_command(json: bool) -> Result<()> {
             "amp".to_string(),
             "droid".to_string(),
             "openclaw".to_string(),
+            "pi".to_string(),
         ]),
         since: None,
         until: None,
@@ -1160,6 +1185,17 @@ fn run_sources_command(json: bool) -> Result<()> {
                 },
             ],
             message_count: parsed.openclaw_count,
+            headless_supported: false,
+            headless_paths: vec![],
+            headless_message_count: 0,
+        },
+        SourceRow {
+            source: "pi".to_string(),
+            label: "Pi".to_string(),
+            sessions_path: home_dir.join(".pi/agent/sessions").to_string_lossy().to_string(),
+            sessions_path_exists: home_dir.join(".pi/agent/sessions").exists(),
+            legacy_paths: vec![],
+            message_count: parsed.pi_count,
             headless_supported: false,
             headless_paths: vec![],
             headless_message_count: 0,
