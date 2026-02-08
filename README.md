@@ -229,6 +229,26 @@ The interactive TUI mode provides:
 - **Themes**: Green, Halloween, Teal, Blue, Pink, Purple, Orange, Monochrome, YlGnBu
 - **Settings Persistence**: Preferences saved to `~/.config/tokscale/settings.json` (see [Configuration](#configuration))
 
+### Launching TUI with Filters
+
+You can launch the TUI with pre-applied filters using the explicit `tui` command:
+
+```bash
+# Launch TUI with only OpenCode data
+tokscale tui --opencode
+
+# Launch TUI with last week's data
+tokscale tui --week
+
+# Combine multiple filters
+tokscale tui --opencode --claude --month
+
+# Launch TUI with custom date range
+tokscale tui --since 2024-01-01 --until 2024-12-31
+```
+
+All source filters (`--opencode`, `--claude`, `--codex`, `--gemini`, `--cursor`, `--amp`, `--droid`, `--openclaw`) and date filters (`--today`, `--week`, `--month`, `--since`, `--until`, `--year`) are supported.
+
 ### Filtering by Platform
 
 ```bash
@@ -296,6 +316,10 @@ tokscale pricing "grok-code"
 # Force specific provider source
 tokscale pricing "grok-code" --provider openrouter
 tokscale pricing "claude-3-5-sonnet" --provider litellm
+
+# Output as JSON (for scripting)
+tokscale pricing "claude-3-5-sonnet-20241022" --json
+tokscale pricing "grok-code" --provider openrouter --json
 ```
 
 **Lookup Strategy:**
@@ -456,11 +480,26 @@ Tokscale automatically scans this directory structure:
 export TOKSCALE_HEADLESS_DIR="$HOME/my-custom-logs"
 ```
 
-**Recommended (automatic capture):**
+**Command Options:**
 
-| Tool | Command Example |
-|------|-----------------|
-| **Codex CLI** | `tokscale headless codex exec -m gpt-5 "implement feature"` |
+```bash
+# Basic usage (auto-adds --json for codex)
+tokscale headless codex exec -m gpt-5 "implement feature"
+
+# Custom output path
+tokscale headless codex exec -m gpt-5 "prompt" --output /tmp/output.jsonl
+
+# Override format (json or jsonl)
+tokscale headless codex exec -m gpt-5 "prompt" --format json
+
+# Disable auto-flags (don't add --json automatically)
+tokscale headless codex exec --json "prompt" --no-auto-flags
+```
+
+**Options:**
+- `--output <file>` - Write captured output to specific file path
+- `--format <json|jsonl>` - Override output format (default: jsonl)
+- `--no-auto-flags` - Do not automatically add `--json` flag to codex command
 
 **Manual redirect (optional):**
 
