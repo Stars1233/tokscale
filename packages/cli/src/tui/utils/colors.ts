@@ -61,7 +61,7 @@ export const SOURCE_COLORS: Record<SourceType, string> = {
   amp: "#EC4899",
   droid: "#10b981",
   openclaw: "#ef4444",
-  pi: "#f59e0b",
+  pi: "#f97316",
 };
 
 export function getSourceColor(source: SourceType | string): string {
