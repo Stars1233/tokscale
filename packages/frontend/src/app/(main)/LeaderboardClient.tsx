@@ -774,6 +774,8 @@ export default function LeaderboardClient({ initialData, currentUser, initialSor
   const effectiveSortBy = mounted ? leaderboardSortBy : initialSortBy;
 
   const isFirstMount = useRef(true);
+  const prevPeriodRef = useRef<Period>(initialData.period);
+  const prevPageRef = useRef(initialData.pagination.page);
   const prevSortByRef = useRef(initialSortBy);
 
   useEffect(() => {
@@ -837,15 +839,22 @@ export default function LeaderboardClient({ initialData, currentUser, initialSor
       return;
     }
 
-    if (effectiveSortBy === prevSortByRef.current && period === initialData.period && page === initialData.pagination.page) {
+    const periodChanged = period !== prevPeriodRef.current;
+    const pageChanged = page !== prevPageRef.current;
+    const sortByChanged = effectiveSortBy !== prevSortByRef.current;
+
+    if (!periodChanged && !pageChanged && !sortByChanged) {
       return;
     }
+
+    prevPeriodRef.current = period;
+    prevPageRef.current = page;
     prevSortByRef.current = effectiveSortBy;
 
     const abortController = new AbortController();
     fetchData(period, page, effectiveSortBy, abortController.signal);
     return () => abortController.abort();
-  }, [period, page, effectiveSortBy, initialData.period, initialData.pagination.page]);
+  }, [period, page, effectiveSortBy]);
 
   useEffect(() => {
     if (data.pagination.totalPages > 0 && page > data.pagination.totalPages) {

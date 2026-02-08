@@ -42,7 +42,11 @@ pub fn aggregate_by_date(messages: Vec<UnifiedMessage>) -> Vec<DailyContribution
 
     // Convert to sorted vector with pre-allocated capacity
     let mut contributions: Vec<DailyContribution> = Vec::with_capacity(daily_map.len());
-    contributions.extend(daily_map.into_iter().map(|(date, acc)| acc.into_contribution(date)));
+    contributions.extend(
+        daily_map
+            .into_iter()
+            .map(|(date, acc)| acc.into_contribution(date)),
+    );
 
     // Sort by date
     contributions.sort_by(|a, b| a.date.cmp(&b.date));
@@ -57,7 +61,7 @@ pub fn aggregate_by_date(messages: Vec<UnifiedMessage>) -> Vec<DailyContribution
 pub fn calculate_summary(contributions: &[DailyContribution]) -> DataSummary {
     let total_tokens: i64 = contributions.iter().map(|c| c.totals.tokens).sum();
     let total_cost: f64 = contributions.iter().map(|c| c.totals.cost).sum();
-    let active_days = contributions.iter().filter(|c| c.totals.cost > 0.0).count() as i32;
+    let active_days = contributions.iter().filter(|c| c.totals.tokens > 0).count() as i32;
     let max_cost = contributions
         .iter()
         .map(|c| c.totals.cost)
@@ -173,7 +177,9 @@ impl Default for DayAccumulator {
 
 impl DayAccumulator {
     fn add_message(&mut self, msg: &UnifiedMessage) {
-        let total_tokens = msg.tokens.input
+        let total_tokens = msg
+            .tokens
+            .input
             .saturating_add(msg.tokens.output)
             .saturating_add(msg.tokens.cache_read)
             .saturating_add(msg.tokens.cache_write)
@@ -184,10 +190,22 @@ impl DayAccumulator {
         self.totals.messages = self.totals.messages.saturating_add(1);
 
         self.token_breakdown.input = self.token_breakdown.input.saturating_add(msg.tokens.input);
-        self.token_breakdown.output = self.token_breakdown.output.saturating_add(msg.tokens.output);
-        self.token_breakdown.cache_read = self.token_breakdown.cache_read.saturating_add(msg.tokens.cache_read);
-        self.token_breakdown.cache_write = self.token_breakdown.cache_write.saturating_add(msg.tokens.cache_write);
-        self.token_breakdown.reasoning = self.token_breakdown.reasoning.saturating_add(msg.tokens.reasoning);
+        self.token_breakdown.output = self
+            .token_breakdown
+            .output
+            .saturating_add(msg.tokens.output);
+        self.token_breakdown.cache_read = self
+            .token_breakdown
+            .cache_read
+            .saturating_add(msg.tokens.cache_read);
+        self.token_breakdown.cache_write = self
+            .token_breakdown
+            .cache_write
+            .saturating_add(msg.tokens.cache_write);
+        self.token_breakdown.reasoning = self
+            .token_breakdown
+            .reasoning
+            .saturating_add(msg.tokens.reasoning);
 
         // Update source contribution
         let key = format!("{}:{}", msg.source, msg.model_id);
@@ -205,8 +223,14 @@ impl DayAccumulator {
 
         source.tokens.input = source.tokens.input.saturating_add(msg.tokens.input);
         source.tokens.output = source.tokens.output.saturating_add(msg.tokens.output);
-        source.tokens.cache_read = source.tokens.cache_read.saturating_add(msg.tokens.cache_read);
-        source.tokens.cache_write = source.tokens.cache_write.saturating_add(msg.tokens.cache_write);
+        source.tokens.cache_read = source
+            .tokens
+            .cache_read
+            .saturating_add(msg.tokens.cache_read);
+        source.tokens.cache_write = source
+            .tokens
+            .cache_write
+            .saturating_add(msg.tokens.cache_write);
         source.tokens.reasoning = source.tokens.reasoning.saturating_add(msg.tokens.reasoning);
         source.cost += msg.cost;
         source.messages = source.messages.saturating_add(1);
@@ -217,11 +241,26 @@ impl DayAccumulator {
         self.totals.cost += other.totals.cost;
         self.totals.messages = self.totals.messages.saturating_add(other.totals.messages);
 
-        self.token_breakdown.input = self.token_breakdown.input.saturating_add(other.token_breakdown.input);
-        self.token_breakdown.output = self.token_breakdown.output.saturating_add(other.token_breakdown.output);
-        self.token_breakdown.cache_read = self.token_breakdown.cache_read.saturating_add(other.token_breakdown.cache_read);
-        self.token_breakdown.cache_write = self.token_breakdown.cache_write.saturating_add(other.token_breakdown.cache_write);
-        self.token_breakdown.reasoning = self.token_breakdown.reasoning.saturating_add(other.token_breakdown.reasoning);
+        self.token_breakdown.input = self
+            .token_breakdown
+            .input
+            .saturating_add(other.token_breakdown.input);
+        self.token_breakdown.output = self
+            .token_breakdown
+            .output
+            .saturating_add(other.token_breakdown.output);
+        self.token_breakdown.cache_read = self
+            .token_breakdown
+            .cache_read
+            .saturating_add(other.token_breakdown.cache_read);
+        self.token_breakdown.cache_write = self
+            .token_breakdown
+            .cache_write
+            .saturating_add(other.token_breakdown.cache_write);
+        self.token_breakdown.reasoning = self
+            .token_breakdown
+            .reasoning
+            .saturating_add(other.token_breakdown.reasoning);
 
         for (key, source) in other.sources {
             let entry = self
@@ -238,21 +277,58 @@ impl DayAccumulator {
 
             entry.tokens.input = entry.tokens.input.saturating_add(source.tokens.input);
             entry.tokens.output = entry.tokens.output.saturating_add(source.tokens.output);
-            entry.tokens.cache_read = entry.tokens.cache_read.saturating_add(source.tokens.cache_read);
-            entry.tokens.cache_write = entry.tokens.cache_write.saturating_add(source.tokens.cache_write);
-            entry.tokens.reasoning = entry.tokens.reasoning.saturating_add(source.tokens.reasoning);
+            entry.tokens.cache_read = entry
+                .tokens
+                .cache_read
+                .saturating_add(source.tokens.cache_read);
+            entry.tokens.cache_write = entry
+                .tokens
+                .cache_write
+                .saturating_add(source.tokens.cache_write);
+            entry.tokens.reasoning = entry
+                .tokens
+                .reasoning
+                .saturating_add(source.tokens.reasoning);
             entry.cost += source.cost;
             entry.messages = entry.messages.saturating_add(source.messages);
         }
     }
 
     fn into_contribution(self, date: String) -> DailyContribution {
+        // Clamp all token values to non-negative to ensure validation passes
+        let token_breakdown = TokenBreakdown {
+            input: self.token_breakdown.input.max(0),
+            output: self.token_breakdown.output.max(0),
+            cache_read: self.token_breakdown.cache_read.max(0),
+            cache_write: self.token_breakdown.cache_write.max(0),
+            reasoning: self.token_breakdown.reasoning.max(0),
+        };
+
+        // Clamp source contributions to non-negative
+        let sources: Vec<SourceContribution> = self
+            .sources
+            .into_values()
+            .map(|mut s| {
+                s.tokens.input = s.tokens.input.max(0);
+                s.tokens.output = s.tokens.output.max(0);
+                s.tokens.cache_read = s.tokens.cache_read.max(0);
+                s.tokens.cache_write = s.tokens.cache_write.max(0);
+                s.tokens.reasoning = s.tokens.reasoning.max(0);
+                s.cost = s.cost.max(0.0);
+                s
+            })
+            .collect();
+
         DailyContribution {
             date,
-            totals: self.totals,
+            totals: DailyTotals {
+                tokens: self.totals.tokens.max(0),
+                cost: self.totals.cost.max(0.0),
+                messages: self.totals.messages.max(0),
+            },
             intensity: 0, // Will be calculated later
-            token_breakdown: self.token_breakdown,
-            sources: self.sources.into_values().collect(),
+            token_breakdown,
+            sources,
         }
     }
 }

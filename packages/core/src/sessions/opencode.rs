@@ -69,13 +69,13 @@ pub fn parse_opencode_file(path: &Path) -> Option<UnifiedMessage> {
         msg.session_id.clone(),
         msg.time.created as i64,
         TokenBreakdown {
-            input: tokens.input,
-            output: tokens.output,
-            cache_read: tokens.cache.read,
-            cache_write: tokens.cache.write,
-            reasoning: tokens.reasoning.unwrap_or(0),
+            input: tokens.input.max(0),
+            output: tokens.output.max(0),
+            cache_read: tokens.cache.read.max(0),
+            cache_write: tokens.cache.write.max(0),
+            reasoning: tokens.reasoning.unwrap_or(0).max(0),
         },
-        msg.cost.unwrap_or(0.0),
+        msg.cost.unwrap_or(0.0).max(0.0),
         agent,
     ))
 }
@@ -133,5 +133,57 @@ mod tests {
         let msg: OpenCodeMessage = simd_json::from_slice(&mut bytes).unwrap();
 
         assert_eq!(msg.agent, Some("OmO".to_string()));
+    }
+
+    /// Verify negative token values are clamped to 0 (defense-in-depth for PR #147)
+    #[test]
+    fn test_negative_values_clamped_to_zero() {
+        use std::io::Write;
+
+        let json = r#"{
+            "id": "msg_negative",
+            "sessionID": "ses_negative",
+            "role": "assistant",
+            "modelID": "claude-sonnet-4",
+            "providerID": "anthropic",
+            "cost": -0.05,
+            "tokens": {
+                "input": -100,
+                "output": -50,
+                "reasoning": -25,
+                "cache": { "read": -200, "write": -10 }
+            },
+            "time": { "created": 1700000000000.0 }
+        }"#;
+
+        let mut temp_file = tempfile::Builder::new().suffix(".json").tempfile().unwrap();
+        temp_file.write_all(json.as_bytes()).unwrap();
+
+        let result = parse_opencode_file(temp_file.path());
+        assert!(result.is_some(), "Should parse file with negative values");
+
+        let msg = result.unwrap();
+        assert_eq!(msg.tokens.input, 0, "Negative input should be clamped to 0");
+        assert_eq!(
+            msg.tokens.output, 0,
+            "Negative output should be clamped to 0"
+        );
+        assert_eq!(
+            msg.tokens.cache_read, 0,
+            "Negative cache_read should be clamped to 0"
+        );
+        assert_eq!(
+            msg.tokens.cache_write, 0,
+            "Negative cache_write should be clamped to 0"
+        );
+        assert_eq!(
+            msg.tokens.reasoning, 0,
+            "Negative reasoning should be clamped to 0"
+        );
+        assert!(
+            msg.cost >= 0.0,
+            "Negative cost should be clamped to 0.0, got {}",
+            msg.cost
+        );
     }
 }

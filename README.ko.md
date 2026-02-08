@@ -384,22 +384,18 @@ tokscale cursor logout --all --purge-cache
 
 ### 환경 변수
 
-대용량 데이터셋이나 특수 요구사항이 있는 고급 사용자용:
+환경 변수는 설정 파일 값을 오버라이드합니다. CI/CD 또는 일회성 사용:
 
 | 변수 | 기본값 | 설명 |
 |----------|---------|-------------|
-| `TOKSCALE_NATIVE_TIMEOUT_MS` | `300000` (5분) | 네이티브 서브프로세스 처리 최대 시간 |
-| `TOKSCALE_MAX_OUTPUT_BYTES` | `104857600` (100MB) | 네이티브 서브프로세스의 최대 출력 크기 |
+| `TOKSCALE_NATIVE_TIMEOUT_MS` | `300000` (5분) | `nativeTimeoutMs` 설정 오버라이드 |
 
 ```bash
 # 예시: 매우 큰 데이터셋에 대한 타임아웃 증가
 TOKSCALE_NATIVE_TIMEOUT_MS=600000 tokscale graph --output data.json
-
-# 예시: 수년간의 데이터를 가진 파워 유저를 위한 출력 제한 증가
-TOKSCALE_MAX_OUTPUT_BYTES=104857600 tokscale --json > report.json
 ```
 
-> **참고**: 이러한 제한은 중단 및 메모리 문제를 방지하기 위한 안전 조치입니다. 대부분의 사용자는 변경할 필요가 없습니다.
+> **참고**: 영구적인 변경은 `~/.config/tokscale/settings.json`에서 `nativeTimeoutMs`를 설정하는 것을 권장합니다. 환경 변수는 일회성 오버라이드나 CI/CD에 적합합니다.
 
 ### Headless 모드
 

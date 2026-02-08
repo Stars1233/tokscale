@@ -437,25 +437,22 @@ Tokscale stores settings in `~/.config/tokscale/settings.json`:
 | `includeUnusedModels` | boolean | `false` | Show models with zero tokens in reports |
 | `autoRefreshEnabled` | boolean | `false` | Enable auto-refresh in TUI |
 | `autoRefreshMs` | number | `60000` | Auto-refresh interval (30000-3600000ms) |
+| `nativeTimeoutMs` | number | `300000` | Maximum time for native subprocess processing (5000-3600000ms) |
 
 ### Environment Variables
 
-For advanced users with large datasets or specific requirements:
+Environment variables override config file values. For CI/CD or one-off use:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `TOKSCALE_NATIVE_TIMEOUT_MS` | `300000` (5 min) | Maximum time for native subprocess processing |
-| `TOKSCALE_MAX_OUTPUT_BYTES` | `104857600` (100MB) | Maximum output size from native subprocess |
+| `TOKSCALE_NATIVE_TIMEOUT_MS` | `300000` (5 min) | Overrides `nativeTimeoutMs` config |
 
 ```bash
 # Example: Increase timeout for very large datasets
 TOKSCALE_NATIVE_TIMEOUT_MS=600000 tokscale graph --output data.json
-
-# Example: Increase output limit for power users with years of data
-TOKSCALE_MAX_OUTPUT_BYTES=104857600 tokscale --json > report.json
 ```
 
-> **Note**: These limits are safety measures to prevent hangs and memory issues. Most users won't need to change them.
+> **Note**: For persistent changes, prefer setting `nativeTimeoutMs` in `~/.config/tokscale/settings.json`. Environment variables are best for one-off overrides or CI/CD.
 
 ### Headless Mode
 
