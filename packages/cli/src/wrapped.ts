@@ -216,8 +216,8 @@ async function ensureFontsLoaded(): Promise<void> {
 
 async function loadWrappedData(options: WrappedOptions): Promise<WrappedData> {
   const year = options.year || new Date().getFullYear().toString();
-  const sources = options.sources || ["opencode", "claude", "codex", "gemini", "cursor", "amp", "droid", "openclaw"];
-  const localSources = sources.filter(s => s !== "cursor") as ("opencode" | "claude" | "codex" | "gemini" | "amp" | "droid" | "openclaw")[];
+  const sources = options.sources || ["opencode", "claude", "codex", "gemini", "cursor", "amp", "droid", "openclaw", "pi"];
+  const localSources = sources.filter(s => s !== "cursor") as ("opencode" | "claude" | "codex" | "gemini" | "amp" | "droid" | "openclaw" | "pi")[];
   const includeCursor = sources.includes("cursor");
 
   const since = `${year}-01-01`;
