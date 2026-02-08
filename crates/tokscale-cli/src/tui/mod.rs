@@ -148,6 +148,7 @@ pub fn test_data_loading() -> Result<()> {
         Source::Amp,
         Source::Droid,
         Source::OpenClaw,
+        Source::Pi,
     ];
 
     let data = loader.load(&all_sources)?;
