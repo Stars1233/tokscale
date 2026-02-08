@@ -1,7 +1,11 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+
+fn home_dir() -> Result<PathBuf> {
+    dirs::home_dir().context("Could not determine home directory")
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Credentials {
@@ -43,15 +47,12 @@ struct UserInfo {
     avatar_url: Option<String>,
 }
 
-fn get_credentials_path() -> PathBuf {
-    let home = dirs::home_dir().expect("Could not determine home directory");
-    home.join(".config/tokscale/credentials.json")
+fn get_credentials_path() -> Result<PathBuf> {
+    Ok(home_dir()?.join(".config/tokscale/credentials.json"))
 }
 
 fn ensure_config_dir() -> Result<()> {
-    let config_dir = dirs::home_dir()
-        .expect("Could not determine home directory")
-        .join(".config/tokscale");
+    let config_dir = home_dir()?.join(".config/tokscale");
     
     if !config_dir.exists() {
         fs::create_dir_all(&config_dir)?;
@@ -66,31 +67,31 @@ fn ensure_config_dir() -> Result<()> {
 
 pub fn save_credentials(credentials: &Credentials) -> Result<()> {
     ensure_config_dir()?;
-    let path = get_credentials_path();
+    let path = get_credentials_path()?;
     let json = serde_json::to_string_pretty(credentials)?;
     fs::write(&path, json)?;
-    
+
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         fs::set_permissions(&path, fs::Permissions::from_mode(0o600))?;
     }
-    
+
     Ok(())
 }
 
 pub fn load_credentials() -> Option<Credentials> {
-    let path = get_credentials_path();
+    let path = get_credentials_path().ok()?;
     if !path.exists() {
         return None;
     }
-    
+
     let content = fs::read_to_string(path).ok()?;
     serde_json::from_str(&content).ok()
 }
 
 pub fn clear_credentials() -> Result<bool> {
-    let path = get_credentials_path();
+    let path = get_credentials_path()?;
     if path.exists() {
         fs::remove_file(path)?;
         Ok(true)
@@ -233,44 +234,40 @@ pub fn logout() -> Result<()> {
     
     let credentials = load_credentials();
     
-    if credentials.is_none() {
+    let Some(creds) = credentials else {
         println!("\n  {}\n", "Not logged in.".yellow());
         return Ok(());
-    }
-    
-    let username = credentials.unwrap().username;
+    };
+
+    let username = creds.username;
     let cleared = clear_credentials()?;
-    
+
     if cleared {
         println!("\n  {}\n", format!("Logged out from {}", username.bold()).green());
     } else {
         anyhow::bail!("Failed to clear credentials.");
     }
-    
+
     Ok(())
 }
 
 pub fn whoami() -> Result<()> {
     use colored::Colorize;
-    
-    let credentials = load_credentials();
-    
-    if credentials.is_none() {
+
+    let Some(creds) = load_credentials() else {
         println!("\n  {}", "Not logged in.".yellow());
         println!("{}", "  Run 'tokscale login' to authenticate.\n".bright_black());
         return Ok(());
-    }
-    
-    let creds = credentials.unwrap();
-    
+    };
+
     println!("\n  {}\n", "Tokscale - Account Info".cyan());
     println!("{}", format!("  Username:  {}", creds.username.bold()).white());
-    
+
     if let Ok(created) = chrono::DateTime::parse_from_rfc3339(&creds.created_at) {
         println!("{}", format!("  Logged in: {}", created.format("%Y-%m-%d")).bright_black());
     }
-    
+
     println!();
-    
+
     Ok(())
 }

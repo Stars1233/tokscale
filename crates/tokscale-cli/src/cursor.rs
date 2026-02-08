@@ -6,6 +6,10 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 
+fn home_dir() -> Result<PathBuf> {
+    dirs::home_dir().context("Could not determine home directory")
+}
+
 const USAGE_CSV_ENDPOINT: &str =
     "https://cursor.com/api/dashboard/export-usage-events-csv?strategy=tokens";
 const USAGE_SUMMARY_ENDPOINT: &str = "https://cursor.com/api/usage-summary";
@@ -52,29 +56,29 @@ pub struct SyncCursorResult {
     pub error: Option<String>,
 }
 
-pub fn get_cursor_credentials_path() -> PathBuf {
-    let home = dirs::home_dir().expect("Could not determine home directory");
-    home.join(".config/tokscale/cursor-credentials.json")
+pub fn get_cursor_credentials_path() -> Result<PathBuf> {
+    Ok(home_dir()?.join(".config/tokscale/cursor-credentials.json"))
 }
 
-fn get_old_cursor_credentials_path() -> PathBuf {
-    let home = dirs::home_dir().expect("Could not determine home directory");
-    home.join(".tokscale/cursor-credentials.json")
+fn get_old_cursor_credentials_path() -> Result<PathBuf> {
+    Ok(home_dir()?.join(".tokscale/cursor-credentials.json"))
 }
 
-pub fn get_cursor_cache_dir() -> PathBuf {
-    let home = dirs::home_dir().expect("Could not determine home directory");
-    home.join(".config/tokscale/cursor-cache")
+pub fn get_cursor_cache_dir() -> Result<PathBuf> {
+    Ok(home_dir()?.join(".config/tokscale/cursor-cache"))
 }
 
-fn get_old_cursor_cache_dir() -> PathBuf {
-    let home = dirs::home_dir().expect("Could not determine home directory");
-    home.join(".tokscale/cursor-cache")
+fn get_old_cursor_cache_dir() -> Result<PathBuf> {
+    Ok(home_dir()?.join(".tokscale/cursor-cache"))
 }
 
 fn migrate_cache_dir_from_old_path() {
-    let old_dir = get_old_cursor_cache_dir();
-    let new_dir = get_cursor_cache_dir();
+    let Ok(old_dir) = get_old_cursor_cache_dir() else {
+        return;
+    };
+    let Ok(new_dir) = get_cursor_cache_dir() else {
+        return;
+    };
     if !new_dir.exists() && old_dir.exists() {
         if fs::create_dir_all(&new_dir).is_ok() {
             let _ = copy_dir_recursive(&old_dir, &new_dir);
@@ -99,21 +103,18 @@ fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> Result<()
 }
 
 fn build_cursor_headers(session_token: &str) -> reqwest::header::HeaderMap {
+    use reqwest::header::HeaderValue;
+
     let mut headers = reqwest::header::HeaderMap::new();
-    headers.insert("Accept", "*/*".parse().unwrap());
-    headers.insert("Accept-Language", "en-US,en;q=0.9".parse().unwrap());
-    headers.insert(
-        "Cookie",
-        format!("WorkosCursorSessionToken={}", session_token)
-            .parse()
-            .unwrap(),
-    );
-    headers.insert("Referer", "https://www.cursor.com/settings".parse().unwrap());
+    headers.insert("Accept", HeaderValue::from_static("*/*"));
+    headers.insert("Accept-Language", HeaderValue::from_static("en-US,en;q=0.9"));
+    if let Ok(cookie) = format!("WorkosCursorSessionToken={}", session_token).parse() {
+        headers.insert("Cookie", cookie);
+    }
+    headers.insert("Referer", HeaderValue::from_static("https://www.cursor.com/settings"));
     headers.insert(
         "User-Agent",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            .parse()
-            .unwrap(),
+        HeaderValue::from_static("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"),
     );
     headers
 }
@@ -161,9 +162,7 @@ fn atomic_write_file(path: &std::path::Path, contents: &str) -> Result<()> {
 }
 
 fn ensure_config_dir() -> Result<()> {
-    let config_dir = dirs::home_dir()
-        .expect("Could not determine home directory")
-        .join(".config/tokscale");
+    let config_dir = home_dir()?.join(".config/tokscale");
 
     if !config_dir.exists() {
         fs::create_dir_all(&config_dir)?;
@@ -223,10 +222,10 @@ fn sanitize_account_id_for_filename(account_id: &str) -> String {
 }
 
 pub fn load_credentials_store() -> Option<CursorCredentialsStore> {
-    let path = get_cursor_credentials_path();
-    let old_path = get_old_cursor_credentials_path();
+    let path = get_cursor_credentials_path().ok()?;
+    let old_path = get_old_cursor_credentials_path().ok()?;
     let read_path = if path.exists() {
-        path
+        path.clone()
     } else if old_path.exists() {
         old_path
     } else {
@@ -244,11 +243,13 @@ pub fn load_credentials_store() -> Option<CursorCredentialsStore> {
                     changed = true;
                 }
             }
-            if changed || read_path != get_cursor_credentials_path() {
+            if changed || read_path != path {
                 let _ = save_credentials_store(&store);
             }
-            if read_path != get_cursor_credentials_path() {
-                let _ = fs::remove_file(get_old_cursor_credentials_path());
+            if read_path != path {
+                if let Ok(old) = get_old_cursor_credentials_path() {
+                    let _ = fs::remove_file(old);
+                }
             }
             return Some(store);
         }
@@ -265,8 +266,10 @@ pub fn load_credentials_store() -> Option<CursorCredentialsStore> {
         };
 
         let _ = save_credentials_store(&migrated);
-        if read_path != get_cursor_credentials_path() {
-            let _ = fs::remove_file(get_old_cursor_credentials_path());
+        if read_path != path {
+            if let Ok(old) = get_old_cursor_credentials_path() {
+                let _ = fs::remove_file(old);
+            }
         }
         return Some(migrated);
     }
@@ -276,7 +279,7 @@ pub fn load_credentials_store() -> Option<CursorCredentialsStore> {
 
 pub fn save_credentials_store(store: &CursorCredentialsStore) -> Result<()> {
     ensure_config_dir()?;
-    let path = get_cursor_credentials_path();
+    let path = get_cursor_credentials_path()?;
     let json = serde_json::to_string_pretty(store)?;
     atomic_write_file(&path, &json)?;
 
@@ -413,7 +416,7 @@ pub fn remove_account(name_or_id: &str, purge_cache: bool) -> Result<()> {
 
     let was_active = resolved == store.active_account_id;
 
-    let cache_dir = get_cursor_cache_dir();
+    let cache_dir = get_cursor_cache_dir()?;
     if cache_dir.exists() {
         let per_account = cache_dir.join(format!(
             "usage.{}.csv",
@@ -441,7 +444,7 @@ pub fn remove_account(name_or_id: &str, purge_cache: bool) -> Result<()> {
     store.accounts.remove(&resolved);
 
     if store.accounts.is_empty() {
-            let path = get_cursor_credentials_path();
+        let path = get_cursor_credentials_path()?;
         if path.exists() {
             fs::remove_file(path)?;
         }
@@ -467,7 +470,7 @@ pub fn remove_account(name_or_id: &str, purge_cache: bool) -> Result<()> {
 }
 
 pub fn remove_all_accounts(purge_cache: bool) -> Result<()> {
-    let cache_dir = get_cursor_cache_dir();
+    let cache_dir = get_cursor_cache_dir()?;
     if cache_dir.exists() {
         if let Ok(entries) = fs::read_dir(&cache_dir) {
             for entry in entries.flatten() {
@@ -483,7 +486,7 @@ pub fn remove_all_accounts(purge_cache: bool) -> Result<()> {
         }
     }
 
-    let path = get_cursor_credentials_path();
+    let path = get_cursor_credentials_path()?;
     if path.exists() {
         fs::remove_file(path)?;
     }
@@ -510,7 +513,7 @@ pub fn set_active_account(name_or_id: &str) -> Result<()> {
 }
 
 fn reconcile_cache_files(old_account_id: &str, new_account_id: &str) -> Result<()> {
-    let cache_dir = get_cursor_cache_dir();
+    let cache_dir = get_cursor_cache_dir()?;
     if !cache_dir.exists() {
         return Ok(());
     }
@@ -566,7 +569,10 @@ fn is_cursor_usage_csv_filename(name: &str) -> bool {
 
 pub fn has_cursor_usage_cache() -> bool {
     migrate_cache_dir_from_old_path();
-    let cache_dir = get_cursor_cache_dir();
+    let cache_dir = match get_cursor_cache_dir() {
+        Ok(d) => d,
+        Err(_) => return false,
+    };
     if !cache_dir.exists() {
         return false;
     }
@@ -725,7 +731,16 @@ pub async fn sync_cursor_cache() -> SyncCursorResult {
         };
     }
 
-    let cache_dir = get_cursor_cache_dir();
+    let cache_dir = match get_cursor_cache_dir() {
+        Ok(d) => d,
+        Err(e) => {
+            return SyncCursorResult {
+                synced: false,
+                rows: 0,
+                error: Some(format!("Failed to get cache dir: {}", e)),
+            };
+        }
+    };
     if let Err(e) = fs::create_dir_all(&cache_dir) {
         return SyncCursorResult {
             synced: false,
@@ -809,7 +824,7 @@ pub async fn sync_cursor_cache() -> SyncCursorResult {
 }
 
 fn archive_cache_file(file_path: &std::path::Path, label: &str) -> Result<()> {
-    let cache_dir = get_cursor_cache_dir();
+    let cache_dir = get_cursor_cache_dir()?;
     let archive_dir = cache_dir.join("archive");
     if !archive_dir.exists() {
         fs::create_dir_all(&archive_dir)?;
@@ -919,12 +934,10 @@ pub fn run_cursor_logout(name: Option<String>, all: bool, purge_cache: bool) -> 
         return Ok(());
     }
 
-    let store = load_credentials_store();
-    if store.is_none() {
+    let Some(store) = load_credentials_store() else {
         println!("\n  {}\n", "No saved Cursor accounts.".yellow());
         return Ok(());
-    }
-    let store = store.unwrap();
+    };
     let active_id = store.active_account_id.clone();
     let display = store
         .accounts

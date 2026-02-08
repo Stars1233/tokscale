@@ -664,7 +664,7 @@ fn build_date_filter(
     
     if month {
         let now = Utc::now();
-        let start = now.with_day(1).unwrap();
+        let start = now.with_day(1).unwrap_or(now);
         return (
             Some(start.format("%Y-%m-%d").to_string()),
             Some(now.format("%Y-%m-%d").to_string()),
@@ -1517,7 +1517,11 @@ fn get_codex_home(home_dir: &Path) -> PathBuf {
 }
 
 fn describe_path(path: &str, exists: bool) -> String {
-    let path_display = path.replace(&dirs::home_dir().unwrap().to_string_lossy().to_string(), "~");
+    let path_display = if let Some(home) = dirs::home_dir() {
+        path.replace(&home.to_string_lossy().to_string(), "~")
+    } else {
+        path.to_string()
+    };
     if exists {
         format!("{} ✓", path_display)
     } else {
