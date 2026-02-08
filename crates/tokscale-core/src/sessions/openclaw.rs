@@ -153,13 +153,13 @@ fn parse_openclaw_session(session_path: &Path, session_id: &str) -> Vec<UnifiedM
                         session_id.to_string(),
                         timestamp,
                         TokenBreakdown {
-                            input: usage.input.unwrap_or(0),
-                            output: usage.output.unwrap_or(0),
-                            cache_read: usage.cache_read.unwrap_or(0),
-                            cache_write: usage.cache_write.unwrap_or(0),
+                            input: usage.input.unwrap_or(0).max(0),
+                            output: usage.output.unwrap_or(0).max(0),
+                            cache_read: usage.cache_read.unwrap_or(0).max(0),
+                            cache_write: usage.cache_write.unwrap_or(0).max(0),
                             reasoning: 0,
                         },
-                        cost,
+                        cost.max(0.0),
                     ));
                 }
             }
