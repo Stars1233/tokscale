@@ -6,6 +6,9 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 
+const USAGE_CSV_ENDPOINT: &str =
+    "https://cursor.com/api/dashboard/export-usage-events-csv?strategy=tokens";
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CursorCredentials {
     #[serde(rename = "sessionToken")]
@@ -41,14 +44,41 @@ pub struct AccountInfo {
     pub is_active: bool,
 }
 
+#[derive(Debug)]
+pub struct SyncCursorResult {
+    pub synced: bool,
+    pub rows: usize,
+    pub error: Option<String>,
+}
+
 pub fn get_cursor_credentials_path() -> PathBuf {
     let home = dirs::home_dir().expect("Could not determine home directory");
     home.join(".config/tokscale/cursor-credentials.json")
 }
 
-fn get_cursor_cache_dir() -> PathBuf {
+pub fn get_cursor_cache_dir() -> PathBuf {
     let home = dirs::home_dir().expect("Could not determine home directory");
     home.join(".config/tokscale/cursor-cache")
+}
+
+fn build_cursor_headers(session_token: &str) -> reqwest::header::HeaderMap {
+    let mut headers = reqwest::header::HeaderMap::new();
+    headers.insert("Accept", "*/*".parse().unwrap());
+    headers.insert("Accept-Language", "en-US,en;q=0.9".parse().unwrap());
+    headers.insert(
+        "Cookie",
+        format!("WorkosCursorSessionToken={}", session_token)
+            .parse()
+            .unwrap(),
+    );
+    headers.insert("Referer", "https://www.cursor.com/settings".parse().unwrap());
+    headers.insert(
+        "User-Agent",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+            .parse()
+            .unwrap(),
+    );
+    headers
 }
 
 fn ensure_config_dir() -> Result<()> {
@@ -396,6 +426,10 @@ pub fn load_active_credentials() -> Option<CursorCredentials> {
     store.accounts.get(&store.active_account_id).cloned()
 }
 
+pub fn is_cursor_logged_in() -> bool {
+    load_active_credentials().is_some()
+}
+
 pub fn load_credentials_for(name_or_id: &str) -> Option<CursorCredentials> {
     let store = load_credentials_store()?;
     let resolved = resolve_account_id(&store, name_or_id)?;
@@ -418,6 +452,133 @@ pub async fn validate_cursor_session(
         .context("Failed to connect to Cursor API")?;
 
     Ok(response.status().is_success())
+}
+
+pub async fn fetch_cursor_usage_csv(session_token: &str) -> Result<String> {
+    let client = reqwest::Client::new();
+    let response = client
+        .get(USAGE_CSV_ENDPOINT)
+        .headers(build_cursor_headers(session_token))
+        .send()
+        .await?;
+
+    if response.status() == reqwest::StatusCode::UNAUTHORIZED
+        || response.status() == reqwest::StatusCode::FORBIDDEN
+    {
+        anyhow::bail!(
+            "Cursor session expired. Please run 'tokscale cursor login' to re-authenticate."
+        );
+    }
+
+    if !response.status().is_success() {
+        anyhow::bail!("Cursor API returned status {}", response.status());
+    }
+
+    let text = response.text().await?;
+
+    if !text.starts_with("Date,") {
+        anyhow::bail!("Invalid response from Cursor API - expected CSV format");
+    }
+
+    Ok(text)
+}
+
+pub async fn sync_cursor_cache() -> SyncCursorResult {
+    let store = match load_credentials_store() {
+        Some(s) => s,
+        None => {
+            return SyncCursorResult {
+                synced: false,
+                rows: 0,
+                error: Some("Not authenticated".to_string()),
+            };
+        }
+    };
+
+    if store.accounts.is_empty() {
+        return SyncCursorResult {
+            synced: false,
+            rows: 0,
+            error: Some("Not authenticated".to_string()),
+        };
+    }
+
+    let cache_dir = get_cursor_cache_dir();
+    if let Err(e) = fs::create_dir_all(&cache_dir) {
+        return SyncCursorResult {
+            synced: false,
+            rows: 0,
+            error: Some(format!("Failed to create cache dir: {}", e)),
+        };
+    }
+
+    let active_dup = cache_dir.join(format!(
+        "usage.{}.csv",
+        sanitize_account_id_for_filename(&store.active_account_id)
+    ));
+    if active_dup.exists() {
+        let _ = fs::remove_file(&active_dup);
+    }
+
+    let mut total_rows = 0;
+    let mut success_count = 0;
+    let mut errors: Vec<String> = Vec::new();
+
+    for (account_id, credentials) in &store.accounts {
+        let is_active = account_id == &store.active_account_id;
+
+        match fetch_cursor_usage_csv(&credentials.session_token).await {
+            Ok(csv_text) => {
+                let file_path = if is_active {
+                    cache_dir.join("usage.csv")
+                } else {
+                    cache_dir.join(format!(
+                        "usage.{}.csv",
+                        sanitize_account_id_for_filename(account_id)
+                    ))
+                };
+
+                let row_count = csv_text.lines().count().saturating_sub(1);
+
+                if let Err(e) = fs::write(&file_path, &csv_text) {
+                    errors.push(format!("{}: Failed to write cache: {}", account_id, e));
+                } else {
+                    total_rows += row_count;
+                    success_count += 1;
+                }
+            }
+            Err(e) => {
+                errors.push(format!("{}: {}", account_id, e));
+            }
+        }
+    }
+
+    if success_count == 0 {
+        return SyncCursorResult {
+            synced: false,
+            rows: 0,
+            error: Some(
+                errors
+                    .first()
+                    .cloned()
+                    .unwrap_or_else(|| "Cursor sync failed".to_string()),
+            ),
+        };
+    }
+
+    SyncCursorResult {
+        synced: true,
+        rows: total_rows,
+        error: if errors.is_empty() {
+            None
+        } else {
+            Some(format!(
+                "Some accounts failed ({}/{})",
+                errors.len(),
+                store.accounts.len()
+            ))
+        },
+    }
 }
 
 fn archive_cache_file(file_path: &std::path::Path, label: &str) -> Result<()> {

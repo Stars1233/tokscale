@@ -1468,6 +1468,20 @@ fn run_submit_command(
     };
 
     println!("\n  {}\n", "Tokscale - Submit Usage Data".cyan());
+    
+    // Sync cursor cache before generating graph (matches TypeScript behavior)
+    let include_cursor = sources.as_ref().map_or(true, |s| s.iter().any(|src| src == "cursor"));
+    if include_cursor && cursor::is_cursor_logged_in() {
+        println!("{}", "  Syncing Cursor usage data...".bright_black());
+        let rt_sync = Runtime::new()?;
+        let sync_result = rt_sync.block_on(async { cursor::sync_cursor_cache().await });
+        if sync_result.synced {
+            println!("{}", format!("  Cursor: {} usage events synced", sync_result.rows).bright_black());
+        } else if let Some(err) = sync_result.error {
+            println!("{}", format!("  Cursor sync warning: {}", err).yellow());
+        }
+    }
+    
     println!("{}", "  Scanning local session data...".bright_black());
 
     let rt = Runtime::new()?;
