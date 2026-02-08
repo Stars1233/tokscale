@@ -152,6 +152,7 @@ impl App {
                     "amp" => enabled_sources.insert(Source::Amp),
                     "droid" => enabled_sources.insert(Source::Droid),
                     "openclaw" => enabled_sources.insert(Source::OpenClaw),
+                    "pi" => enabled_sources.insert(Source::Pi),
                     _ => false,
                 };
             }
