@@ -25,6 +25,57 @@ struct Cli {
 
     #[arg(long)]
     test_data: bool,
+
+    #[arg(long, help = "Output as JSON")]
+    json: bool,
+
+    #[arg(long, help = "Use legacy CLI table output")]
+    light: bool,
+
+    #[arg(long, help = "Show only OpenCode usage")]
+    opencode: bool,
+
+    #[arg(long, help = "Show only Claude Code usage")]
+    claude: bool,
+
+    #[arg(long, help = "Show only Codex CLI usage")]
+    codex: bool,
+
+    #[arg(long, help = "Show only Gemini CLI usage")]
+    gemini: bool,
+
+    #[arg(long, help = "Show only Cursor IDE usage")]
+    cursor: bool,
+
+    #[arg(long, help = "Show only Amp usage")]
+    amp: bool,
+
+    #[arg(long, help = "Show only Droid usage")]
+    droid: bool,
+
+    #[arg(long, help = "Show only OpenClaw usage")]
+    openclaw: bool,
+
+    #[arg(long, help = "Show only today's usage")]
+    today: bool,
+
+    #[arg(long, help = "Show last 7 days")]
+    week: bool,
+
+    #[arg(long, help = "Show current month")]
+    month: bool,
+
+    #[arg(long, help = "Start date (YYYY-MM-DD)")]
+    since: Option<String>,
+
+    #[arg(long, help = "End date (YYYY-MM-DD)")]
+    until: Option<String>,
+
+    #[arg(long, help = "Filter by year (YYYY)")]
+    year: Option<String>,
+
+    #[arg(long, help = "Show processing time")]
+    benchmark: bool,
 }
 
 #[derive(Subcommand)]
@@ -490,7 +541,25 @@ fn main() -> Result<()> {
             run_cursor_command(subcommand)
         }
         None => {
-            tui::run(&cli.theme, cli.refresh, cli.debug, None, None, None, None)
+            let sources = build_source_filter(SourceFlags {
+                opencode: cli.opencode,
+                claude: cli.claude,
+                codex: cli.codex,
+                gemini: cli.gemini,
+                cursor: cli.cursor,
+                amp: cli.amp,
+                droid: cli.droid,
+                openclaw: cli.openclaw,
+            });
+            let (since, until) = build_date_filter(cli.today, cli.week, cli.month, cli.since, cli.until);
+
+            if cli.json {
+                run_models_report(cli.json, sources, since, until, cli.year)
+            } else if cli.light {
+                run_models_report(false, sources, since, until, cli.year)
+            } else {
+                tui::run(&cli.theme, cli.refresh, cli.debug, sources, since, until, cli.year)
+            }
         }
     }
 }
