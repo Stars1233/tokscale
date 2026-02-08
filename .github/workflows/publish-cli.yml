@@ -396,7 +396,7 @@ jobs:
           if [ -z "$PREV_TAG" ]; then
             echo "⚠️ No previous tag found, skipping release notes generation"
             gh release create "v$NEW_VERSION" \
-              --title "\`tokscale@v$NEW_VERSION\` is here!" \
+              --title "v$NEW_VERSION" \
               --notes "First release"
             exit 0
           fi
@@ -463,7 +463,7 @@ EOF
           
           # Create release
           gh release create "v$NEW_VERSION" \
-            --title "\`tokscale@v$NEW_VERSION\` is here!" \
+            --title "v$NEW_VERSION" \
             --notes "$NOTES"
           
           echo "🎉 Created GitHub release: https://github.com/${{ github.repository }}/releases/tag/v$NEW_VERSION"
