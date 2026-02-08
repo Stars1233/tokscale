@@ -17,6 +17,7 @@ pub enum SessionType {
     Amp,
     Droid,
     OpenClaw,
+    Pi,
 }
 
 /// Result of scanning all session directories
@@ -30,6 +31,7 @@ pub struct ScanResult {
     pub amp_files: Vec<PathBuf>,
     pub droid_files: Vec<PathBuf>,
     pub openclaw_files: Vec<PathBuf>,
+    pub pi_files: Vec<PathBuf>,
 }
 
 impl ScanResult {
@@ -43,6 +45,7 @@ impl ScanResult {
             + self.amp_files.len()
             + self.droid_files.len()
             + self.openclaw_files.len()
+            + self.pi_files.len()
     }
 
     /// Get all files as a single vector
@@ -72,6 +75,9 @@ impl ScanResult {
         }
         for path in &self.openclaw_files {
             result.push((SessionType::OpenClaw, path.clone()));
+        }
+        for path in &self.pi_files {
+            result.push((SessionType::Pi, path.clone()));
         }
 
         result
@@ -173,6 +179,7 @@ pub fn scan_all_sources(home_dir: &str, sources: &[String]) -> ScanResult {
     let include_amp = include_all || sources.iter().any(|s| s == "amp");
     let include_droid = include_all || sources.iter().any(|s| s == "droid");
     let include_openclaw = include_all || sources.iter().any(|s| s == "openclaw");
+    let include_pi = include_all || sources.iter().any(|s| s == "pi");
 
     let headless_roots = headless_roots(home_dir);
 
@@ -248,6 +255,12 @@ pub fn scan_all_sources(home_dir: &str, sources: &[String]) -> ScanResult {
         tasks.push((SessionType::OpenClaw, moldbot_path, "sessions.json"));
     }
 
+    if include_pi {
+        // Pi (badlogic/pi-mono): ~/.pi/agent/sessions/**/*.jsonl
+        let pi_path = format!("{}/.pi/agent/sessions", home_dir);
+        tasks.push((SessionType::Pi, pi_path, "*.jsonl"));
+    }
+
     // Execute scans in parallel
     let scan_results: Vec<(SessionType, Vec<PathBuf>)> = tasks
         .into_par_iter()
@@ -268,6 +281,7 @@ pub fn scan_all_sources(home_dir: &str, sources: &[String]) -> ScanResult {
             SessionType::Amp => result.amp_files.extend(files),
             SessionType::Droid => result.droid_files.extend(files),
             SessionType::OpenClaw => result.openclaw_files.extend(files),
+            SessionType::Pi => result.pi_files.extend(files),
         }
     }
 
@@ -300,8 +314,9 @@ mod tests {
             amp_files: vec![],
             droid_files: vec![],
             openclaw_files: vec![],
+            pi_files: vec![PathBuf::from("e.jsonl")],
         };
-        assert_eq!(result.total_files(), 4);
+        assert_eq!(result.total_files(), 5);
     }
 
     #[test]
@@ -315,15 +330,17 @@ mod tests {
             amp_files: vec![],
             droid_files: vec![],
             openclaw_files: vec![],
+            pi_files: vec![PathBuf::from("f.jsonl")],
         };
 
         let all = result.all_files();
-        assert_eq!(all.len(), 5);
+        assert_eq!(all.len(), 6);
         assert_eq!(all[0], (SessionType::OpenCode, PathBuf::from("a.json")));
         assert_eq!(all[1], (SessionType::Claude, PathBuf::from("b.jsonl")));
         assert_eq!(all[2], (SessionType::Codex, PathBuf::from("c.jsonl")));
         assert_eq!(all[3], (SessionType::Gemini, PathBuf::from("d.json")));
         assert_eq!(all[4], (SessionType::Cursor, PathBuf::from("e.csv")));
+        assert_eq!(all[5], (SessionType::Pi, PathBuf::from("f.jsonl")));
     }
 
     #[test]

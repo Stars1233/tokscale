@@ -65,6 +65,7 @@ pub struct ParsedMessages {
     pub amp_count: i32,
     pub droid_count: i32,
     pub openclaw_count: i32,
+    pub pi_count: i32,
     pub processing_time_ms: u32,
 }
 
@@ -397,6 +398,28 @@ fn parse_all_messages_with_pricing(
         .collect();
     all_messages.extend(openclaw_messages);
 
+    let pi_messages: Vec<UnifiedMessage> = scan_result
+        .pi_files
+        .par_iter()
+        .flat_map(|path| {
+            sessions::pi::parse_pi_file(path)
+                .into_iter()
+                .map(|mut msg| {
+                    msg.cost = pricing.calculate_cost(
+                        &msg.model_id,
+                        msg.tokens.input,
+                        msg.tokens.output,
+                        msg.tokens.cache_read,
+                        msg.tokens.cache_write,
+                        msg.tokens.reasoning,
+                    );
+                    msg
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    all_messages.extend(pi_messages);
+
     all_messages
 }
 
@@ -415,6 +438,7 @@ pub async fn get_model_report(options: ReportOptions) -> Result<ModelReport, Str
             "amp".to_string(),
             "droid".to_string(),
             "openclaw".to_string(),
+            "pi".to_string(),
         ]
     });
 
@@ -507,6 +531,7 @@ pub async fn get_monthly_report(options: ReportOptions) -> Result<MonthlyReport,
             "amp".to_string(),
             "droid".to_string(),
             "openclaw".to_string(),
+            "pi".to_string(),
         ]
     });
 
@@ -575,6 +600,7 @@ pub async fn generate_graph(options: ReportOptions) -> Result<GraphResult, Strin
             "amp".to_string(),
             "droid".to_string(),
             "openclaw".to_string(),
+            "pi".to_string(),
         ]
     });
 
@@ -637,6 +663,7 @@ pub fn parse_local_sources(options: LocalParseOptions) -> Result<ParsedMessages,
             "amp".to_string(),
             "droid".to_string(),
             "openclaw".to_string(),
+            "pi".to_string(),
         ]
     });
 
@@ -750,6 +777,19 @@ pub fn parse_local_sources(options: LocalParseOptions) -> Result<ParsedMessages,
     let openclaw_count = openclaw_msgs.len() as i32;
     messages.extend(openclaw_msgs);
 
+    let pi_msgs: Vec<ParsedMessage> = scan_result
+        .pi_files
+        .par_iter()
+        .flat_map(|path| {
+            sessions::pi::parse_pi_file(path)
+                .into_iter()
+                .map(|msg| unified_to_parsed(&msg))
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    let pi_count = pi_msgs.len() as i32;
+    messages.extend(pi_msgs);
+
     let filtered = filter_parsed_messages(messages, &options);
 
     Ok(ParsedMessages {
@@ -761,6 +801,7 @@ pub fn parse_local_sources(options: LocalParseOptions) -> Result<ParsedMessages,
         amp_count,
         droid_count,
         openclaw_count,
+        pi_count,
         processing_time_ms: start.elapsed().as_millis() as u32,
     })
 }
