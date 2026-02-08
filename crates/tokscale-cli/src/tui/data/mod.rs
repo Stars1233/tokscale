@@ -90,6 +90,7 @@ pub enum Source {
     Amp,
     Droid,
     OpenClaw,
+    Pi,
 }
 
 impl Source {
@@ -103,6 +104,7 @@ impl Source {
             Source::Amp,
             Source::Droid,
             Source::OpenClaw,
+            Source::Pi,
         ]
     }
 
@@ -116,6 +118,7 @@ impl Source {
             Source::Amp => "Amp",
             Source::Droid => "Droid",
             Source::OpenClaw => "OpenClaw",
+            Source::Pi => "Pi",
         }
     }
 
@@ -129,6 +132,7 @@ impl Source {
             Source::Amp => '6',
             Source::Droid => '7',
             Source::OpenClaw => '8',
+            Source::Pi => '9',
         }
     }
 
@@ -142,6 +146,7 @@ impl Source {
             '6' => Some(Source::Amp),
             '7' => Some(Source::Droid),
             '8' => Some(Source::OpenClaw),
+            '9' => Some(Source::Pi),
             _ => None,
         }
     }
@@ -156,6 +161,7 @@ impl Source {
             Source::Amp => "amp",
             Source::Droid => "droid",
             Source::OpenClaw => "openclaw",
+            Source::Pi => "pi",
         }
     }
 }
@@ -288,6 +294,15 @@ impl DataLoader {
                 .openclaw_files
                 .par_iter()
                 .flat_map(|path| sessions::openclaw::parse_openclaw_index(path))
+                .collect();
+            all_messages.extend(msgs);
+        }
+
+        if enabled_sources.contains(&Source::Pi) {
+            let msgs: Vec<UnifiedMessage> = scan_result
+                .pi_files
+                .par_iter()
+                .flat_map(|path| sessions::pi::parse_pi_file(path))
                 .collect();
             all_messages.extend(msgs);
         }
