@@ -190,6 +190,7 @@ export interface ParsedMessages {
   ampCount: number
   droidCount: number
   openclawCount: number
+  piCount: number
   processingTimeMs: number
 }
 
