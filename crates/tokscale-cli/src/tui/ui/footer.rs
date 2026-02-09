@@ -246,20 +246,20 @@ fn render_help_row(frame: &mut Frame, app: &App, area: Rect) {
 fn render_status_row(frame: &mut Frame, app: &App, area: Rect) {
     let mut spans: Vec<Span> = Vec::new();
 
-    if let Some(ref msg) = app.status_message {
-        spans.push(Span::styled(
-            msg.clone(),
-            Style::default()
-                .fg(Color::Green)
-                .add_modifier(Modifier::BOLD),
-        ));
-    } else if app.data.loading || app.background_loading {
+    if app.data.loading || app.background_loading {
         let scanner_spans = get_scanner_spans(app.spinner_frame);
         spans.extend(scanner_spans);
         spans.push(Span::raw(" "));
         spans.push(Span::styled(
             get_phase_message("parsing-sources"),
             Style::default().fg(app.theme.muted),
+        ));
+    } else if let Some(ref msg) = app.status_message {
+        spans.push(Span::styled(
+            msg.clone(),
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD),
         ));
     } else {
         let elapsed = app.last_refresh.elapsed();
