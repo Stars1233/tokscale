@@ -8,15 +8,16 @@ Tokscale's TUI supports **both mouse interactions** (clicking tabs, buttons) **a
 
 To select and copy text from the TUI, use your terminal's **native text selection** with a modifier key:
 
-| Terminal | Method |
-|----------|--------|
-| **iTerm2** | **Shift + Drag** or **Option/Alt + Drag** |
-| **WezTerm** | **Shift + Drag** |
-| **Alacritty** | **Shift + Drag** |
-| **Kitty** | **Shift + Drag** |
-| **Windows Terminal** | **Shift + Drag** |
-| **GNOME Terminal** | **Shift + Drag** |
-| **Konsole** | **Shift + Drag** |
+| Terminal | Method | Notes |
+|----------|--------|-------|
+| **Ghostty** | **Shift + Drag** | ⚠️ Known quirk: Second Shift+click extends selection. Add `mouse-shift-capture = never` to config for better behavior |
+| **iTerm2** | **Shift + Drag** or **Option/Alt + Drag** | Both work |
+| **WezTerm** | **Shift + Drag** | |
+| **Alacritty** | **Shift + Drag** | |
+| **Kitty** | **Shift + Drag** | |
+| **Windows Terminal** | **Shift + Drag** | |
+| **GNOME Terminal** | **Shift + Drag** | |
+| **Konsole** | **Shift + Drag** | |
 
 ### How It Works
 
@@ -30,6 +31,17 @@ To select and copy text from the TUI, use your terminal's **native text selectio
    - Copy with your terminal's copy shortcut (Cmd+C / Ctrl+Shift+C)
 
 This is the same behavior as OpenCode, Claude Code, and other TUI applications that use mouse capture.
+
+### Ghostty-Specific Configuration
+
+If you're using Ghostty and experiencing issues with selection extending incorrectly, add this to `~/.config/ghostty/config`:
+
+```ini
+# Prevent Shift from being sent to applications
+mouse-shift-capture = never
+```
+
+This ensures Shift+drag always works for text selection without quirks.
 
 ### Technical Details
 
