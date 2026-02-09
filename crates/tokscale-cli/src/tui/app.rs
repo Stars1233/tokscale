@@ -311,7 +311,7 @@ impl App {
 
     pub fn set_background_loading(&mut self, loading: bool) {
         self.background_loading = loading;
-        self.data.loading = loading;
+        // Don't set data.loading - let cached data remain visible during background refresh
     }
 
     pub fn update_data(&mut self, data: UsageData) {

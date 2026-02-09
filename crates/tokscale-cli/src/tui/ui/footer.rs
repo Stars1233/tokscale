@@ -253,7 +253,7 @@ fn render_status_row(frame: &mut Frame, app: &App, area: Rect) {
                 .fg(Color::Green)
                 .add_modifier(Modifier::BOLD),
         ));
-    } else if app.data.loading {
+    } else if app.data.loading || app.background_loading {
         let scanner_spans = get_scanner_spans(app.spinner_frame);
         spans.extend(scanner_spans);
         spans.push(Span::raw(" "));
