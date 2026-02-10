@@ -13,7 +13,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         .title(Span::styled(
             " Daily Usage ",
             Style::default()
-                .fg(app.theme.highlight)
+                .fg(app.theme.accent)
                 .add_modifier(Modifier::BOLD),
         ))
         .style(Style::default().bg(app.theme.background));
@@ -39,8 +39,8 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     let sort_direction = app.sort_direction;
     let scroll_offset = app.scroll_offset;
     let selected_index = app.selected_index;
-    let theme_highlight = app.theme.highlight;
-    let theme_colors = app.theme.colors;
+    let theme_accent = app.theme.accent;
+    let theme_selection = app.theme.selection;
 
     let header_cells = if is_very_narrow {
         vec!["Date", "Cost"]
@@ -83,7 +83,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     )
     .style(
         Style::default()
-            .fg(theme_highlight)
+            .fg(theme_accent)
             .add_modifier(Modifier::BOLD),
     )
     .height(1);
@@ -107,13 +107,13 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             let cells: Vec<Cell> = if is_very_narrow {
                 vec![
                     Cell::from(day.date.format("%m/%d").to_string()),
-                    Cell::from(format_cost(day.cost)).style(Style::default().fg(theme_highlight)),
+                    Cell::from(format_cost(day.cost)).style(Style::default().fg(Color::Green)),
                 ]
             } else if is_narrow {
                 vec![
                     Cell::from(day.date.format("%Y-%m-%d").to_string()),
                     Cell::from(format_tokens(day.tokens.total())),
-                    Cell::from(format_cost(day.cost)).style(Style::default().fg(theme_highlight)),
+                    Cell::from(format_cost(day.cost)).style(Style::default().fg(Color::Green)),
                 ]
             } else {
                 vec![
@@ -128,12 +128,12 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
                     Cell::from(format_tokens(day.tokens.cache_write))
                         .style(Style::default().fg(Color::Rgb(200, 150, 100))),
                     Cell::from(format_tokens(day.tokens.total())),
-                    Cell::from(format_cost(day.cost)).style(Style::default().fg(theme_highlight)),
+                    Cell::from(format_cost(day.cost)).style(Style::default().fg(Color::Green)),
                 ]
             };
 
             let row_style = if is_selected {
-                Style::default().bg(theme_colors[1])
+                Style::default().bg(theme_selection)
             } else if is_striped {
                 Style::default().bg(Color::Rgb(20, 24, 30))
             } else {
@@ -166,7 +166,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
 
     let table = Table::new(rows, widths)
         .header(header)
-        .row_highlight_style(Style::default().bg(theme_colors[2]));
+        .row_highlight_style(Style::default().bg(theme_selection));
 
     frame.render_widget(table, inner);
 

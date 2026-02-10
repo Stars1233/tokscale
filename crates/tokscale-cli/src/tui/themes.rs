@@ -77,6 +77,8 @@ pub struct Theme {
     pub border: Color,
     pub highlight: Color,
     pub muted: Color,
+    pub accent: Color,
+    pub selection: Color,
 }
 
 impl Theme {
@@ -156,6 +158,8 @@ impl Theme {
             border: Color::Rgb(48, 54, 61),
             highlight: colors[4],
             muted: Color::Rgb(139, 148, 158),
+            accent: Color::Cyan,
+            selection: Color::Rgb(48, 54, 61),
         }
     }
 }

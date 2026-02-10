@@ -16,7 +16,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             };
             let style = if *t == app.current_tab {
                 Style::default()
-                    .fg(app.theme.highlight)
+                    .fg(app.theme.accent)
                     .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(app.theme.muted)
@@ -38,7 +38,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         .title(Span::styled(
             " tokscale ",
             Style::default()
-                .fg(app.theme.highlight)
+                .fg(app.theme.accent)
                 .add_modifier(Modifier::BOLD),
         ))
         .title_alignment(Alignment::Left)
@@ -59,7 +59,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         .select(selected)
         .highlight_style(
             Style::default()
-                .fg(app.theme.highlight)
+                .fg(app.theme.accent)
                 .add_modifier(Modifier::BOLD),
         )
         .divider(Span::styled(" │ ", Style::default().fg(app.theme.border)));

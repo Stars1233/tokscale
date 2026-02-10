@@ -112,11 +112,11 @@ fn render_top_models(frame: &mut Frame, app: &mut App, area: Rect, items_per_pag
     use crate::tui::app::SortField;
 
     let theme_border = app.theme.border;
-    let theme_highlight = app.theme.highlight;
+    let theme_accent = app.theme.accent;
     let theme_background = app.theme.background;
     let theme_muted = app.theme.muted;
     let theme_foreground = app.theme.foreground;
-    let theme_colors_1 = app.theme.colors[1];
+    let theme_selection = app.theme.selection;
     let scroll_offset = app.scroll_offset;
     let selected_index = app.selected_index;
     let is_narrow = app.is_narrow();
@@ -158,7 +158,7 @@ fn render_top_models(frame: &mut Frame, app: &mut App, area: Rect, items_per_pag
         .title(Span::styled(
             format!(" {} ", title),
             Style::default()
-                .fg(theme_highlight)
+                .fg(theme_accent)
                 .add_modifier(Modifier::BOLD),
         ))
         .title_top(
@@ -204,7 +204,7 @@ fn render_top_models(frame: &mut Frame, app: &mut App, area: Rect, items_per_pag
         let idx = i + start;
         let is_selected = idx == selected_index;
         let row_style = if is_selected {
-            Style::default().bg(theme_colors_1).fg(theme_foreground)
+            Style::default().bg(theme_selection).fg(theme_foreground)
         } else {
             Style::default()
         };

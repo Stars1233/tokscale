@@ -29,7 +29,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
 
 fn render_graph(frame: &mut Frame, app: &mut App, area: Rect) {
     let theme_border = app.theme.border;
-    let theme_highlight = app.theme.highlight;
+    let theme_accent = app.theme.accent;
     let theme_background = app.theme.background;
     let theme_muted = app.theme.muted;
     let theme_colors = app.theme.colors;
@@ -42,7 +42,7 @@ fn render_graph(frame: &mut Frame, app: &mut App, area: Rect) {
         .title(Span::styled(
             " Contribution Graph (52 weeks) ",
             Style::default()
-                .fg(theme_highlight)
+                .fg(theme_accent)
                 .add_modifier(Modifier::BOLD),
         ))
         .style(Style::default().bg(theme_background));
@@ -166,7 +166,7 @@ fn render_stats_panel(frame: &mut Frame, app: &App, area: Rect) {
         .title(Span::styled(
             " Stats ",
             Style::default()
-                .fg(app.theme.highlight)
+                .fg(app.theme.accent)
                 .add_modifier(Modifier::BOLD),
         ))
         .style(Style::default().bg(app.theme.background));
@@ -395,7 +395,7 @@ fn render_breakdown_panel(frame: &mut Frame, app: &App, area: Rect) {
         .title(Span::styled(
             " Day Breakdown (ESC to close) ",
             Style::default()
-                .fg(app.theme.highlight)
+                .fg(app.theme.accent)
                 .add_modifier(Modifier::BOLD),
         ))
         .style(Style::default().bg(app.theme.background));
