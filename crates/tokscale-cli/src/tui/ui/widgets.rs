@@ -111,22 +111,30 @@ pub fn get_source_color(source: &str) -> Color {
     }
 }
 
-pub fn get_source_display_name(source: &str) -> &str {
+pub fn get_source_display_name(source: &str) -> String {
+    let config = TokscaleConfig::load();
+    if let Some(name) = config.get_source_display_name(source) {
+        return name.to_string();
+    }
     match source.to_lowercase().as_str() {
-        "opencode" => "OpenCode",
-        "claude" => "Claude",
-        "codex" => "Codex",
-        "cursor" => "Cursor",
-        "gemini" => "Gemini",
-        "amp" => "Amp",
-        "droid" => "Droid",
-        "openclaw" => "OpenClaw",
-        "pi" => "Pi",
-        _ => source,
+        "opencode" => "OpenCode".to_string(),
+        "claude" => "Claude".to_string(),
+        "codex" => "Codex".to_string(),
+        "cursor" => "Cursor".to_string(),
+        "gemini" => "Gemini".to_string(),
+        "amp" => "Amp".to_string(),
+        "droid" => "Droid".to_string(),
+        "openclaw" => "🦞 OpenClaw".to_string(),
+        "pi" => "Pi".to_string(),
+        _ => source.to_string(),
     }
 }
 
 pub fn get_provider_display_name(provider: &str) -> String {
+    let config = TokscaleConfig::load();
+    if let Some(name) = config.get_provider_display_name(provider) {
+        return name.to_string();
+    }
     match provider.to_lowercase().as_str() {
         "anthropic" => "Anthropic".to_string(),
         "openai" => "OpenAI".to_string(),

@@ -439,6 +439,32 @@ Tokscale stores settings in `~/.config/tokscale/settings.json`:
 | `autoRefreshMs` | number | `60000` | Auto-refresh interval (30000-3600000ms) |
 | `nativeTimeoutMs` | number | `300000` | Maximum time for native subprocess processing (5000-3600000ms) |
 
+### Advanced Configuration
+
+For advanced customization (colors and display names), create `~/.tokscale` with TOML format:
+
+```toml
+# Custom colors (hex format)
+[colors.providers]
+anthropic = "#DA7756"
+openai = "#10B981"
+
+[colors.sources]
+opencode = "#22c55e"
+claude = "#DA7756"
+
+# Custom display names
+[display_names.providers]
+anthropic = "Anthropic"
+openai = "OpenAI"
+github-copilot = "GitHub Copilot"
+
+[display_names.sources]
+openclaw = "OpenClaw"  # Default shows "🦞 OpenClaw", override to remove emoji
+```
+
+**Display Names**: By default, OpenClaw shows as "🦞 OpenClaw". Use the `display_names` section to customize how providers and sources appear in the TUI.
+
 ### Environment Variables
 
 Environment variables override config file values. For CI/CD or one-off use:

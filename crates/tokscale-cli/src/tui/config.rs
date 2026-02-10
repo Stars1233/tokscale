@@ -12,10 +12,20 @@ static CONFIG: OnceLock<TokscaleConfig> = OnceLock::new();
 pub struct TokscaleConfig {
     #[serde(default)]
     pub colors: ColorsConfig,
+    #[serde(default)]
+    pub display_names: DisplayNamesConfig,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct ColorsConfig {
+    #[serde(default)]
+    pub providers: HashMap<String, String>,
+    #[serde(default)]
+    pub sources: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct DisplayNamesConfig {
     #[serde(default)]
     pub providers: HashMap<String, String>,
     #[serde(default)]
@@ -48,6 +58,20 @@ impl TokscaleConfig {
             .sources
             .get(&source.to_lowercase())
             .and_then(|hex| parse_hex_color(hex))
+    }
+
+    pub fn get_provider_display_name(&self, provider: &str) -> Option<&str> {
+        self.display_names
+            .providers
+            .get(&provider.to_lowercase())
+            .map(|s| s.as_str())
+    }
+
+    pub fn get_source_display_name(&self, source: &str) -> Option<&str> {
+        self.display_names
+            .sources
+            .get(&source.to_lowercase())
+            .map(|s| s.as_str())
     }
 }
 
