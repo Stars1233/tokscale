@@ -3,7 +3,9 @@ use ratatui::widgets::{
     Block, Borders, Cell, Paragraph, Row, Scrollbar, ScrollbarOrientation, ScrollbarState, Table,
 };
 
-use super::widgets::{format_cost, format_tokens, get_model_color};
+use super::widgets::{
+    format_cost, format_tokens, get_model_color, get_provider_display_name, get_source_display_name,
+};
 use crate::tui::app::{App, SortDirection, SortField};
 
 pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
@@ -50,7 +52,15 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         vec!["Model", "Tokens", "Cost"]
     } else {
         vec![
-            "#", "Model", "Provider", "Source", "Input", "Output", "Cache R", "Cache W", "Total",
+            "#",
+            "Model",
+            "Provider",
+            "Source",
+            "Input",
+            "Output",
+            "Cache Read",
+            "Cache Write",
+            "Total",
             "Cost",
         ]
     };
@@ -127,8 +137,9 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
                             .fg(model_color)
                             .add_modifier(Modifier::BOLD),
                     ),
-                    Cell::from(model.provider.as_str()),
-                    Cell::from(model.source.as_str()).style(Style::default().fg(theme_muted)),
+                    Cell::from(get_provider_display_name(&model.provider)),
+                    Cell::from(get_source_display_name(&model.source))
+                        .style(Style::default().fg(theme_muted)),
                     Cell::from(format_tokens(model.tokens.input))
                         .style(Style::default().fg(Color::Rgb(100, 200, 100))),
                     Cell::from(format_tokens(model.tokens.output))
@@ -166,14 +177,14 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         vec![
             Constraint::Length(3),
             Constraint::Min(20),
+            Constraint::Length(15),
+            Constraint::Length(10),
             Constraint::Length(10),
             Constraint::Length(10),
             Constraint::Length(12),
             Constraint::Length(12),
             Constraint::Length(10),
             Constraint::Length(10),
-            Constraint::Length(14),
-            Constraint::Length(12),
         ]
     };
 

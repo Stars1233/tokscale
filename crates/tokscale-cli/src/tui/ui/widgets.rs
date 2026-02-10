@@ -121,6 +121,32 @@ pub fn get_source_display_name(source: &str) -> &str {
         "amp" => "Amp",
         "droid" => "Droid",
         "openclaw" => "OpenClaw",
+        "pi" => "Pi",
         _ => source,
+    }
+}
+
+pub fn get_provider_display_name(provider: &str) -> String {
+    match provider.to_lowercase().as_str() {
+        "anthropic" => "Anthropic".to_string(),
+        "openai" => "OpenAI".to_string(),
+        "google" => "Google".to_string(),
+        "cursor" => "Cursor".to_string(),
+        "deepseek" => "DeepSeek".to_string(),
+        "xai" => "xAI".to_string(),
+        "meta" => "Meta".to_string(),
+        "mistral" => "Mistral".to_string(),
+        "cohere" => "Cohere".to_string(),
+        "opencode" => "OpenCode".to_string(),
+        s if s.starts_with("github-cop") || s.contains("copilot") => "GitHub Copilot".to_string(),
+        _ => capitalize_first(provider),
+    }
+}
+
+fn capitalize_first(s: &str) -> String {
+    let mut chars = s.chars();
+    match chars.next() {
+        None => String::new(),
+        Some(first) => first.to_uppercase().chain(chars).collect(),
     }
 }

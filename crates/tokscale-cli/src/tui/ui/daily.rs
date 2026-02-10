@@ -48,7 +48,13 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         vec!["Date", "Tokens", "Cost"]
     } else {
         vec![
-            "Date", "Input", "Output", "Cache R", "Cache W", "Total", "Cost",
+            "Date",
+            "Input",
+            "Output",
+            "Cache Read",
+            "Cache Write",
+            "Total",
+            "Cost",
         ]
     };
 
@@ -157,10 +163,10 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             Constraint::Length(12),
             Constraint::Length(10),
             Constraint::Length(10),
-            Constraint::Length(10),
-            Constraint::Length(10),
             Constraint::Length(12),
             Constraint::Length(12),
+            Constraint::Length(10),
+            Constraint::Length(10),
         ]
     };
 
