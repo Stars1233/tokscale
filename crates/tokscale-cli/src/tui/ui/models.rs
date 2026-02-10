@@ -177,8 +177,8 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         vec![
             Constraint::Length(3),
             Constraint::Min(20),
-            Constraint::Length(15),
-            Constraint::Length(10),
+            Constraint::Length(18),
+            Constraint::Length(14),
             Constraint::Length(10),
             Constraint::Length(10),
             Constraint::Length(12),

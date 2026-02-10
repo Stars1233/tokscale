@@ -253,7 +253,7 @@ fn render_stats_panel(frame: &mut Frame, app: &App, area: Rect) {
         Span::styled(row1_label, Style::default().fg(app.theme.muted)),
         Span::raw(" "),
         Span::styled(
-            truncate_model_name(favorite_model, if is_narrow { 10 } else { 20 }),
+            truncate_model_name(favorite_model, if is_narrow { 15 } else { 30 }),
             Style::default().fg(model_color),
         ),
     ]);
