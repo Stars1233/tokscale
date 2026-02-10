@@ -409,22 +409,3 @@ pub fn is_cache_stale(enabled_sources: &HashSet<Source>) -> bool {
     let cache_age = now.saturating_sub(cached.timestamp);
     cache_age > CACHE_STALE_THRESHOLD_MS
 }
-
-/// Get the cache timestamp if available
-pub fn get_cache_timestamp(enabled_sources: &HashSet<Source>) -> Option<u64> {
-    let cache_path = cache_file()?;
-
-    if !cache_path.exists() {
-        return None;
-    }
-
-    let file = File::open(&cache_path).ok()?;
-    let reader = BufReader::new(file);
-    let cached: CachedTUIData = serde_json::from_reader(reader).ok()?;
-
-    if !sources_match(enabled_sources, &cached.enabled_sources) {
-        return None;
-    }
-
-    Some(cached.timestamp)
-}
