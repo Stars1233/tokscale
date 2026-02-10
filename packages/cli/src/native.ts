@@ -153,8 +153,9 @@ interface NativeParsedMessages {
   codexCount: number;
   geminiCount: number;
   ampCount: number;
-  droidCount?: number;
-  openclawCount?: number;
+  droidCount: number;
+  openclawCount: number;
+  piCount: number;
   processingTimeMs: number;
 }
 
@@ -355,6 +356,7 @@ export interface ParsedMessages {
   ampCount: number;
   droidCount: number;
   openclawCount: number;
+  piCount: number;
   processingTimeMs: number;
 }
 
@@ -408,8 +410,8 @@ interface BunSubprocess {
 }
 
 interface BunSpawnOptions {
-  stdout: string;
-  stderr: string;
+  stdout: "pipe" | "ignore";
+  stderr: "pipe" | "ignore";
 }
 
 interface BunGlobalType {
@@ -440,7 +442,7 @@ async function runInSubprocess<T>(method: string, args: unknown[]): Promise<T> {
   let proc: BunSubprocess;
   try {
     proc = BunGlobal.spawn([process.execPath, runnerPath, inputFile, outputFile], {
-      stdout: "pipe",
+      stdout: "ignore",
       stderr: "pipe",
     });
   } catch (e) {

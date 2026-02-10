@@ -342,7 +342,7 @@ jobs:
           NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   finalize:
-    name: Commit version bump
+    name: Commit version bump and create release
     needs: [bump-versions, publish-alias]
     runs-on: ubuntu-latest
 
@@ -379,3 +379,91 @@ jobs:
           git push
           
           echo "✅ Successfully published and committed version $NEW_VERSION"
+
+      - name: Create tag and GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEW_VERSION="${{ needs.bump-versions.outputs.version }}"
+          
+          # Create and push tag
+          git tag "v$NEW_VERSION"
+          git push origin "v$NEW_VERSION"
+          echo "🏷️ Created tag v$NEW_VERSION"
+          
+          # Get previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            echo "⚠️ No previous tag found, skipping release notes generation"
+            gh release create "v$NEW_VERSION" \
+              --title "v$NEW_VERSION" \
+              --notes "First release"
+            exit 0
+          fi
+          echo "📋 Previous tag: $PREV_TAG"
+          
+          # Get merged PRs between tags
+          PREV_DATE=$(git log -1 --format=%cI "$PREV_TAG")
+          echo "📅 Finding PRs merged after: $PREV_DATE"
+          
+          PRS=$(gh pr list --state merged --base main --limit 100 \
+            --json number,title,author,mergedAt \
+            --jq --arg date "$PREV_DATE" \
+            '[.[] | select(.mergedAt > $date)] | sort_by(.mergedAt) | .[] | "* \(.title) by @\(.author.login) in https://github.com/${{ github.repository }}/pull/\(.number)"' \
+            | grep -v "chore: bump version" || echo "")
+          
+          if [ -z "$PRS" ]; then
+            PRS="* No notable changes"
+          fi
+          
+          # Get new contributors
+          NEW_CONTRIBUTORS=$(gh pr list --state merged --base main --limit 100 \
+            --json number,author,mergedAt \
+            --jq --arg date "$PREV_DATE" \
+            '[.[] | select(.mergedAt > $date)] | [.[].author.login] | unique | .[]' \
+            | while read -r user; do
+                # Check if this is their first contribution
+                FIRST_PR=$(gh pr list --state merged --author "$user" --limit 1 --json number,mergedAt --jq '.[0].mergedAt')
+                if [ "$(echo "$FIRST_PR" | cut -d'T' -f1)" \> "$(echo "$PREV_DATE" | cut -d'T' -f1)" ] 2>/dev/null; then
+                  FIRST_NUM=$(gh pr list --state merged --author "$user" --limit 1 --json number --jq '.[0].number')
+                  echo "* @$user made their first contribution in https://github.com/${{ github.repository }}/pull/$FIRST_NUM"
+                fi
+              done || echo "")
+          
+          # Build release notes using heredoc to preserve formatting
+          NOTES=$(cat <<EOF
+<div align="center">
+
+[![Tokscale](https://github.com/junhoyeo/tokscale/raw/main/.github/assets/hero.png)](https://github.com/junhoyeo/tokscale)
+
+# \`tokscale@v$NEW_VERSION\` is here!
+</div>
+
+## What's Changed
+$PRS
+EOF
+)
+          
+          if [ -n "$NEW_CONTRIBUTORS" ]; then
+            NOTES=$(cat <<EOF
+$NOTES
+
+## New Contributors
+$NEW_CONTRIBUTORS
+EOF
+)
+          fi
+          
+          NOTES=$(cat <<EOF
+$NOTES
+
+**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...v$NEW_VERSION
+EOF
+)
+          
+          # Create release
+          gh release create "v$NEW_VERSION" \
+            --title "v$NEW_VERSION" \
+            --notes "$NOTES"
+          
+          echo "🎉 Created GitHub release: https://github.com/${{ github.repository }}/releases/tag/v$NEW_VERSION"
