@@ -3,6 +3,9 @@ use ratatui::prelude::*;
 use super::widgets::format_tokens;
 use crate::tui::app::App;
 
+/// 8-level block characters for sub-cell precision (matching OpenTUI)
+const BLOCKS: &[char] = &[' ', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
+
 const MONTH_NAMES: &[&str] = &[
     "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
@@ -191,7 +194,7 @@ fn get_stacked_bar_content(
     total: f64,
     row_threshold: f64,
     prev_threshold: f64,
-    _threshold_diff: f64,
+    threshold_diff: f64,
     muted_color: Color,
     fallback_color: Color,
 ) -> (char, Color) {
@@ -200,7 +203,7 @@ fn get_stacked_bar_content(
     }
 
     if bar_data.models.is_empty() {
-        return ('█', fallback_color);
+        return (' ', muted_color);
     }
 
     let mut sorted_models: Vec<&ModelSegment> = bar_data.models.iter().collect();
@@ -231,5 +234,15 @@ fn get_stacked_bar_content(
         }
     }
 
-    ('█', best_color)
+    if total >= row_threshold {
+        return (BLOCKS[8], best_color);
+    }
+
+    let ratio = if threshold_diff > 0.0 {
+        (total - prev_threshold) / threshold_diff
+    } else {
+        1.0
+    };
+    let block_index = (ratio * 8.0).floor().clamp(1.0, 8.0) as usize;
+    (BLOCKS[block_index], best_color)
 }
