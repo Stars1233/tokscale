@@ -39,7 +39,7 @@ jobs:
         id: bump
         run: |
           # Read current version
-          CURRENT_VERSION=$(jq -r '.version' packages/core/package.json)
+          CURRENT_VERSION=$(jq -r '.version' crates/tokscale-napi/package.json)
           echo "📦 Current version: $CURRENT_VERSION"
           
           # Calculate new version
@@ -66,9 +66,9 @@ jobs:
           fi
           echo "🚀 New version: $NEW_VERSION"
           
-          # Update packages/core/package.json
-          jq --arg v "$NEW_VERSION" '.version = $v' packages/core/package.json > tmp.json && mv tmp.json packages/core/package.json
-          echo "✅ Updated packages/core/package.json"
+          # Update crates/tokscale-napi/package.json
+          jq --arg v "$NEW_VERSION" '.version = $v' crates/tokscale-napi/package.json > tmp.json && mv tmp.json crates/tokscale-napi/package.json
+          echo "✅ Updated crates/tokscale-napi/package.json"
           
           # Update packages/cli/package.json (version + @tokscale/core dependency)
           jq --arg v "$NEW_VERSION" '.version = $v | .dependencies["@tokscale/core"] = $v' packages/cli/package.json > tmp.json && mv tmp.json packages/cli/package.json
@@ -81,7 +81,7 @@ jobs:
           # Verify all versions are updated
           echo ""
           echo "📋 Verification:"
-          echo "  @tokscale/core:  $(jq -r '.version' packages/core/package.json)"
+          echo "  @tokscale/core:  $(jq -r '.version' crates/tokscale-napi/package.json)"
           echo "  @tokscale/cli:   $(jq -r '.version' packages/cli/package.json)"
           echo "  tokscale:        $(jq -r '.version' packages/tokscale/package.json)"
           echo "  cli -> core dep: $(jq -r '.dependencies["@tokscale/core"]' packages/cli/package.json)"
@@ -95,7 +95,7 @@ jobs:
         with:
           name: bumped-packages
           path: |
-            packages/core/package.json
+            crates/tokscale-napi/package.json
             packages/cli/package.json
             packages/tokscale/package.json
           retention-days: 1
@@ -111,44 +111,44 @@ jobs:
           - host: macos-latest
             target: x86_64-apple-darwin
             build: |
-              cd packages/core
+              cd crates/tokscale-napi
               bun run build:platform --target x86_64-apple-darwin
               strip -x *.node
           - host: macos-latest
             target: aarch64-apple-darwin
             build: |
-              cd packages/core
+              cd crates/tokscale-napi
               bun run build:platform --target aarch64-apple-darwin
               strip -x *.node
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             build: |
-              cd packages/core
+              cd crates/tokscale-napi
               bun run build:platform --target x86_64-unknown-linux-gnu --use-napi-cross
           - host: ubuntu-latest
             target: x86_64-unknown-linux-musl
             build: |
-              cd packages/core
+              cd crates/tokscale-napi
               bun run build:platform --target x86_64-unknown-linux-musl -x
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             build: |
-              cd packages/core
+              cd crates/tokscale-napi
               bun run build:platform --target aarch64-unknown-linux-gnu --use-napi-cross
           - host: ubuntu-latest
             target: aarch64-unknown-linux-musl
             build: |
-              cd packages/core
+              cd crates/tokscale-napi
               bun run build:platform --target aarch64-unknown-linux-musl -x
           - host: windows-latest
             target: x86_64-pc-windows-msvc
             build: |
-              cd packages/core
+              cd crates/tokscale-napi
               bun run build:platform
           - host: windows-latest
             target: aarch64-pc-windows-msvc
             build: |
-              cd packages/core
+              cd crates/tokscale-napi
               bun run build:platform --target aarch64-pc-windows-msvc
 
     steps:
@@ -163,10 +163,10 @@ jobs:
       - name: Restore package.json structure
         shell: bash
         run: |
-          mv packages/core/package.json packages/core/package.json 2>/dev/null || true
+          mv crates/tokscale-napi/package.json crates/tokscale-napi/package.json 2>/dev/null || true
           mv packages/cli/package.json packages/cli/package.json 2>/dev/null || true
           mv packages/tokscale/package.json packages/tokscale/package.json 2>/dev/null || true
-          echo "📦 Using version: $(jq -r '.version' packages/core/package.json)"
+          echo "📦 Using version: $(jq -r '.version' crates/tokscale-napi/package.json)"
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -188,8 +188,8 @@ jobs:
             ~/.cargo/git/db/
             ~/.napi-rs
             .cargo-cache
-            packages/core/target/
-          key: ${{ matrix.settings.target }}-cargo-${{ matrix.settings.host }}-${{ hashFiles('packages/core/Cargo.lock') }}
+            crates/tokscale-napi/target/
+          key: ${{ matrix.settings.target }}-cargo-${{ matrix.settings.host }}-${{ hashFiles('crates/tokscale-napi/Cargo.lock') }}
 
       - uses: mlugg/setup-zig@v2
         if: ${{ contains(matrix.settings.target, 'musl') }}
@@ -215,7 +215,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: bindings-${{ matrix.settings.target }}
-          path: packages/core/*.node
+          path: crates/tokscale-napi/*.node
           if-no-files-found: error
 
       # Upload generated JS files from first build only (ubuntu x86_64-gnu)
@@ -225,8 +225,8 @@ jobs:
         with:
           name: napi-generated
           path: |
-            packages/core/index.js
-            packages/core/index.d.ts
+            crates/tokscale-napi/index.js
+            crates/tokscale-napi/index.d.ts
           if-no-files-found: error
 
   publish-core:
@@ -254,11 +254,11 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: packages/core/artifacts
+          path: crates/tokscale-napi/artifacts
           pattern: bindings-*
 
       - name: Move artifacts
-        working-directory: packages/core
+        working-directory: crates/tokscale-napi
         run: |
           for dir in artifacts/bindings-*/; do
             cp "$dir"*.node . 2>/dev/null || true
@@ -269,10 +269,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: napi-generated
-          path: packages/core/
+          path: crates/tokscale-napi/
 
       - name: Publish @tokscale/core
-        working-directory: packages/core
+        working-directory: crates/tokscale-napi
         run: |
           echo "📦 Publishing version: $(jq -r '.version' package.json)"
           bun publish --access public
@@ -362,7 +362,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: napi-generated
-          path: packages/core/
+          path: crates/tokscale-napi/
 
       - name: Configure Git
         run: |
@@ -374,7 +374,7 @@ jobs:
           NEW_VERSION="${{ needs.bump-versions.outputs.version }}"
           echo "📦 Committing version bump to $NEW_VERSION"
           
-          git add packages/core/package.json packages/core/index.js packages/core/index.d.ts packages/cli/package.json packages/tokscale/package.json
+          git add crates/tokscale-napi/package.json crates/tokscale-napi/index.js crates/tokscale-napi/index.d.ts packages/cli/package.json packages/tokscale/package.json
           git commit -m "chore: bump version to $NEW_VERSION"
           git push
           

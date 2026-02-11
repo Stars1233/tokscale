@@ -693,7 +693,7 @@ cd packages/cli && bun src/cli.ts --light
 
 **Package-specific scripts** (from within package directories):
 - `packages/cli`: `bun run dev`, `bun run tui`
-- `packages/core`: `bun run build:debug`, `bun run test`, `bun run bench`
+- `crates/tokscale-napi`: `bun run build:debug`, `bun run test`, `bun run bench`
 
 **Note**: This project uses **Bun** as the package manager and runtime. TUI requires Bun due to OpenTUI's native modules.
 
@@ -701,7 +701,7 @@ cd packages/cli && bun src/cli.ts --light
 
 ```bash
 # Test native module (Rust)
-cd packages/core
+cd crates/tokscale-napi
 bun run test:rust      # Cargo tests
 bun run test           # Node.js integration tests
 bun run test:all       # Both
@@ -710,7 +710,7 @@ bun run test:all       # Both
 ### Native Module Development
 
 ```bash
-cd packages/core
+cd crates/tokscale-napi
 
 # Build in debug mode (faster compilation)
 bun run build:debug
@@ -787,7 +787,7 @@ The native module also provides ~45% memory reduction through:
 cd packages/benchmarks && bun run generate
 
 # Run Rust benchmarks
-cd packages/core && bun run bench
+cd crates/tokscale-napi && bun run bench
 ```
 
 </details>
@@ -1030,7 +1030,7 @@ Contributions are welcome! Please follow these steps:
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
-4. Run tests (`cd packages/core && bun run test:all`)
+4. Run tests (`cd crates/tokscale-napi && bun run test:all`)
 5. Commit your changes (`git commit -m 'Add amazing feature'`)
 6. Push to the branch (`git push origin feature/amazing-feature`)
 7. Open a Pull Request

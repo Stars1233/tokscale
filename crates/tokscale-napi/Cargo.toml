@@ -1,12 +1,9 @@
 [package]
-name = "tokscale-core"
+name = "tokscale-napi"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-description = "Native Rust core for tokscale CLI - high-performance session parsing"
-
-# Mark as standalone package (not part of root workspace)
-[workspace]
+description = "NAPI-RS bindings for tokscale - Node.js native module"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -60,12 +57,3 @@ serial_test = "3"
 [[bench]]
 name = "json_parsing"
 harness = false
-
-[profile.release]
-lto = true
-opt-level = 3
-codegen-units = 1
-strip = true
-
-[profile.dev]
-opt-level = 1

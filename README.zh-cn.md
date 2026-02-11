@@ -593,7 +593,7 @@ cd packages/cli && bun src/cli.ts --light
 
 **特定包脚本**（从包目录内）：
 - `packages/cli`：`bun run dev`、`bun run tui`
-- `packages/core`：`bun run build:debug`、`bun run test`、`bun run bench`
+- `crates/tokscale-napi`：`bun run build:debug`、`bun run test`、`bun run bench`
 
 **注意**：此项目使用 **Bun** 作为包管理器和运行时。TUI 需要 Bun，因为 OpenTUI 的原生模块。
 
@@ -601,7 +601,7 @@ cd packages/cli && bun src/cli.ts --light
 
 ```bash
 # 测试原生模块（Rust）
-cd packages/core
+cd crates/tokscale-napi
 bun run test:rust      # Cargo 测试
 bun run test           # Node.js 集成测试
 bun run test:all       # 两者都
@@ -610,7 +610,7 @@ bun run test:all       # 两者都
 ### 原生模块开发
 
 ```bash
-cd packages/core
+cd crates/tokscale-napi
 
 # 调试模式构建（编译更快）
 bun run build:debug
@@ -687,7 +687,7 @@ tokscale graph --output packages/frontend/public/my-data.json
 cd packages/benchmarks && bun run generate
 
 # 运行 Rust 基准测试
-cd packages/core && bun run bench
+cd crates/tokscale-napi && bun run bench
 ```
 
 </details>
@@ -928,7 +928,7 @@ Tokscale 从 [LiteLLM 的价格数据库](https://github.com/BerriAI/litellm/blo
 1. Fork 仓库
 2. 创建功能分支（`git checkout -b feature/amazing-feature`）
 3. 进行更改
-4. 运行测试（`cd packages/core && bun run test:all`）
+4. 运行测试（`cd crates/tokscale-napi && bun run test:all`）
 5. 提交更改（`git commit -m 'Add amazing feature'`）
 6. 推送到分支（`git push origin feature/amazing-feature`）
 7. 打开 Pull Request

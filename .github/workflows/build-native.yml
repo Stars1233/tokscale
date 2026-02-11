@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - "packages/core/**"
-      - "!packages/core/package.json"
+      - "crates/tokscale-napi/**"
+      - "!crates/tokscale-napi/package.json"
 
 env:
   DEBUG: napi:*
@@ -23,44 +23,44 @@ jobs:
           - host: macos-latest
             target: x86_64-apple-darwin
             build: |
-              cd packages/core
+              cd crates/tokscale-napi
               bun run build:platform --target x86_64-apple-darwin
               strip -x *.node
           - host: macos-latest
             target: aarch64-apple-darwin
             build: |
-              cd packages/core
+              cd crates/tokscale-napi
               bun run build:platform --target aarch64-apple-darwin
               strip -x *.node
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             build: |
-              cd packages/core
+              cd crates/tokscale-napi
               bun run build:platform --target x86_64-unknown-linux-gnu --use-napi-cross
           - host: ubuntu-latest
             target: x86_64-unknown-linux-musl
             build: |
-              cd packages/core
+              cd crates/tokscale-napi
               bun run build:platform --target x86_64-unknown-linux-musl -x
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             build: |
-              cd packages/core
+              cd crates/tokscale-napi
               bun run build:platform --target aarch64-unknown-linux-gnu --use-napi-cross
           - host: ubuntu-latest
             target: aarch64-unknown-linux-musl
             build: |
-              cd packages/core
+              cd crates/tokscale-napi
               bun run build:platform --target aarch64-unknown-linux-musl -x
           - host: windows-latest
             target: x86_64-pc-windows-msvc
             build: |
-              cd packages/core
+              cd crates/tokscale-napi
               bun run build:platform
           - host: windows-latest
             target: aarch64-pc-windows-msvc
             build: |
-              cd packages/core
+              cd crates/tokscale-napi
               bun run build:platform --target aarch64-pc-windows-msvc
 
     steps:
@@ -91,8 +91,8 @@ jobs:
             ~/.cargo/git/db/
             ~/.napi-rs
             .cargo-cache
-            packages/core/target/
-          key: ${{ matrix.settings.target }}-cargo-${{ matrix.settings.host }}-${{ hashFiles('packages/core/Cargo.lock') }}
+            crates/tokscale-napi/target/
+          key: ${{ matrix.settings.target }}-cargo-${{ matrix.settings.host }}-${{ hashFiles('crates/tokscale-napi/Cargo.lock') }}
 
       - uses: mlugg/setup-zig@v2
         if: ${{ contains(matrix.settings.target, 'musl') }}
@@ -109,7 +109,7 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
-        working-directory: packages/core
+        working-directory: crates/tokscale-napi
 
       - name: Build
         run: ${{ matrix.settings.build }}
@@ -119,5 +119,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: bindings-${{ matrix.settings.target }}
-          path: packages/core/*.node
+          path: crates/tokscale-napi/*.node
           if-no-files-found: error

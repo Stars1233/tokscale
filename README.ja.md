@@ -593,7 +593,7 @@ cd packages/cli && bun src/cli.ts --light
 
 **パッケージ固有スクリプト**（パッケージディレクトリ内から）：
 - `packages/cli`: `bun run dev`、`bun run tui`
-- `packages/core`: `bun run build:debug`、`bun run test`、`bun run bench`
+- `crates/tokscale-napi`: `bun run build:debug`、`bun run test`、`bun run bench`
 
 **注**: このプロジェクトは**Bun**をパッケージマネージャー兼ランタイムとして使用しています。TUIはOpenTUIのネイティブモジュールのためBunが必要です。
 
@@ -601,7 +601,7 @@ cd packages/cli && bun src/cli.ts --light
 
 ```bash
 # ネイティブモジュールをテスト（Rust）
-cd packages/core
+cd crates/tokscale-napi
 bun run test:rust      # Cargoテスト
 bun run test           # Node.js統合テスト
 bun run test:all       # 両方
@@ -610,7 +610,7 @@ bun run test:all       # 両方
 ### ネイティブモジュール開発
 
 ```bash
-cd packages/core
+cd crates/tokscale-napi
 
 # デバッグモードでビルド（コンパイルが速い）
 bun run build:debug
@@ -687,7 +687,7 @@ tokscale graph --output packages/frontend/public/my-data.json
 cd packages/benchmarks && bun run generate
 
 # Rustベンチマークを実行
-cd packages/core && bun run bench
+cd crates/tokscale-napi && bun run bench
 ```
 
 </details>
@@ -928,7 +928,7 @@ Tokscaleは[LiteLLMの価格データベース](https://github.com/BerriAI/litel
 1. リポジトリをフォーク
 2. 機能ブランチを作成（`git checkout -b feature/amazing-feature`）
 3. 変更を加える
-4. テストを実行（`cd packages/core && bun run test:all`）
+4. テストを実行（`cd crates/tokscale-napi && bun run test:all`）
 5. 変更をコミット（`git commit -m 'Add amazing feature'`）
 6. ブランチにプッシュ（`git push origin feature/amazing-feature`）
 7. プルリクエストを開く

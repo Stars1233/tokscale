@@ -592,7 +592,7 @@ cd packages/cli && bun src/cli.ts --light
 
 **패키지별 스크립트** (패키지 디렉토리 내에서):
 - `packages/cli`: `bun run dev`, `bun run tui`
-- `packages/core`: `bun run build:debug`, `bun run test`, `bun run bench`
+- `crates/tokscale-napi`: `bun run build:debug`, `bun run test`, `bun run bench`
 
 **참고**: 이 프로젝트는 **Bun**을 패키지 매니저 및 런타임으로 사용합니다. TUI는 OpenTUI의 네이티브 모듈 때문에 Bun이 필요합니다.
 
@@ -600,7 +600,7 @@ cd packages/cli && bun src/cli.ts --light
 
 ```bash
 # 네이티브 모듈 테스트 (Rust)
-cd packages/core
+cd crates/tokscale-napi
 bun run test:rust      # Cargo 테스트
 bun run test           # Node.js 통합 테스트
 bun run test:all       # 둘 다
@@ -609,7 +609,7 @@ bun run test:all       # 둘 다
 ### 네이티브 모듈 개발
 
 ```bash
-cd packages/core
+cd crates/tokscale-napi
 
 # 디버그 모드로 빌드 (빠른 컴파일)
 bun run build:debug
@@ -686,7 +686,7 @@ tokscale graph --output packages/frontend/public/my-data.json
 cd packages/benchmarks && bun run generate
 
 # Rust 벤치마크 실행
-cd packages/core && bun run bench
+cd crates/tokscale-napi && bun run bench
 ```
 
 </details>
@@ -927,7 +927,7 @@ Tokscale은 [LiteLLM의 가격 데이터베이스](https://github.com/BerriAI/li
 1. 저장소 포크
 2. 기능 브랜치 생성 (`git checkout -b feature/amazing-feature`)
 3. 변경 사항 작성
-4. 테스트 실행 (`cd packages/core && bun run test:all`)
+4. 테스트 실행 (`cd crates/tokscale-napi && bun run test:all`)
 5. 변경 사항 커밋 (`git commit -m 'Add amazing feature'`)
 6. 브랜치에 푸시 (`git push origin feature/amazing-feature`)
 7. Pull Request 열기

@@ -22,7 +22,7 @@ Releases are published to npm via a GitHub Actions `workflow_dispatch` pipeline,
 
 | # | Job | Description |
 |---|-----|-------------|
-| 1 | `bump-versions` | Reads current version from `packages/core/package.json`, calculates new version, updates all 3 `package.json` files (`core`, `cli`, `tokscale` wrapper), uploads as artifact |
+| 1 | `bump-versions` | Reads current version from `crates/tokscale-napi/package.json`, calculates new version, updates all 3 `package.json` files (`core`, `cli`, `tokscale` wrapper), uploads as artifact |
 | 2 | `build` | 8-target parallel native Rust builds via NAPI-RS (macOS x86/arm64, Linux glibc/musl x86/arm64, Windows x86/arm64) |
 | 3 | `publish-core` | Collects all `.node` binaries + NAPI-generated `index.js`/`index.d.ts`, publishes `@tokscale/core` to npm |
 | 4 | `publish-cli` | Installs deps, builds CLI TypeScript, publishes `@tokscale/cli` to npm |
@@ -54,13 +54,13 @@ The CI pipeline does **NOT** create the git tag or GitHub Release. After the wor
 | `major` | Breaking changes (never used so far) | `1.2.1` → `2.0.0` |
 
 Version is stored in 3 places (all updated by CI):
-- `packages/core/package.json` — source of truth
+- `crates/tokscale-napi/package.json` — source of truth
 - `packages/cli/package.json` — version + `@tokscale/core` dependency version
 - `packages/tokscale/package.json` — version + `@tokscale/cli` dependency version
 
 ### CI-Only Workflow
 
-**`.github/workflows/build-native.yml`** — Runs on PRs touching `packages/core/**` (excluding `package.json`). Builds all 8 native targets to verify compilation. Does not publish.
+**`.github/workflows/build-native.yml`** — Runs on PRs touching `crates/tokscale-napi/**` (excluding `package.json`). Builds all 8 native targets to verify compilation. Does not publish.
 
 ---
 
@@ -130,7 +130,7 @@ Add a short bullet list summary (before "What's Changed") when:
 
 ```
 1. [ ] All target PRs merged to main
-2. [ ] `cargo test` passes in packages/core
+2. [ ] `cargo test` passes in crates/tokscale-napi
 3. [ ] No open blocker bugs (regressions from changes being released)
 4. [ ] Run "Publish" workflow via GitHub Actions UI
    - Select bump type (patch/minor/major)
