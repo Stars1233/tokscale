@@ -415,6 +415,8 @@ export async function POST(request: Request) {
     try {
       revalidateTag("leaderboard", "max");
       revalidateTag(`user:${tokenRecord.username}`, "max");
+      revalidateTag("user-rank", "max");
+      revalidateTag(`user-rank:${tokenRecord.username}`, "max");
     } catch (e) {
       console.error("Cache invalidation failed:", e);
     }
