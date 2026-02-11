@@ -71,7 +71,6 @@ In the age of AI-assisted development, **tokens are the new energy**. They power
   - [Quick Start](#quick-start)
   - [Prerequisites](#prerequisites)
   - [Development Setup](#development-setup)
-  - [Building the Native Module](#building-the-native-module)
 - [Usage](#usage)
   - [Basic Commands](#basic-commands)
   - [TUI Features](#tui-features)
@@ -118,7 +117,7 @@ In the age of AI-assisted development, **tokens are the new energy**. They power
 - **Multi-platform support** - Track usage across OpenCode, Claude Code, Codex CLI, Cursor IDE, Gemini CLI, Amp, Droid, OpenClaw, and Pi
 - **Real-time pricing** - Fetches current pricing from LiteLLM with 1-hour disk cache; automatic OpenRouter fallback for new models
 - **Detailed breakdowns** - Input, output, cache read/write, and reasoning token tracking
-- **Native Rust core** - All parsing and aggregation done in Rust for 10x faster processing
+- **100% Rust CLI** - Entire CLI written in Rust for maximum performance and minimal dependencies
 - **Web visualization** - Interactive contribution graph with 2D and 3D views
 - **Flexible filtering** - Filter by platform, date range, or year
 - **Export to JSON** - Generate data for external visualization tools
@@ -143,13 +142,13 @@ That's it! This gives you the full interactive TUI experience with zero setup.
 
 > **Requires [Bun](https://bun.sh/)**: The interactive TUI uses OpenTUI's native Zig modules for zero-flicker rendering, which requires the Bun runtime.
 
-> **Package Structure**: `tokscale` is an alias package (like [`swc`](https://www.npmjs.com/package/swc)) that installs `@tokscale/cli`. Both install the same CLI with the native Rust core (`@tokscale/core`) included.
+> **Package Structure**: `tokscale` is an alias package (like [`swc`](https://www.npmjs.com/package/swc)) that installs `@tokscale/cli`. The CLI is a pure Rust binary distributed via platform-specific npm packages.
 
 
 ### Prerequisites
 
 - [Bun](https://bun.sh/) (required)
-- (Optional) Rust toolchain for building native module from source
+- (Optional) Rust toolchain for building the CLI from source
 
 ### Development Setup
 
@@ -171,17 +170,6 @@ bun run cli
 ```
 
 > **Note**: `bun run cli` is for local development. When installed via `bunx tokscale`, the command runs directly. The Usage section below shows the installed binary commands.
-
-### Building the Native Module
-
-The native Rust module is **required** for CLI operation. It provides ~10x faster processing through parallel file scanning and SIMD JSON parsing:
-
-```bash
-# Build the native core (run from repository root)
-bun run build:core
-```
-
-> **Note**: Native binaries are pre-built and included when you install via `bunx tokscale@latest`. Building from source is only needed for local development.
 
 ## Usage
 
@@ -668,8 +656,8 @@ cargo --version
 After following the [Development Setup](#development-setup), you can:
 
 ```bash
-# Build native module (optional but recommended)
-bun run build:core
+# Build the Rust CLI (optional - only needed for local development)
+cargo build --release -p tokscale-cli
 
 # Run in development mode (launches TUI)
 cd packages/cli && bun src/cli.ts
@@ -686,40 +674,21 @@ cd packages/cli && bun src/cli.ts --light
 | Script | Description |
 |--------|-------------|
 | `bun run cli` | Run CLI in development mode (TUI with Bun) |
-| `bun run build:core` | Build native Rust module (release) |
 | `bun run build:cli` | Build CLI TypeScript to dist/ |
-| `bun run build` | Build both core and CLI |
 | `bun run dev:frontend` | Run frontend development server |
+| `cargo build -p tokscale-cli` | Build Rust CLI binary |
 
 **Package-specific scripts** (from within package directories):
 - `packages/cli`: `bun run dev`, `bun run tui`
-- `crates/tokscale-napi`: `bun run build:debug`, `bun run test`, `bun run bench`
+- `crates/tokscale-cli`: `cargo build`, `cargo test`, `cargo bench`
 
 **Note**: This project uses **Bun** as the package manager and runtime. TUI requires Bun due to OpenTUI's native modules.
 
 ### Testing
 
 ```bash
-# Test native module (Rust)
-cd crates/tokscale-napi
-bun run test:rust      # Cargo tests
-bun run test           # Node.js integration tests
-bun run test:all       # Both
-```
-
-### Native Module Development
-
-```bash
-cd crates/tokscale-napi
-
-# Build in debug mode (faster compilation)
-bun run build:debug
-
-# Build in release mode (optimized)
-bun run build
-
-# Run Rust benchmarks
-bun run bench
+# Test Rust workspace
+cargo test --workspace
 ```
 
 ### Graph Command Options
@@ -761,20 +730,20 @@ tokscale graph --output packages/frontend/public/my-data.json
 
 ### Performance
 
-The native Rust module provides significant performance improvements:
+The Rust CLI provides significant performance improvements:
 
-| Operation | TypeScript | Rust Native | Speedup |
-|-----------|------------|-------------|---------|
-| File Discovery | ~500ms | ~50ms | **10x** |
-| JSON Parsing | ~800ms | ~100ms | **8x** |
-| Aggregation | ~200ms | ~25ms | **8x** |
-| **Total** | **~1.5s** | **~175ms** | **~8.5x** |
+| Operation | Pure Rust | Speedup vs JS |
+|-----------|-----------|---------------|
+| File Discovery | ~50ms | **10x** |
+| JSON Parsing | ~100ms | **8x** |
+| Aggregation | ~25ms | **8x** |
+| **Total** | **~175ms** | **~8.5x** |
 
 *Benchmarks for ~1000 session files, 100k messages*
 
 #### Memory Optimization
 
-The native module also provides ~45% memory reduction through:
+The Rust implementation provides ~45% memory reduction through:
 
 - Streaming JSON parsing (no full file buffering)
 - Zero-copy string handling
@@ -787,14 +756,14 @@ The native module also provides ~45% memory reduction through:
 cd packages/benchmarks && bun run generate
 
 # Run Rust benchmarks
-cd crates/tokscale-napi && bun run bench
+cd crates/tokscale-cli && cargo bench
 ```
 
 </details>
 
 ## Supported Platforms
 
-### Native Module Targets
+### Binary Targets
 
 | Platform | Architecture | Status |
 |----------|--------------|--------|
@@ -1030,7 +999,7 @@ Contributions are welcome! Please follow these steps:
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
-4. Run tests (`cd crates/tokscale-napi && bun run test:all`)
+4. Run tests (`cargo test --workspace`)
 5. Commit your changes (`git commit -m 'Add amazing feature'`)
 6. Push to the branch (`git push origin feature/amazing-feature`)
 7. Open a Pull Request
@@ -1048,7 +1017,6 @@ Contributions are welcome! Please follow these steps:
 - [OpenTUI](https://github.com/sst/opentui) for zero-flicker terminal UI framework
 - [Solid.js](https://www.solidjs.com/) for reactive rendering
 - [LiteLLM](https://github.com/BerriAI/litellm) for pricing data
-- [napi-rs](https://napi.rs/) for Rust/Node.js bindings
 - [github-contributions-canvas](https://github.com/sallar/github-contributions-canvas) for 2D graph reference
 
 ## License

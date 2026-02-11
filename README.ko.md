@@ -117,7 +117,7 @@ AI 지원 개발 시대에 **토큰은 새로운 에너지**입니다. 토큰은
 - **멀티 플랫폼 지원** - OpenCode, Claude Code, Codex CLI, Cursor IDE, Gemini CLI, Amp, Droid, OpenClaw, Pi 사용량 통합 추적
 - **실시간 가격 반영** - LiteLLM에서 최신 가격을 가져와(디스크 캐시 1시간) 비용 계산
 - **상세 분석** - 입력, 출력, 캐시 읽기/쓰기, 추론 토큰까지 추적
-- **네이티브 Rust 코어** - 모든 파싱과 집계를 Rust로 처리해 최대 10배 빠른 성능
+- **100% Rust CLI** - 전체 CLI가 Rust로 작성되어 최고의 성능과 최소한의 의존성
 - **웹 시각화** - 2D 및 3D 뷰의 인터랙티브 기여 그래프
 - **유연한 필터링** - 플랫폼, 날짜 범위 또는 연도별 필터링
 - **JSON 내보내기** - 외부 시각화 도구/자동화용 데이터 생성
@@ -139,12 +139,12 @@ bunx tokscale@latest
 
 > **[Bun](https://bun.sh/) 필요**: 인터랙티브 TUI는 깜빡임 없는 렌더링을 위해 OpenTUI의 네이티브 Zig 모듈을 사용하며, 이는 Bun 런타임이 필요합니다.
 
-> **패키지 구조**: `tokscale`은 `@tokscale/cli`를 설치하는 별칭 패키지입니다 ([`swc`](https://www.npmjs.com/package/swc)처럼). 둘 다 네이티브 Rust 코어 (`@tokscale/core`)가 포함된 동일한 CLI를 설치합니다.
+> **패키지 구조**: `tokscale`은 `@tokscale/cli`를 설치하는 별칭 패키지입니다 ([`swc`](https://www.npmjs.com/package/swc)처럼). CLI는 플랫폼별 npm 패키지를 통해 배포되는 순수 Rust 바이너리입니다.
 
 ### 사전 요구사항
 
 - [Bun](https://bun.sh/) (필수)
-- (선택) 소스에서 네이티브 모듈을 빌드하려면 Rust 툴체인
+- (선택) 소스에서 CLI를 빌드하려면 Rust 툴체인
 
 ### 개발 환경 설정
 
@@ -166,17 +166,6 @@ bun run cli
 ```
 
 > **참고**: `bun run cli`는 로컬 개발용입니다. `bunx tokscale`로 설치하면 명령이 직접 실행됩니다. 아래 사용법 섹션은 설치된 바이너리 명령을 보여줍니다.
-
-### 네이티브 모듈 빌드
-
-네이티브 Rust 모듈은 CLI 동작에 **필수**입니다. 병렬 파일 스캐닝과 SIMD JSON 파싱을 통해 처리 속도를 약 10배 향상시킵니다:
-
-```bash
-# 네이티브 코어 빌드 (저장소 루트에서 실행)
-bun run build:core
-```
-
-> **참고**: `bunx tokscale@latest`로 설치하면 네이티브 바이너리가 사전 빌드되어 포함됩니다. 소스에서 빌드는 로컬 개발 시에만 필요합니다.
 
 ## 사용법
 
@@ -567,8 +556,8 @@ cargo --version
 [개발 환경 설정](#개발-환경-설정)을 따른 후:
 
 ```bash
-# 네이티브 모듈 빌드 (선택사항이지만 권장)
-bun run build:core
+# Rust CLI 빌드 (선택사항 - 로컬 개발 시에만 필요)
+cargo build --release -p tokscale-cli
 
 # 개발 모드로 실행 (TUI 실행)
 cd packages/cli && bun src/cli.ts
@@ -585,40 +574,21 @@ cd packages/cli && bun src/cli.ts --light
 | 스크립트 | 설명 |
 |--------|-------------|
 | `bun run cli` | 개발 모드에서 CLI 실행 (Bun으로 TUI) |
-| `bun run build:core` | 네이티브 Rust 모듈 빌드 (릴리스) |
 | `bun run build:cli` | CLI TypeScript를 dist/로 빌드 |
-| `bun run build` | core와 CLI 모두 빌드 |
 | `bun run dev:frontend` | 프론트엔드 개발 서버 실행 |
+| `cargo build -p tokscale-cli` | Rust CLI 바이너리 빌드 |
 
 **패키지별 스크립트** (패키지 디렉토리 내에서):
 - `packages/cli`: `bun run dev`, `bun run tui`
-- `crates/tokscale-napi`: `bun run build:debug`, `bun run test`, `bun run bench`
+- `crates/tokscale-cli`: `cargo build`, `cargo test`, `cargo bench`
 
 **참고**: 이 프로젝트는 **Bun**을 패키지 매니저 및 런타임으로 사용합니다. TUI는 OpenTUI의 네이티브 모듈 때문에 Bun이 필요합니다.
 
 ### 테스트
 
 ```bash
-# 네이티브 모듈 테스트 (Rust)
-cd crates/tokscale-napi
-bun run test:rust      # Cargo 테스트
-bun run test           # Node.js 통합 테스트
-bun run test:all       # 둘 다
-```
-
-### 네이티브 모듈 개발
-
-```bash
-cd crates/tokscale-napi
-
-# 디버그 모드로 빌드 (빠른 컴파일)
-bun run build:debug
-
-# 릴리스 모드로 빌드 (최적화됨)
-bun run build
-
-# Rust 벤치마크 실행
-bun run bench
+# Rust 워크스페이스 테스트
+cargo test --workspace
 ```
 
 ### 그래프 명령어 옵션
@@ -660,20 +630,20 @@ tokscale graph --output packages/frontend/public/my-data.json
 
 ### 성능
 
-네이티브 Rust 모듈은 상당한 성능 향상을 제공합니다:
+Rust CLI는 상당한 성능 향상을 제공합니다:
 
-| 작업 | TypeScript | Rust 네이티브 | 속도 향상 |
-|-----------|------------|-------------|---------|
-| 파일 탐색 | ~500ms | ~50ms | **10배** |
-| JSON 파싱 | ~800ms | ~100ms | **8배** |
-| 집계 | ~200ms | ~25ms | **8배** |
-| **총합** | **~1.5초** | **~175ms** | **~8.5배** |
+| 작업 | Pure Rust | JS 대비 속도 향상 |
+|-----------|-----------|---------------|
+| 파일 탐색 | ~50ms | **10배** |
+| JSON 파싱 | ~100ms | **8배** |
+| 집계 | ~25ms | **8배** |
+| **총합** | **~175ms** | **~8.5배** |
 
 *약 1000개의 세션 파일, 100k 메시지 기준 벤치마크*
 
 #### 메모리 최적화
 
-네이티브 모듈은 다음을 통해 약 45% 메모리 절감도 제공합니다:
+Rust 구현은 다음을 통해 약 45% 메모리 절감을 제공합니다:
 
 - 스트리밍 JSON 파싱 (전체 파일 버퍼링 없음)
 - 제로 카피 문자열 처리
@@ -686,14 +656,14 @@ tokscale graph --output packages/frontend/public/my-data.json
 cd packages/benchmarks && bun run generate
 
 # Rust 벤치마크 실행
-cd crates/tokscale-napi && bun run bench
+cd crates/tokscale-cli && cargo bench
 ```
 
 </details>
 
 ## 지원 플랫폼
 
-### 네이티브 모듈 대상
+### 바이너리 대상
 
 | 플랫폼 | 아키텍처 | 상태 |
 |----------|--------------|--------|
@@ -927,7 +897,7 @@ Tokscale은 [LiteLLM의 가격 데이터베이스](https://github.com/BerriAI/li
 1. 저장소 포크
 2. 기능 브랜치 생성 (`git checkout -b feature/amazing-feature`)
 3. 변경 사항 작성
-4. 테스트 실행 (`cd crates/tokscale-napi && bun run test:all`)
+4. 테스트 실행 (`cargo test --workspace`)
 5. 변경 사항 커밋 (`git commit -m 'Add amazing feature'`)
 6. 브랜치에 푸시 (`git push origin feature/amazing-feature`)
 7. Pull Request 열기
@@ -945,7 +915,6 @@ Tokscale은 [LiteLLM의 가격 데이터베이스](https://github.com/BerriAI/li
 - 깜빡임 없는 터미널 UI 프레임워크 [OpenTUI](https://github.com/sst/opentui)
 - 반응형 렌더링을 위한 [Solid.js](https://www.solidjs.com/)
 - 가격 데이터를 위한 [LiteLLM](https://github.com/BerriAI/litellm)
-- Rust/Node.js 바인딩을 위한 [napi-rs](https://napi.rs/)
 - 2D 그래프 참조를 위한 [github-contributions-canvas](https://github.com/sallar/github-contributions-canvas)
 
 ## 라이선스

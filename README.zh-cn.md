@@ -117,7 +117,7 @@
 - **多平台支持** - 跟踪 OpenCode、Claude Code、Codex CLI、Cursor IDE、Gemini CLI、Amp、Droid、OpenClaw 和 Pi 的使用情况
 - **实时定价** - 从 LiteLLM 获取当前价格，带 1 小时磁盘缓存
 - **详细分解** - 输入、输出、缓存读写和推理 Token 跟踪
-- **原生 Rust 核心** - 所有解析和聚合在 Rust 中完成，处理速度提升 10 倍
+- **100% Rust CLI** - 整个 CLI 由 Rust 编写，提供最佳性能和最少依赖
 - **Web 可视化** - 带 2D 和 3D 视图的交互式贡献图
 - **灵活筛选** - 按平台、日期范围或年份筛选
 - **导出为 JSON** - 为外部可视化工具生成数据
@@ -139,13 +139,13 @@ bunx tokscale@latest
 
 > **需要 [Bun](https://bun.sh/)**：交互式 TUI 使用 OpenTUI 的原生 Zig 模块实现零闪烁渲染，这需要 Bun 运行时。
 
-> **包结构**：`tokscale` 是一个别名包（类似 [`swc`](https://www.npmjs.com/package/swc)），它安装 `@tokscale/cli`。两者都安装包含原生 Rust 核心（`@tokscale/core`）的相同 CLI。
+> **包结构**：`tokscale` 是一个别名包（类似 [`swc`](https://www.npmjs.com/package/swc)），它安装 `@tokscale/cli`。CLI 是通过平台特定的 npm 包分发的纯 Rust 二进制文件。
 
 
 ### 先决条件
 
 - [Bun](https://bun.sh/)（必需）
-- （可选）从源码构建原生模块的 Rust 工具链
+- （可选）从源码构建 CLI 的 Rust 工具链
 
 ### 开发环境设置
 
@@ -167,17 +167,6 @@ bun run cli
 ```
 
 > **注意**：`bun run cli` 用于本地开发。通过 `bunx tokscale` 安装后，命令直接运行。下面的使用部分显示已安装的二进制命令。
-
-### 构建原生模块
-
-原生 Rust 模块是 CLI 操作**必需**的。它通过并行文件扫描和 SIMD JSON 解析提供约 10 倍的处理速度：
-
-```bash
-# 构建原生核心（从仓库根目录运行）
-bun run build:core
-```
-
-> **注意**：通过 `bunx tokscale@latest` 安装时，原生二进制文件已预构建并包含在内。仅在本地开发时才需要从源码构建。
 
 ## 使用方法
 
@@ -568,8 +557,8 @@ cargo --version
 按照[开发环境设置](#开发环境设置)后，您可以：
 
 ```bash
-# 构建原生模块（可选但推荐）
-bun run build:core
+# 构建 Rust CLI（可选 - 仅本地开发需要）
+cargo build --release -p tokscale-cli
 
 # 以开发模式运行（启动 TUI）
 cd packages/cli && bun src/cli.ts
@@ -586,40 +575,21 @@ cd packages/cli && bun src/cli.ts --light
 | 脚本 | 描述 |
 |--------|-------------|
 | `bun run cli` | 开发模式运行 CLI（使用 Bun 的 TUI） |
-| `bun run build:core` | 构建原生 Rust 模块（发布版） |
 | `bun run build:cli` | 将 CLI TypeScript 构建到 dist/ |
-| `bun run build` | 同时构建 core 和 CLI |
 | `bun run dev:frontend` | 运行前端开发服务器 |
+| `cargo build -p tokscale-cli` | 构建 Rust CLI 二进制文件 |
 
 **特定包脚本**（从包目录内）：
 - `packages/cli`：`bun run dev`、`bun run tui`
-- `crates/tokscale-napi`：`bun run build:debug`、`bun run test`、`bun run bench`
+- `crates/tokscale-cli`：`cargo build`、`cargo test`、`cargo bench`
 
 **注意**：此项目使用 **Bun** 作为包管理器和运行时。TUI 需要 Bun，因为 OpenTUI 的原生模块。
 
 ### 测试
 
 ```bash
-# 测试原生模块（Rust）
-cd crates/tokscale-napi
-bun run test:rust      # Cargo 测试
-bun run test           # Node.js 集成测试
-bun run test:all       # 两者都
-```
-
-### 原生模块开发
-
-```bash
-cd crates/tokscale-napi
-
-# 调试模式构建（编译更快）
-bun run build:debug
-
-# 发布模式构建（优化版）
-bun run build
-
-# 运行 Rust 基准测试
-bun run bench
+# 测试 Rust 工作区
+cargo test --workspace
 ```
 
 ### 图表命令选项
@@ -687,7 +657,7 @@ tokscale graph --output packages/frontend/public/my-data.json
 cd packages/benchmarks && bun run generate
 
 # 运行 Rust 基准测试
-cd crates/tokscale-napi && bun run bench
+cd crates/tokscale-cli && cargo bench
 ```
 
 </details>
@@ -928,7 +898,7 @@ Tokscale 从 [LiteLLM 的价格数据库](https://github.com/BerriAI/litellm/blo
 1. Fork 仓库
 2. 创建功能分支（`git checkout -b feature/amazing-feature`）
 3. 进行更改
-4. 运行测试（`cd crates/tokscale-napi && bun run test:all`）
+4. 运行测试（`cargo test --workspace`）
 5. 提交更改（`git commit -m 'Add amazing feature'`）
 6. 推送到分支（`git push origin feature/amazing-feature`）
 7. 打开 Pull Request
@@ -946,7 +916,6 @@ Tokscale 从 [LiteLLM 的价格数据库](https://github.com/BerriAI/litellm/blo
 - [OpenTUI](https://github.com/sst/opentui) 零闪烁终端 UI 框架
 - [Solid.js](https://www.solidjs.com/) 响应式渲染
 - [LiteLLM](https://github.com/BerriAI/litellm) 价格数据
-- [napi-rs](https://napi.rs/) Rust/Node.js 绑定
 - [github-contributions-canvas](https://github.com/sallar/github-contributions-canvas) 2D 图表参考
 
 ## 许可证

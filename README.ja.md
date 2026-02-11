@@ -117,7 +117,7 @@ AI支援開発の時代において、**トークンは新しいエネルギー*
 - **マルチプラットフォームサポート** - OpenCode、Claude Code、Codex CLI、Cursor IDE、Gemini CLI、Amp、Droid、OpenClaw、Pi全体の使用量追跡
 - **リアルタイム価格** - 1時間ディスクキャッシュ付きでLiteLLMから現在の価格を取得
 - **詳細な内訳** - 入力、出力、キャッシュ読み書き、推論トークン追跡
-- **ネイティブRustコア** - 10倍高速な処理のため、すべての解析と集計をRustで実行
+- **100% Rust CLI** - CLI全体がRustで書かれており、最高のパフォーマンスと最小限の依存関係
 - **Web可視化** - 2Dと3Dビューのインタラクティブ貢献グラフ
 - **柔軟なフィルタリング** - プラットフォーム、日付範囲、年別フィルタリング
 - **JSONエクスポート** - 外部可視化ツール用のデータ生成
@@ -139,13 +139,13 @@ bunx tokscale@latest
 
 > **[Bun](https://bun.sh/)が必要**: インタラクティブTUIはゼロフリッカーレンダリングのためにOpenTUIのネイティブZigモジュールを使用しており、Bunランタイムが必要です。
 
-> **パッケージ構造**: `tokscale`は`@tokscale/cli`をインストールするエイリアスパッケージです（[`swc`](https://www.npmjs.com/package/swc)のように）。どちらもネイティブRustコア（`@tokscale/core`）を含む同じCLIをインストールします。
+> **パッケージ構造**: `tokscale`は`@tokscale/cli`をインストールするエイリアスパッケージです（[`swc`](https://www.npmjs.com/package/swc)のように）。CLIはプラットフォーム固有のnpmパッケージを通じて配布される純粋なRustバイナリです。
 
 
 ### 前提条件
 
 - [Bun](https://bun.sh/)（必須）
-- （オプション）ソースからネイティブモジュールをビルドするためのRustツールチェーン
+- （オプション）ソースからCLIをビルドするためのRustツールチェーン
 
 ### 開発環境セットアップ
 
@@ -167,17 +167,6 @@ bun run cli
 ```
 
 > **注**: `bun run cli`はローカル開発用です。`bunx tokscale`でインストールすると、コマンドが直接実行されます。以下の使用法セクションはインストールされたバイナリコマンドを示しています。
-
-### ネイティブモジュールのビルド
-
-ネイティブRustモジュールはCLI操作に**必須**です。並列ファイルスキャンとSIMD JSON解析により約10倍高速な処理を提供します：
-
-```bash
-# ネイティブコアをビルド（リポジトリルートから実行）
-bun run build:core
-```
-
-> **注**: `bunx tokscale@latest`でインストールすると、ネイティブバイナリはビルド済みで含まれています。ソースからのビルドはローカル開発にのみ必要です。
 
 ## 使用方法
 
@@ -568,8 +557,8 @@ cargo --version
 [開発環境セットアップ](#開発環境セットアップ)に従った後：
 
 ```bash
-# ネイティブモジュールをビルド（オプションだが推奨）
-bun run build:core
+# Rust CLIをビルド（オプション - ローカル開発時のみ必要）
+cargo build --release -p tokscale-cli
 
 # 開発モードで実行（TUIを起動）
 cd packages/cli && bun src/cli.ts
@@ -586,40 +575,21 @@ cd packages/cli && bun src/cli.ts --light
 | スクリプト | 説明 |
 |--------|-------------|
 | `bun run cli` | 開発モードでCLIを実行（BunでTUI） |
-| `bun run build:core` | ネイティブRustモジュールをビルド（リリース） |
 | `bun run build:cli` | CLIのTypeScriptをdist/にビルド |
-| `bun run build` | coreとCLI両方をビルド |
 | `bun run dev:frontend` | フロントエンド開発サーバーを実行 |
+| `cargo build -p tokscale-cli` | Rust CLIバイナリをビルド |
 
 **パッケージ固有スクリプト**（パッケージディレクトリ内から）：
 - `packages/cli`: `bun run dev`、`bun run tui`
-- `crates/tokscale-napi`: `bun run build:debug`、`bun run test`、`bun run bench`
+- `crates/tokscale-cli`: `cargo build`、`cargo test`、`cargo bench`
 
 **注**: このプロジェクトは**Bun**をパッケージマネージャー兼ランタイムとして使用しています。TUIはOpenTUIのネイティブモジュールのためBunが必要です。
 
 ### テスト
 
 ```bash
-# ネイティブモジュールをテスト（Rust）
-cd crates/tokscale-napi
-bun run test:rust      # Cargoテスト
-bun run test           # Node.js統合テスト
-bun run test:all       # 両方
-```
-
-### ネイティブモジュール開発
-
-```bash
-cd crates/tokscale-napi
-
-# デバッグモードでビルド（コンパイルが速い）
-bun run build:debug
-
-# リリースモードでビルド（最適化済み）
-bun run build
-
-# Rustベンチマークを実行
-bun run bench
+# Rustワークスペースをテスト
+cargo test --workspace
 ```
 
 ### グラフコマンドオプション
@@ -661,20 +631,20 @@ tokscale graph --output packages/frontend/public/my-data.json
 
 ### パフォーマンス
 
-ネイティブRustモジュールは大幅なパフォーマンス向上を提供します：
+Rust CLIは大幅なパフォーマンス向上を提供します：
 
-| 操作 | TypeScript | Rustネイティブ | 高速化 |
-|-----------|------------|-------------|---------|
-| ファイル探索 | ~500ms | ~50ms | **10倍** |
-| JSON解析 | ~800ms | ~100ms | **8倍** |
-| 集計 | ~200ms | ~25ms | **8倍** |
-| **合計** | **~1.5秒** | **~175ms** | **~8.5倍** |
+| 操作 | Pure Rust | JS比高速化 |
+|-----------|-----------|---------------|
+| ファイル探索 | ~50ms | **10倍** |
+| JSON解析 | ~100ms | **8倍** |
+| 集計 | ~25ms | **8倍** |
+| **合計** | **~175ms** | **~8.5倍** |
 
 *約1000セッションファイル、100kメッセージのベンチマーク*
 
 #### メモリ最適化
 
-ネイティブモジュールは以下を通じて約45%のメモリ削減も提供します：
+Rust実装は以下を通じて約45%のメモリ削減を提供します：
 
 - ストリーミングJSON解析（ファイル全体のバッファリングなし）
 - ゼロコピー文字列処理
@@ -687,14 +657,14 @@ tokscale graph --output packages/frontend/public/my-data.json
 cd packages/benchmarks && bun run generate
 
 # Rustベンチマークを実行
-cd crates/tokscale-napi && bun run bench
+cd crates/tokscale-cli && cargo bench
 ```
 
 </details>
 
 ## サポートプラットフォーム
 
-### ネイティブモジュールターゲット
+### バイナリターゲット
 
 | プラットフォーム | アーキテクチャ | ステータス |
 |----------|--------------|--------|
@@ -928,7 +898,7 @@ Tokscaleは[LiteLLMの価格データベース](https://github.com/BerriAI/litel
 1. リポジトリをフォーク
 2. 機能ブランチを作成（`git checkout -b feature/amazing-feature`）
 3. 変更を加える
-4. テストを実行（`cd crates/tokscale-napi && bun run test:all`）
+4. テストを実行（`cargo test --workspace`）
 5. 変更をコミット（`git commit -m 'Add amazing feature'`）
 6. ブランチにプッシュ（`git push origin feature/amazing-feature`）
 7. プルリクエストを開く
@@ -946,7 +916,6 @@ Tokscaleは[LiteLLMの価格データベース](https://github.com/BerriAI/litel
 - ゼロフリッカーターミナルUIフレームワーク[OpenTUI](https://github.com/sst/opentui)
 - リアクティブレンダリングの[Solid.js](https://www.solidjs.com/)
 - 価格データの[LiteLLM](https://github.com/BerriAI/litellm)
-- Rust/Node.jsバインディングの[napi-rs](https://napi.rs/)
 - 2Dグラフ参照の[github-contributions-canvas](https://github.com/sallar/github-contributions-canvas)
 
 ## ライセンス
