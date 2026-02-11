@@ -58,56 +58,24 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { performance } from "node:perf_hooks";
 import type { SourceType } from "./graph-types.js";
-import type { TUIOptions, TabType } from "./tui/types/index.js";
-import { loadSettings } from "./tui/config/settings.js";
+import { loadSettings } from "./settings.js";
 
-type LaunchTUIFunction = (options?: TUIOptions) => Promise<void>;
+type TabType = "overview" | "model" | "daily" | "stats";
 
-let cachedTUILoader: LaunchTUIFunction | null = null;
-let tuiLoadAttempted = false;
-
-async function tryLoadTUI(): Promise<LaunchTUIFunction | null> {
-  if (tuiLoadAttempted) return cachedTUILoader;
-  tuiLoadAttempted = true;
-  
-  const isBun = typeof (globalThis as Record<string, unknown>).Bun !== "undefined";
-  
-  if (!isBun) {
-    return null;
-  }
-  
-  try {
-    // Load OpenTUI preload to register Babel transform for TSX
-    // This is needed for both dev mode (via bunfig.toml) and production
-    // Use variable to prevent TypeScript from analyzing the module
-    const preloadModule = "@opentui/solid/preload";
-    await import(preloadModule);
-    
-    // Always load from source TSX - OpenTUI only works with Bun + preload
-    // Calculate path to src/tui/index.tsx regardless of whether running from src or dist
-    const currentPath = new URL(".", import.meta.url).pathname;
-    const isFromDist = currentPath.includes("/dist/");
-    const tuiPath = isFromDist
-      ? new URL("../src/tui/index.tsx", import.meta.url).href
-      : new URL("./tui/index.tsx", import.meta.url).href;
-    const tuiModule = await import(tuiPath) as { launchTUI: LaunchTUIFunction };
-    cachedTUILoader = tuiModule.launchTUI;
-    return cachedTUILoader;
-  } catch (error) {
-    if (process.env.DEBUG) {
-      console.error("TUI load error:", error);
-    }
-    return null;
-  }
+interface TUIOptions {
+  initialTab?: TabType;
+  enabledSources?: SourceType[];
+  since?: string;
+  until?: string;
+  year?: string;
 }
 
 function showTUIUnavailableMessage(): void {
-  console.log(pc.yellow("\n  TUI mode requires Bun runtime."));
-  console.log(pc.gray("  OpenTUI's native modules are not compatible with Node.js."));
+  console.log(pc.yellow("\n  Native TUI binary not found."));
   console.log();
   console.log(pc.white("  Options:"));
-  console.log(pc.gray("  • Use 'bunx tokscale' instead of 'npx tokscale'"));
-  // console.log(pc.gray("  • Use '--light' flag for legacy CLI table output"));
+  console.log(pc.gray("  • Build from source: cargo build --release -p tokscale-cli"));
+  console.log(pc.gray("  • Use '--light' flag for CLI table output"));
   console.log(pc.gray("  • Use '--json' flag for JSON output"));
   console.log();
 }
@@ -229,36 +197,12 @@ async function spawnNativeTUI(options?: TUIOptions): Promise<boolean> {
   });
 }
 
-/**
- * Launch TUI with automatic fallback:
- * 1. Try OpenTUI (requires Bun, best experience)
- * 2. Fall back to native Ratatui TUI (works everywhere)
- * 3. Show error message if neither works
- */
-async function launchTUIWithFallback(options?: TUIOptions): Promise<void> {
-  // First try OpenTUI (best experience, but requires Bun)
-  const launchOpenTUI = await tryLoadTUI();
-  if (launchOpenTUI) {
-    try {
-      await launchOpenTUI(options);
-      return;
-    } catch (error) {
-      // OpenTUI failed (e.g., Windows terminal issues), try native
-      if (process.env.DEBUG) {
-        console.error("OpenTUI failed, falling back to native TUI:", error);
-      }
-    }
+async function launchTUI(options?: TUIOptions): Promise<void> {
+  const success = await spawnNativeTUI(options);
+  if (!success) {
+    showTUIUnavailableMessage();
+    process.exit(1);
   }
-  
-  // Try native TUI
-  const nativeSuccess = await spawnNativeTUI(options);
-  if (nativeSuccess) {
-    return;
-  }
-  
-  // Neither worked - show error
-  showTUIUnavailableMessage();
-  process.exit(1);
 }
 
 interface FilterOptions {
@@ -611,7 +555,7 @@ async function main() {
       } else if (options.light) {
         await showMonthlyReport(options, { spinner: options.spinner });
       } else {
-        await launchTUIWithFallback(buildTUIOptions(options, "daily"));
+        await launchTUI(buildTUIOptions(options, "daily"));
       }
     });
 
@@ -643,7 +587,7 @@ async function main() {
       } else if (options.light) {
         await showModelReport(options, { spinner: options.spinner });
       } else {
-        await launchTUIWithFallback(buildTUIOptions(options, "model"));
+        await launchTUI(buildTUIOptions(options, "model"));
       }
     });
 
@@ -991,7 +935,7 @@ async function main() {
     .option("--until <date>", "End date (YYYY-MM-DD)")
     .option("--year <year>", "Filter to specific year")
     .action(async (options) => {
-      await launchTUIWithFallback(buildTUIOptions(options));
+      await launchTUI(buildTUIOptions(options));
     });
 
   program
@@ -1122,7 +1066,7 @@ async function main() {
     } else if (opts.light) {
       await showModelReport(opts, { spinner: opts.spinner });
     } else {
-      await launchTUIWithFallback(buildTUIOptions(opts));
+      await launchTUI(buildTUIOptions(opts));
     }
   }
 }
