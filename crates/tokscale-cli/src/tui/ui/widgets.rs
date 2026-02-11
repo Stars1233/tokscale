@@ -84,8 +84,10 @@ fn get_provider_from_model(model: &str) -> &'static str {
         "deepseek"
     } else if model_lower.contains("grok") {
         "xai"
-    } else if model_lower.contains("llama") || model_lower.contains("mixtral") {
+    } else if model_lower.contains("llama") {
         "meta"
+    } else if model_lower.contains("mixtral") {
+        "mistral"
     } else if model_lower == "auto" || model_lower.contains("cursor") {
         "cursor"
     } else {

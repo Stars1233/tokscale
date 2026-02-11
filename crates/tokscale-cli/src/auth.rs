@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
 
 fn home_dir() -> Result<PathBuf> {
@@ -69,12 +70,23 @@ pub fn save_credentials(credentials: &Credentials) -> Result<()> {
     ensure_config_dir()?;
     let path = get_credentials_path()?;
     let json = serde_json::to_string_pretty(credentials)?;
-    fs::write(&path, json)?;
 
     #[cfg(unix)]
     {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o600))?;
+        use std::os::unix::fs::OpenOptionsExt;
+
+        let mut file = fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(&path)?;
+        file.write_all(json.as_bytes())?;
+    }
+
+    #[cfg(not(unix))]
+    {
+        fs::write(&path, json)?;
     }
 
     Ok(())
@@ -151,7 +163,9 @@ pub async fn login() -> Result<()> {
     println!("\n  {}\n", "Tokscale - Login".cyan());
     println!("{}", "  Requesting authorization code...".bright_black());
 
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()?;
 
     let device_code_response = client
         .post(format!("{}/api/auth/device", base_url))

@@ -33,7 +33,7 @@ jobs:
       - name: Calculate version
         id: bump
         run: |
-          # Read current version from packages/cli/package.json (source of truth after NAPI removal)
+          # Read current version from packages/cli/package.json (source of truth)
           CURRENT_VERSION=$(jq -r '.version' packages/cli/package.json)
           echo "📦 Current version: $CURRENT_VERSION"
           

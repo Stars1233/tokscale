@@ -81,8 +81,9 @@ fn migrate_cache_dir_from_old_path() {
     };
     if !new_dir.exists() && old_dir.exists() {
         if fs::create_dir_all(&new_dir).is_ok() {
-            let _ = copy_dir_recursive(&old_dir, &new_dir);
-            let _ = fs::remove_dir_all(&old_dir);
+            if copy_dir_recursive(&old_dir, &new_dir).is_ok() {
+                let _ = fs::remove_dir_all(&old_dir);
+            }
         }
     }
 }
@@ -155,14 +156,29 @@ fn atomic_write_file(path: &std::path::Path, contents: &str) -> Result<()> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&temp_path, fs::Permissions::from_mode(0o600))?;
+        if let Err(e) = fs::set_permissions(&temp_path, fs::Permissions::from_mode(0o600)) {
+            let _ = fs::remove_file(&temp_path);
+            return Err(e.into());
+        }
     }
 
     if let Err(err) = fs::rename(&temp_path, path) {
         if path.exists() {
-            let _ = fs::remove_file(path);
-            fs::rename(&temp_path, path)?;
+            match fs::copy(&temp_path, path) {
+                Ok(_) => {
+                    let _ = fs::remove_file(&temp_path);
+                }
+                Err(copy_err) => {
+                    let _ = fs::remove_file(&temp_path);
+                    return Err(anyhow::anyhow!(
+                        "Failed to persist file with rename ({}) and copy fallback ({})",
+                        err,
+                        copy_err
+                    ));
+                }
+            }
         } else {
+            let _ = fs::remove_file(&temp_path);
             return Err(err.into());
         }
     }

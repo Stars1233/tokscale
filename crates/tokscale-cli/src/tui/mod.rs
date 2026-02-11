@@ -15,6 +15,7 @@ pub use event::{Event, EventHandler};
 use std::collections::HashSet;
 use std::io;
 use std::sync::mpsc;
+use std::sync::mpsc::TryRecvError;
 use std::thread;
 use std::time::Duration;
 
@@ -162,17 +163,27 @@ fn run_loop_with_background(
     loop {
         terminal.draw(|f| ui::render(f, app))?;
 
-        if let Ok(result) = background_rx.try_recv() {
-            app.set_background_loading(false);
-            match result {
-                Ok(data) => {
-                    app.update_data(data);
-                    app.set_status("Data loaded");
+        match background_rx.try_recv() {
+            Ok(result) => {
+                app.set_background_loading(false);
+                match result {
+                    Ok(data) => {
+                        app.update_data(data);
+                        app.set_status("Data loaded");
+                    }
+                    Err(e) => {
+                        app.set_error(Some(e.to_string()));
+                        app.set_status(&format!("Error: {}", e));
+                    }
                 }
-                Err(e) => {
-                    app.set_error(Some(e.to_string()));
-                    app.set_status(&format!("Error: {}", e));
-                }
+            }
+            Err(TryRecvError::Disconnected) => {
+                app.set_background_loading(false);
+                app.set_error(Some("Background thread disconnected".to_string()));
+                app.set_status("Error: Background thread disconnected");
+            }
+            Err(TryRecvError::Empty) => {
+                // No data available yet, continue
             }
         }
 

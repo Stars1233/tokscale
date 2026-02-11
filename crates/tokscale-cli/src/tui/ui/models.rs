@@ -101,7 +101,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     .height(1);
 
     let models_len = models.len();
-    let start = scroll_offset.min(models_len);
+    let start = scroll_offset.min(models_len.saturating_sub(1));
     let end = (start + visible_height).min(models_len);
 
     if start >= models_len {

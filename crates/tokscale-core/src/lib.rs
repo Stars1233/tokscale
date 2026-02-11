@@ -232,13 +232,14 @@ fn parse_all_messages_with_pricing(
         .collect();
     all_messages.extend(opencode_messages);
 
-    let claude_messages: Vec<UnifiedMessage> = scan_result
+    let claude_messages_raw: Vec<(String, UnifiedMessage)> = scan_result
         .claude_files
         .par_iter()
         .flat_map(|path| {
             sessions::claudecode::parse_claude_file(path)
                 .into_iter()
                 .map(|mut msg| {
+                    let dedup_key = msg.dedup_key.clone().unwrap_or_default();
                     msg.cost = pricing.calculate_cost(
                         &msg.model_id,
                         msg.tokens.input,
@@ -247,10 +248,17 @@ fn parse_all_messages_with_pricing(
                         msg.tokens.cache_write,
                         msg.tokens.reasoning,
                     );
-                    msg
+                    (dedup_key, msg)
                 })
                 .collect::<Vec<_>>()
         })
+        .collect();
+
+    let mut seen_keys: HashSet<String> = HashSet::new();
+    let claude_messages: Vec<UnifiedMessage> = claude_messages_raw
+        .into_iter()
+        .filter(|(key, _)| key.is_empty() || seen_keys.insert(key.clone()))
+        .map(|(_, msg)| msg)
         .collect();
     all_messages.extend(claude_messages);
 

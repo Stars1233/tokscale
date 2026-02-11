@@ -211,7 +211,11 @@ fn render_top_models(frame: &mut Frame, app: &mut App, area: Rect, items_per_pag
 
         let model_color = get_model_color(&model.model);
         let name = truncate_string(&model.model, max_name_width);
-        let percentage = (model.cost / total) * 100.0;
+        let percentage = if model.cost.is_finite() && total.is_finite() && total > 0.0 {
+            (model.cost / total) * 100.0
+        } else {
+            0.0
+        };
 
         let line1_area = Rect::new(inner.x, y, inner.width, 1);
         frame.render_widget(Paragraph::new("").style(row_style), line1_area);

@@ -49,7 +49,7 @@ const MIN_FUZZY_MATCH_LEN: usize = 5;
 
 /// Minimum length for a model name candidate after prefix/suffix stripping.
 /// Prevents false positives like "pro" or "flash" being matched alone.
-const MIN_MODEL_NAME_LEN: usize = 5;
+const MIN_MODEL_NAME_LEN: usize = 2;
 
 /// Maximum number of leading segments that can be treated as a routing prefix.
 /// Limits how aggressively we strip (e.g., "a-b-claude-3" strips at most "a-b-").

@@ -93,6 +93,14 @@ fn parse_openclaw_session(session_path: &Path, session_id: &str) -> Vec<UnifiedM
         Err(_) => return Vec::new(),
     };
 
+    // Get file modification time as fallback for missing timestamps
+    let file_mtime_ms = std::fs::metadata(session_path)
+        .and_then(|m| m.modified())
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+
     let reader = BufReader::new(file);
     let mut messages = Vec::new();
     let mut current_model: Option<String> = None;
@@ -143,7 +151,7 @@ fn parse_openclaw_session(session_path: &Path, session_id: &str) -> Vec<UnifiedM
                     let provider = current_provider
                         .clone()
                         .unwrap_or_else(|| "unknown".to_string());
-                    let timestamp = msg.timestamp.unwrap_or(0);
+                    let timestamp = msg.timestamp.unwrap_or(file_mtime_ms);
                     let cost = usage.cost.and_then(|c| c.total).unwrap_or(0.0);
 
                     messages.push(UnifiedMessage::new(

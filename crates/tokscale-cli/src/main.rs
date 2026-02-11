@@ -2349,11 +2349,10 @@ fn run_headless_command(
             timed_out_clone.store(true, Ordering::SeqCst);
             #[cfg(unix)]
             {
-                use std::os::unix::process::CommandExt;
                 let _ = std::process::Command::new("kill")
                     .arg("-9")
                     .arg(child_id.to_string())
-                    .exec();
+                    .output();
             }
             #[cfg(windows)]
             {

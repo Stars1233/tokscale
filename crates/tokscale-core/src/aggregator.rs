@@ -98,6 +98,10 @@ pub fn calculate_years(contributions: &[DailyContribution]) -> Vec<YearSummary> 
     let mut years_map: HashMap<String, YearAccumulator> = HashMap::with_capacity(5);
 
     for c in contributions {
+        // Guard against short/invalid date strings
+        if c.date.len() < 4 {
+            continue;
+        }
         let year = &c.date[0..4];
         let entry = years_map.entry(year.to_string()).or_default();
         entry.tokens += c.totals.tokens;

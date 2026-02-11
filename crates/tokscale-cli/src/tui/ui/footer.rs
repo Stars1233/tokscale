@@ -137,7 +137,7 @@ fn render_source_badges(frame: &mut Frame, app: &mut App, area: Rect) {
         } else {
             format!("[{}{}:{}]", indicator, key, short)
         };
-        let badge_width = badge_text.len() as u16;
+        let badge_width = badge_text.chars().count() as u16;
 
         let style = if enabled {
             Style::default().fg(Color::Green)

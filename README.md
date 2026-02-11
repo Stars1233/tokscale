@@ -269,7 +269,7 @@ tokscale --openclaw
 tokscale --pi
 
 # Combine filters
-tokscale --opencode --claude
+tokscale --opencode --claude --pi
 ```
 
 ### Date Filtering

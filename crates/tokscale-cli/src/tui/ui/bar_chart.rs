@@ -206,6 +206,8 @@ fn get_stacked_bar_content(
         return (' ', muted_color);
     }
 
+    // Note: Sorting happens per cell render. If performance becomes an issue,
+    // consider pre-sorting the model list before calling this function.
     let mut sorted_models: Vec<&ModelSegment> = bar_data.models.iter().collect();
     sorted_models.sort_by(|a, b| a.model_id.cmp(&b.model_id));
 

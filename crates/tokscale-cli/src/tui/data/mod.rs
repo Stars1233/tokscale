@@ -334,7 +334,7 @@ impl DataLoader {
     fn aggregate_messages(&self, messages: Vec<UnifiedMessage>) -> Result<UsageData> {
         let mut model_map: HashMap<String, ModelUsage> = HashMap::new();
         let mut daily_map: HashMap<NaiveDate, DailyUsage> = HashMap::new();
-        let mut session_ids: HashSet<String> = HashSet::new();
+        let mut model_session_ids: HashMap<String, HashSet<String>> = HashMap::new();
 
         for msg in &messages {
             let key = format!("{}:{}:{}", msg.source, msg.provider_id, msg.model_id);
@@ -376,7 +376,8 @@ impl DataLoader {
             model_entry.cost += msg_cost;
 
             let session_key = format!("{}:{}", msg.source, msg.session_id);
-            if session_ids.insert(session_key) {
+            let model_sessions = model_session_ids.entry(key).or_insert_with(HashSet::new);
+            if model_sessions.insert(session_key) {
                 model_entry.session_count += 1;
             }
 
