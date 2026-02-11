@@ -5,6 +5,9 @@ edition = "2021"
 license = "MIT"
 description = "Native Rust core for tokscale CLI - high-performance session parsing"
 
+# Mark as standalone package (not part of root workspace)
+[workspace]
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 
