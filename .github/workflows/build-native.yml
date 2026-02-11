@@ -2,7 +2,9 @@ name: Build Native (Test Only)
 
 on:
   workflow_dispatch:
-  pull_request:
+  push:
+    branches:
+      - main
     paths:
       - "crates/tokscale-napi/**"
       - "!crates/tokscale-napi/package.json"
