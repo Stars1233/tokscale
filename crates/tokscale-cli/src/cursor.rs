@@ -107,11 +107,17 @@ fn build_cursor_headers(session_token: &str) -> reqwest::header::HeaderMap {
 
     let mut headers = reqwest::header::HeaderMap::new();
     headers.insert("Accept", HeaderValue::from_static("*/*"));
-    headers.insert("Accept-Language", HeaderValue::from_static("en-US,en;q=0.9"));
+    headers.insert(
+        "Accept-Language",
+        HeaderValue::from_static("en-US,en;q=0.9"),
+    );
     if let Ok(cookie) = format!("WorkosCursorSessionToken={}", session_token).parse() {
         headers.insert("Cookie", cookie);
     }
-    headers.insert("Referer", HeaderValue::from_static("https://www.cursor.com/settings"));
+    headers.insert(
+        "Referer",
+        HeaderValue::from_static("https://www.cursor.com/settings"),
+    );
     headers.insert(
         "User-Agent",
         HeaderValue::from_static("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"),
@@ -137,7 +143,9 @@ fn atomic_write_file(path: &std::path::Path, contents: &str) -> Result<()> {
 
     let temp_name = format!(
         ".tmp-{}-{}",
-        path.file_name().and_then(|name| name.to_str()).unwrap_or("cursor"),
+        path.file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("cursor"),
         std::process::id()
     );
     let temp_path = parent.join(temp_name);
@@ -210,10 +218,20 @@ fn sanitize_account_id_for_filename(account_id: &str) -> String {
         .trim()
         .to_lowercase()
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '.' || c == '_' || c == '-' { c } else { '-' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '.' || c == '_' || c == '-' {
+                c
+            } else {
+                '-'
+            }
+        })
         .collect();
     let trimmed = sanitized.trim_matches('-');
-    let result = if trimmed.len() > 80 { &trimmed[..80] } else { trimmed };
+    let result = if trimmed.len() > 80 {
+        &trimmed[..80]
+    } else {
+        trimmed
+    };
     if result.is_empty() {
         "account".to_string()
     } else {
@@ -381,10 +399,7 @@ pub fn save_credentials(token: &str, label: Option<&str>) -> Result<String> {
                 }
                 if let Some(existing_label) = &acct.label {
                     if existing_label.trim().to_lowercase() == needle {
-                        anyhow::bail!(
-                            "Cursor account label already exists: {}",
-                            lbl
-                        );
+                        anyhow::bail!("Cursor account label already exists: {}", lbl);
                     }
                 }
             }
@@ -408,8 +423,8 @@ pub fn save_credentials(token: &str, label: Option<&str>) -> Result<String> {
 }
 
 pub fn remove_account(name_or_id: &str, purge_cache: bool) -> Result<()> {
-    let mut store = load_credentials_store()
-        .ok_or_else(|| anyhow::anyhow!("No saved Cursor accounts"))?;
+    let mut store =
+        load_credentials_store().ok_or_else(|| anyhow::anyhow!("No saved Cursor accounts"))?;
 
     let resolved = resolve_account_id(&store, name_or_id)
         .ok_or_else(|| anyhow::anyhow!("Account not found: {}", name_or_id))?;
@@ -494,14 +509,14 @@ pub fn remove_all_accounts(purge_cache: bool) -> Result<()> {
 }
 
 pub fn set_active_account(name_or_id: &str) -> Result<()> {
-    let mut store = load_credentials_store()
-        .ok_or_else(|| anyhow::anyhow!("No saved Cursor accounts"))?;
+    let mut store =
+        load_credentials_store().ok_or_else(|| anyhow::anyhow!("No saved Cursor accounts"))?;
 
     let resolved = resolve_account_id(&store, name_or_id)
         .ok_or_else(|| anyhow::anyhow!("Account not found: {}", name_or_id))?;
 
     let old_active_id = store.active_account_id.clone();
-    
+
     if resolved != old_active_id {
         let _ = reconcile_cache_files(&old_active_id, &resolved);
     }
@@ -603,9 +618,7 @@ pub struct ValidateSessionResult {
     pub error: Option<String>,
 }
 
-pub async fn validate_cursor_session(
-    token: &str,
-) -> ValidateSessionResult {
+pub async fn validate_cursor_session(token: &str) -> ValidateSessionResult {
     let client = reqwest::Client::new();
     let response = match client
         .get(USAGE_SUMMARY_ENDPOINT)
@@ -836,9 +849,7 @@ fn archive_cache_file(file_path: &std::path::Path, label: &str) -> Result<()> {
     }
 
     let safe_label = sanitize_account_id_for_filename(label);
-    let ts = chrono::Utc::now()
-        .format("%Y-%m-%dT%H-%M-%S")
-        .to_string();
+    let ts = chrono::Utc::now().format("%Y-%m-%dT%H-%M-%S").to_string();
     let dest = archive_dir.join(format!("{}-{}.csv", safe_label, ts));
     fs::rename(file_path, dest)?;
     Ok(())
@@ -883,7 +894,9 @@ pub fn run_cursor_login(name: Option<String>) -> Result<()> {
     let result = rt.block_on(async { validate_cursor_session(&token).await });
 
     if !result.valid {
-        let msg = result.error.unwrap_or_else(|| "Invalid session token".to_string());
+        let msg = result
+            .error
+            .unwrap_or_else(|| "Invalid session token".to_string());
         println!(
             "\n  {}\n",
             format!("{}. Please check and try again.", msg).red()
@@ -896,12 +909,13 @@ pub fn run_cursor_login(name: Option<String>) -> Result<()> {
     let display_name = name.as_deref().unwrap_or(&account_id);
     println!(
         "\n  {}",
-        format!("Successfully logged in to Cursor as {}", display_name.bold()).green()
+        format!(
+            "Successfully logged in to Cursor as {}",
+            display_name.bold()
+        )
+        .green()
     );
-    println!(
-        "{}",
-        format!("  Account ID: {}", account_id).bright_black()
-    );
+    println!("{}", format!("  Account ID: {}", account_id).bright_black());
     println!();
 
     Ok(())
@@ -918,10 +932,7 @@ pub fn run_cursor_logout(name: Option<String>, all: bool, purge_cache: bool) -> 
         }
 
         remove_all_accounts(purge_cache)?;
-        println!(
-            "\n  {}\n",
-            "Logged out from all Cursor accounts.".green()
-        );
+        println!("\n  {}\n", "Logged out from all Cursor accounts.".green());
         return Ok(());
     }
 
@@ -978,8 +989,7 @@ pub fn run_cursor_status(name: Option<String>) -> Result<()> {
                 println!("\n  {}", "No saved Cursor accounts.".yellow());
                 println!(
                     "{}",
-                    "  Run 'tokscale cursor login' to authenticate.\n"
-                        .bright_black()
+                    "  Run 'tokscale cursor login' to authenticate.\n".bright_black()
                 );
             }
             return Ok(());
@@ -988,26 +998,15 @@ pub fn run_cursor_status(name: Option<String>) -> Result<()> {
 
     println!("\n  {}\n", "Cursor IDE - Status".cyan());
 
-    let display_name = credentials
-        .label
-        .as_deref()
-        .unwrap_or("(no label)");
-    println!(
-        "{}",
-        format!("  Account: {}", display_name).white()
-    );
+    let display_name = credentials.label.as_deref().unwrap_or("(no label)");
+    println!("{}", format!("  Account: {}", display_name).white());
     if let Some(ref uid) = credentials.user_id {
-        println!(
-            "{}",
-            format!("  User ID: {}", uid).bright_black()
-        );
+        println!("{}", format!("  User ID: {}", uid).bright_black());
     }
 
     println!("{}", "  Validating session...".bright_black());
 
-    let result = rt.block_on(async {
-        validate_cursor_session(&credentials.session_token).await
-    });
+    let result = rt.block_on(async { validate_cursor_session(&credentials.session_token).await });
 
     if result.valid {
         println!("  {}", "Session: Valid".green());
@@ -1015,7 +1014,9 @@ pub fn run_cursor_status(name: Option<String>) -> Result<()> {
             println!("{}", format!("  Membership: {}", membership).bright_black());
         }
     } else {
-        let msg = result.error.unwrap_or_else(|| "Invalid / Expired".to_string());
+        let msg = result
+            .error
+            .unwrap_or_else(|| "Invalid / Expired".to_string());
         println!("  {}", format!("Session: {}", msg).red());
     }
     println!();

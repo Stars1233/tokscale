@@ -547,13 +547,9 @@ fn build_contribution_graph(daily: &[DailyUsage]) -> GraphData {
     let end_date = today;
     let start_date = end_date - chrono::Duration::days(364 + days_to_sunday as i64);
 
-    let daily_map: HashMap<NaiveDate, &DailyUsage> =
-        daily.iter().map(|d| (d.date, d)).collect();
+    let daily_map: HashMap<NaiveDate, &DailyUsage> = daily.iter().map(|d| (d.date, d)).collect();
 
-    let max_cost = daily
-        .iter()
-        .map(|d| d.cost)
-        .fold(0.0_f64, |a, b| a.max(b));
+    let max_cost = daily.iter().map(|d| d.cost).fold(0.0_f64, |a, b| a.max(b));
 
     let mut weeks: Vec<Vec<Option<ContributionDay>>> = Vec::new();
     let mut current_week: Vec<Option<ContributionDay>> = Vec::new();

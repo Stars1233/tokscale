@@ -1,9 +1,9 @@
-mod tui;
 mod auth;
+mod commands;
 mod cursor;
+mod tui;
 
 use anyhow::Result;
-use chrono::Datelike;
 use clap::{Parser, Subcommand};
 use std::path::{Path, PathBuf};
 use tui::Tab;
@@ -291,7 +291,10 @@ enum Commands {
         until: Option<String>,
         #[arg(long, help = "Filter by year (YYYY)")]
         year: Option<String>,
-        #[arg(long, help = "Show what would be submitted without actually submitting")]
+        #[arg(
+            long,
+            help = "Show what would be submitted without actually submitting"
+        )]
         dry_run: bool,
     },
     #[command(about = "Capture subprocess output for token usage tracking")]
@@ -331,7 +334,10 @@ enum Commands {
         openclaw: bool,
         #[arg(long, help = "Show only Pi usage")]
         pi: bool,
-        #[arg(long, help = "Display total tokens in abbreviated format (e.g., 7.14B)")]
+        #[arg(
+            long,
+            help = "Display total tokens in abbreviated format (e.g., 7.14B)"
+        )]
         short: bool,
         #[arg(long, help = "Show Top OpenCode Agents (default)")]
         agents: bool,
@@ -412,14 +418,31 @@ fn main() -> Result<()> {
             no_spinner,
         }) => {
             let sources = build_source_filter(SourceFlags {
-                opencode, claude, codex, gemini, cursor, amp, droid, openclaw, pi,
+                opencode,
+                claude,
+                codex,
+                gemini,
+                cursor,
+                amp,
+                droid,
+                openclaw,
+                pi,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             let year = normalize_year_filter(today, week, month, year);
             if json || light {
                 run_models_report(json, sources, since, until, year, benchmark, no_spinner)
             } else {
-                tui::run(&cli.theme, cli.refresh, cli.debug, sources, since, until, year, Some(Tab::Models))
+                tui::run(
+                    &cli.theme,
+                    cli.refresh,
+                    cli.debug,
+                    sources,
+                    since,
+                    until,
+                    year,
+                    Some(Tab::Models),
+                )
             }
         }
         Some(Commands::Monthly {
@@ -444,31 +467,43 @@ fn main() -> Result<()> {
             no_spinner,
         }) => {
             let sources = build_source_filter(SourceFlags {
-                opencode, claude, codex, gemini, cursor, amp, droid, openclaw, pi,
+                opencode,
+                claude,
+                codex,
+                gemini,
+                cursor,
+                amp,
+                droid,
+                openclaw,
+                pi,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             let year = normalize_year_filter(today, week, month, year);
             if json || light {
                 run_monthly_report(json, sources, since, until, year, benchmark, no_spinner)
             } else {
-                tui::run(&cli.theme, cli.refresh, cli.debug, sources, since, until, year, Some(Tab::Daily))
+                tui::run(
+                    &cli.theme,
+                    cli.refresh,
+                    cli.debug,
+                    sources,
+                    since,
+                    until,
+                    year,
+                    Some(Tab::Daily),
+                )
             }
         }
-        Some(Commands::Pricing { model_id, json, provider, no_spinner }) => {
-            run_pricing_lookup(&model_id, json, provider.as_deref(), no_spinner)
-        }
-        Some(Commands::Sources { json }) => {
-            run_sources_command(json)
-        }
-        Some(Commands::Login) => {
-            run_login_command()
-        }
-        Some(Commands::Logout) => {
-            run_logout_command()
-        }
-        Some(Commands::Whoami) => {
-            run_whoami_command()
-        }
+        Some(Commands::Pricing {
+            model_id,
+            json,
+            provider,
+            no_spinner,
+        }) => run_pricing_lookup(&model_id, json, provider.as_deref(), no_spinner),
+        Some(Commands::Sources { json }) => run_sources_command(json),
+        Some(Commands::Login) => run_login_command(),
+        Some(Commands::Logout) => run_logout_command(),
+        Some(Commands::Whoami) => run_whoami_command(),
         Some(Commands::Graph {
             output,
             opencode,
@@ -490,7 +525,15 @@ fn main() -> Result<()> {
             no_spinner,
         }) => {
             let sources = build_source_filter(SourceFlags {
-                opencode, claude, codex, gemini, cursor, amp, droid, openclaw, pi,
+                opencode,
+                claude,
+                codex,
+                gemini,
+                cursor,
+                amp,
+                droid,
+                openclaw,
+                pi,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             let year = normalize_year_filter(today, week, month, year);
@@ -514,11 +557,28 @@ fn main() -> Result<()> {
             year,
         }) => {
             let sources = build_source_filter(SourceFlags {
-                opencode, claude, codex, gemini, cursor, amp, droid, openclaw, pi,
+                opencode,
+                claude,
+                codex,
+                gemini,
+                cursor,
+                amp,
+                droid,
+                openclaw,
+                pi,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             let year = normalize_year_filter(today, week, month, year);
-            tui::run(&cli.theme, cli.refresh, cli.debug, sources, since, until, year, None)
+            tui::run(
+                &cli.theme,
+                cli.refresh,
+                cli.debug,
+                sources,
+                since,
+                until,
+                year,
+                None,
+            )
         }
         Some(Commands::Submit {
             opencode,
@@ -539,7 +599,15 @@ fn main() -> Result<()> {
             dry_run,
         }) => {
             let sources = build_source_filter(SourceFlags {
-                opencode, claude, codex, gemini, cursor, amp, droid, openclaw, pi,
+                opencode,
+                claude,
+                codex,
+                gemini,
+                cursor,
+                amp,
+                droid,
+                openclaw,
+                pi,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             let year = normalize_year_filter(today, week, month, year);
@@ -551,9 +619,7 @@ fn main() -> Result<()> {
             format,
             output,
             no_auto_flags,
-        }) => {
-            run_headless_command(&source, args, format, output, no_auto_flags)
-        }
+        }) => run_headless_command(&source, args, format, output, no_auto_flags),
         Some(Commands::Wrapped {
             output,
             year,
@@ -573,13 +639,27 @@ fn main() -> Result<()> {
             no_spinner: _,
         }) => {
             let sources = build_source_filter(SourceFlags {
-                opencode, claude, codex, gemini, cursor, amp, droid, openclaw, pi,
+                opencode,
+                claude,
+                codex,
+                gemini,
+                cursor,
+                amp,
+                droid,
+                openclaw,
+                pi,
             });
-            run_wrapped_command(output, year, sources, short, agents, clients, disable_pinned)
+            run_wrapped_command(
+                output,
+                year,
+                sources,
+                short,
+                agents,
+                clients,
+                disable_pinned,
+            )
         }
-        Some(Commands::Cursor { subcommand }) => {
-            run_cursor_command(subcommand)
-        }
+        Some(Commands::Cursor { subcommand }) => run_cursor_command(subcommand),
         None => {
             let sources = build_source_filter(SourceFlags {
                 opencode: cli.opencode,
@@ -592,7 +672,8 @@ fn main() -> Result<()> {
                 openclaw: cli.openclaw,
                 pi: cli.pi,
             });
-            let (since, until) = build_date_filter(cli.today, cli.week, cli.month, cli.since, cli.until);
+            let (since, until) =
+                build_date_filter(cli.today, cli.week, cli.month, cli.since, cli.until);
             let year = normalize_year_filter(cli.today, cli.week, cli.month, cli.year);
 
             if cli.json {
@@ -600,7 +681,16 @@ fn main() -> Result<()> {
             } else if cli.light {
                 run_models_report(false, sources, since, until, year, cli.benchmark, true)
             } else {
-                tui::run(&cli.theme, cli.refresh, cli.debug, sources, since, until, year, None)
+                tui::run(
+                    &cli.theme,
+                    cli.refresh,
+                    cli.debug,
+                    sources,
+                    since,
+                    until,
+                    year,
+                    None,
+                )
             }
         }
     }
@@ -620,16 +710,34 @@ struct SourceFlags {
 
 fn build_source_filter(flags: SourceFlags) -> Option<Vec<String>> {
     let mut sources = Vec::new();
-    if flags.opencode { sources.push("opencode".to_string()); }
-    if flags.claude { sources.push("claude".to_string()); }
-    if flags.codex { sources.push("codex".to_string()); }
-    if flags.gemini { sources.push("gemini".to_string()); }
-    if flags.cursor { sources.push("cursor".to_string()); }
-    if flags.amp { sources.push("amp".to_string()); }
-    if flags.droid { sources.push("droid".to_string()); }
-    if flags.openclaw { sources.push("openclaw".to_string()); }
-    if flags.pi { sources.push("pi".to_string()); }
-    
+    if flags.opencode {
+        sources.push("opencode".to_string());
+    }
+    if flags.claude {
+        sources.push("claude".to_string());
+    }
+    if flags.codex {
+        sources.push("codex".to_string());
+    }
+    if flags.gemini {
+        sources.push("gemini".to_string());
+    }
+    if flags.cursor {
+        sources.push("cursor".to_string());
+    }
+    if flags.amp {
+        sources.push("amp".to_string());
+    }
+    if flags.droid {
+        sources.push("droid".to_string());
+    }
+    if flags.openclaw {
+        sources.push("openclaw".to_string());
+    }
+    if flags.pi {
+        sources.push("pi".to_string());
+    }
+
     if sources.is_empty() {
         None
     } else {
@@ -644,15 +752,15 @@ fn build_date_filter(
     since: Option<String>,
     until: Option<String>,
 ) -> (Option<String>, Option<String>) {
-    use chrono::{Utc, Datelike, Duration};
-    
+    use chrono::{Datelike, Duration, Utc};
+
     // Use UTC for date shortcuts to match TypeScript behavior
     // TS uses: new Date().toISOString().split("T")[0]
     if today {
         let date = Utc::now().format("%Y-%m-%d").to_string();
         return (Some(date.clone()), Some(date));
     }
-    
+
     if week {
         let end = Utc::now();
         let start = end - Duration::days(6);
@@ -661,7 +769,7 @@ fn build_date_filter(
             Some(end.format("%Y-%m-%d").to_string()),
         );
     }
-    
+
     if month {
         let now = Utc::now();
         let start = now.with_day(1).unwrap_or(now);
@@ -670,7 +778,7 @@ fn build_date_filter(
             Some(now.format("%Y-%m-%d").to_string()),
         );
     }
-    
+
     (since, until)
 }
 
@@ -696,25 +804,27 @@ fn run_models_report(
     benchmark: bool,
     no_spinner: bool,
 ) -> Result<()> {
+    use std::time::Instant;
     use tokio::runtime::Runtime;
     use tokscale_core::{get_model_report, ReportOptions};
-    use std::time::Instant;
 
     if !no_spinner {
         eprintln!("  Scanning session data...");
     }
     let start = Instant::now();
     let rt = Runtime::new()?;
-    let report = rt.block_on(async {
-        get_model_report(ReportOptions {
-            home_dir: None,
-            sources,
-            since,
-            until,
-            year,
+    let report = rt
+        .block_on(async {
+            get_model_report(ReportOptions {
+                home_dir: None,
+                sources,
+                since,
+                until,
+                year,
+            })
+            .await
         })
-        .await
-    }).map_err(|e| anyhow::anyhow!(e))?;
+        .map_err(|e| anyhow::anyhow!(e))?;
     let processing_time_ms = start.elapsed().as_millis();
 
     if json {
@@ -773,7 +883,7 @@ fn run_models_report(
         };
         println!("{}", serde_json::to_string_pretty(&output)?);
     } else {
-        use comfy_table::{Table, ContentArrangement};
+        use comfy_table::{ContentArrangement, Table};
 
         let mut table = Table::new();
         table.set_content_arrangement(ContentArrangement::Dynamic);
@@ -791,14 +901,18 @@ fn run_models_report(
         }
 
         println!("{table}");
-        println!("\nTotal: {} | Cost: {}", 
+        println!(
+            "\nTotal: {} | Cost: {}",
             format_tokens(report.total_input + report.total_output + report.total_cache_read),
             format_currency(report.total_cost)
         );
 
         if benchmark {
             use colored::Colorize;
-            println!("{}", format!("  Processing time: {}ms (Rust native)", processing_time_ms).bright_black());
+            println!(
+                "{}",
+                format!("  Processing time: {}ms (Rust native)", processing_time_ms).bright_black()
+            );
         }
     }
 
@@ -814,25 +928,27 @@ fn run_monthly_report(
     benchmark: bool,
     no_spinner: bool,
 ) -> Result<()> {
+    use std::time::Instant;
     use tokio::runtime::Runtime;
     use tokscale_core::{get_monthly_report, ReportOptions};
-    use std::time::Instant;
 
     if !no_spinner {
         eprintln!("  Scanning session data...");
     }
     let start = Instant::now();
     let rt = Runtime::new()?;
-    let report = rt.block_on(async {
-        get_monthly_report(ReportOptions {
-            home_dir: None,
-            sources,
-            since,
-            until,
-            year,
+    let report = rt
+        .block_on(async {
+            get_monthly_report(ReportOptions {
+                home_dir: None,
+                sources,
+                since,
+                until,
+                year,
+            })
+            .await
         })
-        .await
-    }).map_err(|e| anyhow::anyhow!(e))?;
+        .map_err(|e| anyhow::anyhow!(e))?;
     let processing_time_ms = start.elapsed().as_millis();
 
     if json {
@@ -878,7 +994,7 @@ fn run_monthly_report(
 
         println!("{}", serde_json::to_string_pretty(&output)?);
     } else {
-        use comfy_table::{Table, ContentArrangement};
+        use comfy_table::{ContentArrangement, Table};
 
         let mut table = Table::new();
         table.set_content_arrangement(ContentArrangement::Dynamic);
@@ -895,20 +1011,24 @@ fn run_monthly_report(
         }
 
         println!("{table}");
-        
+
         // Calculate totals from entries
         let total_input: i64 = report.entries.iter().map(|e| e.input).sum();
         let total_output: i64 = report.entries.iter().map(|e| e.output).sum();
         let total_cache_read: i64 = report.entries.iter().map(|e| e.cache_read).sum();
-        
-        println!("\nTotal: {} | Cost: {}", 
+
+        println!(
+            "\nTotal: {} | Cost: {}",
             format_tokens(total_input + total_output + total_cache_read),
             format_currency(report.total_cost)
         );
 
         if benchmark {
             use colored::Colorize;
-            println!("{}", format!("  Processing time: {}ms (Rust native)", processing_time_ms).bright_black());
+            println!(
+                "{}",
+                format!("  Processing time: {}ms (Rust native)", processing_time_ms).bright_black()
+            );
         }
     }
 
@@ -925,175 +1045,62 @@ fn run_wrapped_command(
     disable_pinned: bool,
 ) -> Result<()> {
     use colored::Colorize;
-    use std::process::Command;
-    
-    // Determine year
-    let year = year.unwrap_or_else(|| chrono::Local::now().year().to_string());
-    
+
     println!("{}", "\n  Tokscale - Generate Wrapped Image\n".cyan());
-    
-    // Check for Node.js or Bun runtime
-    let runtime = if Command::new("bun").arg("--version").output().is_ok() {
-        "bun"
-    } else if Command::new("node").arg("--version").output().is_ok() {
-        "node"
-    } else {
-        eprintln!("{}", "Error: Neither bun nor node found in PATH".red());
-        eprintln!("{}", "Please install Node.js or Bun to use the wrapped command".bright_black());
-        eprintln!("{}", "  - Bun: https://bun.sh/".bright_black());
-        eprintln!("{}", "  - Node.js: https://nodejs.org/\n".bright_black());
-        std::process::exit(1);
-    };
-    
-    // Find the TypeScript CLI directory
-    let exe_path = std::env::current_exe()?;
-    let repo_root = exe_path
-        .parent()
-        .and_then(|p| p.parent())
-        .and_then(|p| p.parent())
-        .ok_or_else(|| anyhow::anyhow!("Could not find repository root"))?;
-    
-    let cli_dir = repo_root.join("packages/cli");
-    let cli_script = cli_dir.join("dist/cli.js");
-    
-    if !cli_script.exists() {
-        eprintln!("{}", "Error: cli.js not found".red());
-        eprintln!("{}", format!("  Expected at: {:?}", cli_script).bright_black());
-        eprintln!("{}", "  Please run 'bun run build' in packages/cli first\n".bright_black());
-        std::process::exit(1);
-    }
-    
+
     println!("{}", "  Generating wrapped image...".bright_black());
-    
-    // Build command arguments
-    let mut args = vec![cli_script.to_string_lossy().to_string(), "wrapped".to_string()];
-    
-    if let Some(ref out) = output {
-        args.push("--output".to_string());
-        args.push(out.clone());
-    }
-    
-    args.push("--year".to_string());
-    args.push(year.clone());
-    
-    if let Some(ref srcs) = sources {
-        for src in srcs {
-            args.push(format!("--{}", src));
-        }
-    }
-    
-    if short {
-        args.push("--short".to_string());
-    }
-    
-    if clients {
-        args.push("--clients".to_string());
-    } else if agents {
-        args.push("--agents".to_string());
-    }
-    
-    if disable_pinned {
-        args.push("--disable-pinned".to_string());
-    }
-    
-    use std::sync::atomic::{AtomicBool, Ordering};
-    use std::sync::Arc;
-    use std::io::Read;
-    
-    let settings = tui::settings::Settings::load();
-    let timeout = settings.get_native_timeout();
-    
-    println!("{}", format!("  timeout: {}s", timeout.as_secs()).bright_black());
     println!();
-    
-    let mut child = Command::new(runtime)
-        .args(&args)
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .spawn()
-        .map_err(|e| anyhow::anyhow!("Failed to spawn wrapped generator: {}", e))?;
-    
-    let timed_out = Arc::new(AtomicBool::new(false));
-    let timed_out_clone = Arc::clone(&timed_out);
-    let child_id = child.id();
-    
-    // Watchdog: kills subprocess after timeout expires
-    let timeout_handle = std::thread::spawn(move || {
-        std::thread::sleep(timeout);
-        if !timed_out_clone.load(Ordering::SeqCst) {
-            timed_out_clone.store(true, Ordering::SeqCst);
-            #[cfg(unix)]
-            {
-                let _ = std::process::Command::new("kill")
-                    .arg("-9")
-                    .arg(child_id.to_string())
-                    .output();
-            }
-            #[cfg(windows)]
-            {
-                let _ = std::process::Command::new("taskkill")
-                    .args(["/F", "/PID", &child_id.to_string()])
-                    .output();
-            }
+
+    let include_agents = !clients || agents;
+    let wrapped_options = commands::wrapped::WrappedOptions {
+        output,
+        year,
+        sources,
+        short,
+        include_agents,
+        pin_sisyphus: !disable_pinned,
+    };
+
+    match commands::wrapped::run(wrapped_options) {
+        Ok(output_path) => {
+            println!(
+                "{}",
+                format!("\n  ✓ Generated wrapped image: {}\n", output_path).green()
+            );
         }
-    });
-    
-    let stdout = child.stdout.take();
-    let stderr = child.stderr.take();
-    
-    let mut stdout_content = String::new();
-    let mut stderr_content = String::new();
-    
-    if let Some(mut out) = stdout {
-        let _ = out.read_to_string(&mut stdout_content);
+        Err(err) => {
+            eprintln!("{}", "\nError generating wrapped image:".red());
+            eprintln!("{}", format!("  {}\n", err));
+            std::process::exit(1);
+        }
     }
-    if let Some(mut err) = stderr {
-        let _ = err.read_to_string(&mut stderr_content);
-    }
-    
-    let status = child.wait()
-        .map_err(|e| anyhow::anyhow!("Failed to wait for wrapped generator: {}", e))?;
-    
-    timed_out.store(true, Ordering::SeqCst);
-    let _ = timeout_handle.join();
-    
-    if timed_out.load(Ordering::SeqCst) && !status.success() && status.code().is_none() {
-        eprintln!("{}", format!("\n  Wrapped generator timed out after {}s", timeout.as_secs()).red());
-        eprintln!("{}", "  Increase timeout with TOKSCALE_NATIVE_TIMEOUT_MS or settings.json".bright_black());
-        println!();
-        std::process::exit(124);
-    }
-    
-    if !status.success() {
-        eprintln!("{}", "\nError generating wrapped image:".red());
-        eprintln!("{}", stderr_content);
-        std::process::exit(status.code().unwrap_or(1));
-    }
-    
-    // Parse output to get the file path
-    let output_path = stdout_content.trim().to_string();
-    
-    if !output_path.is_empty() {
-        println!("{}", format!("\n  ✓ Generated wrapped image: {}\n", output_path).green());
-    } else {
-        println!("{}", "\n  ✓ Wrapped image generated successfully\n".green());
-    }
-    
+
     Ok(())
 }
 
-fn run_pricing_lookup(model_id: &str, json: bool, provider: Option<&str>, no_spinner: bool) -> Result<()> {
+fn run_pricing_lookup(
+    model_id: &str,
+    json: bool,
+    provider: Option<&str>,
+    no_spinner: bool,
+) -> Result<()> {
+    use colored::Colorize;
     use indicatif::ProgressBar;
     use indicatif::ProgressStyle;
     use tokio::runtime::Runtime;
     use tokscale_core::pricing::PricingService;
-    use colored::Colorize;
 
     let provider_normalized = provider.map(|p| p.to_lowercase());
     if let Some(ref p) = provider_normalized {
         if p != "litellm" && p != "openrouter" {
-            println!("\n  {}", format!("Invalid provider: {}", provider.unwrap_or("")).red());
-            println!("{}\n", "  Valid providers: litellm, openrouter".bright_black());
+            println!(
+                "\n  {}",
+                format!("Invalid provider: {}", provider.unwrap_or("")).red()
+            );
+            println!(
+                "{}\n",
+                "  Valid providers: litellm, openrouter".bright_black()
+            );
             std::process::exit(1);
         }
     }
@@ -1101,9 +1108,7 @@ fn run_pricing_lookup(model_id: &str, json: bool, provider: Option<&str>, no_spi
     let spinner = if no_spinner {
         None
     } else {
-        let provider_label = provider
-            .map(|p| format!(" from {}", p))
-            .unwrap_or_default();
+        let provider_label = provider.map(|p| format!(" from {}", p)).unwrap_or_default();
         let pb = ProgressBar::new_spinner();
         pb.set_style(ProgressStyle::default_spinner());
         pb.set_message(format!("Fetching pricing data{}...", provider_label));
@@ -1176,7 +1181,9 @@ fn run_pricing_lookup(model_id: &str, json: bool, provider: Option<&str>, no_spi
                         input_cost_per_token: pricing.pricing.input_cost_per_token.unwrap_or(0.0),
                         output_cost_per_token: pricing.pricing.output_cost_per_token.unwrap_or(0.0),
                         cache_read_input_token_cost: pricing.pricing.cache_read_input_token_cost,
-                        cache_creation_input_token_cost: pricing.pricing.cache_creation_input_token_cost,
+                        cache_creation_input_token_cost: pricing
+                            .pricing
+                            .cache_creation_input_token_cost,
                     },
                 };
 
@@ -1216,10 +1223,16 @@ fn run_pricing_lookup(model_id: &str, json: bool, provider: Option<&str>, no_spi
                 println!("  Input:  ${:.2} / 1M tokens", input * 1_000_000.0);
                 println!("  Output: ${:.2} / 1M tokens", output * 1_000_000.0);
                 if let Some(cache_read) = pricing.pricing.cache_read_input_token_cost {
-                    println!("  Cache Read:  ${:.2} / 1M tokens", cache_read * 1_000_000.0);
+                    println!(
+                        "  Cache Read:  ${:.2} / 1M tokens",
+                        cache_read * 1_000_000.0
+                    );
                 }
                 if let Some(cache_write) = pricing.pricing.cache_creation_input_token_cost {
-                    println!("  Cache Write: ${:.2} / 1M tokens", cache_write * 1_000_000.0);
+                    println!(
+                        "  Cache Write: ${:.2} / 1M tokens",
+                        cache_write * 1_000_000.0
+                    );
                 }
                 println!();
             }
@@ -1255,10 +1268,10 @@ fn format_currency(n: f64) -> String {
 
 fn run_sources_command(json: bool) -> Result<()> {
     use tokscale_core::{parse_local_sources, LocalParseOptions};
-    
-    let home_dir = dirs::home_dir()
-        .ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?;
-    
+
+    let home_dir =
+        dirs::home_dir().ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?;
+
     let parsed = parse_local_sources(LocalParseOptions {
         home_dir: Some(home_dir.to_string_lossy().to_string()),
         sources: Some(vec![
@@ -1274,13 +1287,16 @@ fn run_sources_command(json: bool) -> Result<()> {
         since: None,
         until: None,
         year: None,
-    }).map_err(|e| anyhow::anyhow!(e))?;
-    
+    })
+    .map_err(|e| anyhow::anyhow!(e))?;
+
     let headless_roots = get_headless_roots(&home_dir);
-    let headless_codex_count = parsed.messages.iter()
+    let headless_codex_count = parsed
+        .messages
+        .iter()
         .filter(|m| m.agent.as_deref() == Some("headless") && m.source == "codex")
         .count() as i32;
-    
+
     #[derive(serde::Serialize)]
     #[serde(rename_all = "camelCase")]
     struct SourceRow {
@@ -1296,27 +1312,32 @@ fn run_sources_command(json: bool) -> Result<()> {
         headless_paths: Vec<HeadlessPath>,
         headless_message_count: i32,
     }
-    
+
     #[derive(serde::Serialize)]
     #[serde(rename_all = "camelCase")]
     struct LegacyPath {
         path: String,
         exists: bool,
     }
-    
+
     #[derive(serde::Serialize)]
     #[serde(rename_all = "camelCase")]
     struct HeadlessPath {
         path: String,
         exists: bool,
     }
-    
+
     let sources = vec![
         SourceRow {
             source: "opencode".to_string(),
             label: "OpenCode".to_string(),
-            sessions_path: home_dir.join(".local/share/opencode/storage/message").to_string_lossy().to_string(),
-            sessions_path_exists: home_dir.join(".local/share/opencode/storage/message").exists(),
+            sessions_path: home_dir
+                .join(".local/share/opencode/storage/message")
+                .to_string_lossy()
+                .to_string(),
+            sessions_path_exists: home_dir
+                .join(".local/share/opencode/storage/message")
+                .exists(),
             legacy_paths: vec![],
             message_count: parsed.opencode_count,
             headless_supported: false,
@@ -1326,7 +1347,10 @@ fn run_sources_command(json: bool) -> Result<()> {
         SourceRow {
             source: "claude".to_string(),
             label: "Claude Code".to_string(),
-            sessions_path: home_dir.join(".claude/projects").to_string_lossy().to_string(),
+            sessions_path: home_dir
+                .join(".claude/projects")
+                .to_string_lossy()
+                .to_string(),
             sessions_path_exists: home_dir.join(".claude/projects").exists(),
             legacy_paths: vec![],
             message_count: parsed.claude_count,
@@ -1337,18 +1361,24 @@ fn run_sources_command(json: bool) -> Result<()> {
         SourceRow {
             source: "codex".to_string(),
             label: "Codex CLI".to_string(),
-            sessions_path: get_codex_home(&home_dir).join("sessions").to_string_lossy().to_string(),
+            sessions_path: get_codex_home(&home_dir)
+                .join("sessions")
+                .to_string_lossy()
+                .to_string(),
             sessions_path_exists: get_codex_home(&home_dir).join("sessions").exists(),
             legacy_paths: vec![],
             message_count: parsed.codex_count,
             headless_supported: true,
-            headless_paths: headless_roots.iter().map(|root| {
-                let path = root.join("codex");
-                HeadlessPath {
-                    path: path.to_string_lossy().to_string(),
-                    exists: path.exists(),
-                }
-            }).collect(),
+            headless_paths: headless_roots
+                .iter()
+                .map(|root| {
+                    let path = root.join("codex");
+                    HeadlessPath {
+                        path: path.to_string_lossy().to_string(),
+                        exists: path.exists(),
+                    }
+                })
+                .collect(),
             headless_message_count: headless_codex_count,
         },
         SourceRow {
@@ -1365,7 +1395,10 @@ fn run_sources_command(json: bool) -> Result<()> {
         SourceRow {
             source: "cursor".to_string(),
             label: "Cursor IDE".to_string(),
-            sessions_path: home_dir.join(".config/tokscale/cursor-cache").to_string_lossy().to_string(),
+            sessions_path: home_dir
+                .join(".config/tokscale/cursor-cache")
+                .to_string_lossy()
+                .to_string(),
             sessions_path_exists: home_dir.join(".config/tokscale/cursor-cache").exists(),
             legacy_paths: vec![],
             message_count: 0,
@@ -1376,7 +1409,10 @@ fn run_sources_command(json: bool) -> Result<()> {
         SourceRow {
             source: "amp".to_string(),
             label: "Amp".to_string(),
-            sessions_path: home_dir.join(".local/share/amp/threads").to_string_lossy().to_string(),
+            sessions_path: home_dir
+                .join(".local/share/amp/threads")
+                .to_string_lossy()
+                .to_string(),
             sessions_path_exists: home_dir.join(".local/share/amp/threads").exists(),
             legacy_paths: vec![],
             message_count: parsed.amp_count,
@@ -1387,7 +1423,10 @@ fn run_sources_command(json: bool) -> Result<()> {
         SourceRow {
             source: "droid".to_string(),
             label: "Droid".to_string(),
-            sessions_path: home_dir.join(".factory/sessions").to_string_lossy().to_string(),
+            sessions_path: home_dir
+                .join(".factory/sessions")
+                .to_string_lossy()
+                .to_string(),
             sessions_path_exists: home_dir.join(".factory/sessions").exists(),
             legacy_paths: vec![],
             message_count: parsed.droid_count,
@@ -1398,19 +1437,31 @@ fn run_sources_command(json: bool) -> Result<()> {
         SourceRow {
             source: "openclaw".to_string(),
             label: "OpenClaw".to_string(),
-            sessions_path: home_dir.join(".openclaw/agents").to_string_lossy().to_string(),
+            sessions_path: home_dir
+                .join(".openclaw/agents")
+                .to_string_lossy()
+                .to_string(),
             sessions_path_exists: home_dir.join(".openclaw/agents").exists(),
             legacy_paths: vec![
                 LegacyPath {
-                    path: home_dir.join(".clawdbot/agents").to_string_lossy().to_string(),
+                    path: home_dir
+                        .join(".clawdbot/agents")
+                        .to_string_lossy()
+                        .to_string(),
                     exists: home_dir.join(".clawdbot/agents").exists(),
                 },
                 LegacyPath {
-                    path: home_dir.join(".moltbot/agents").to_string_lossy().to_string(),
+                    path: home_dir
+                        .join(".moltbot/agents")
+                        .to_string_lossy()
+                        .to_string(),
                     exists: home_dir.join(".moltbot/agents").exists(),
                 },
                 LegacyPath {
-                    path: home_dir.join(".moldbot/agents").to_string_lossy().to_string(),
+                    path: home_dir
+                        .join(".moldbot/agents")
+                        .to_string_lossy()
+                        .to_string(),
                     exists: home_dir.join(".moldbot/agents").exists(),
                 },
             ],
@@ -1422,7 +1473,10 @@ fn run_sources_command(json: bool) -> Result<()> {
         SourceRow {
             source: "pi".to_string(),
             label: "Pi".to_string(),
-            sessions_path: home_dir.join(".pi/agent/sessions").to_string_lossy().to_string(),
+            sessions_path: home_dir
+                .join(".pi/agent/sessions")
+                .to_string_lossy()
+                .to_string(),
             sessions_path_exists: home_dir.join(".pi/agent/sessions").exists(),
             legacy_paths: vec![],
             message_count: parsed.pi_count,
@@ -1431,7 +1485,7 @@ fn run_sources_command(json: bool) -> Result<()> {
             headless_message_count: 0,
         },
     ];
-    
+
     if json {
         #[derive(serde::Serialize)]
         #[serde(rename_all = "camelCase")]
@@ -1440,71 +1494,111 @@ fn run_sources_command(json: bool) -> Result<()> {
             sources: Vec<SourceRow>,
             note: String,
         }
-        
+
         let output = Output {
-            headless_roots: headless_roots.iter().map(|p| p.to_string_lossy().to_string()).collect(),
+            headless_roots: headless_roots
+                .iter()
+                .map(|p| p.to_string_lossy().to_string())
+                .collect(),
             sources,
             note: "Headless capture is supported for Codex CLI only.".to_string(),
         };
-        
+
         println!("{}", serde_json::to_string_pretty(&output)?);
     } else {
         use colored::Colorize;
-        
+
         println!("\n  {}", "Local sources & session counts".cyan());
-        println!("  {}", format!("Headless roots: {}", 
-            headless_roots.iter().map(|p| p.to_string_lossy()).collect::<Vec<_>>().join(", ")
-        ).bright_black());
+        println!(
+            "  {}",
+            format!(
+                "Headless roots: {}",
+                headless_roots
+                    .iter()
+                    .map(|p| p.to_string_lossy())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+            .bright_black()
+        );
         println!();
-        
+
         for row in sources {
             println!("  {}", row.label.white());
-            println!("  {}", format!("sessions: {}", describe_path(&row.sessions_path, row.sessions_path_exists)).bright_black());
-            
+            println!(
+                "  {}",
+                format!(
+                    "sessions: {}",
+                    describe_path(&row.sessions_path, row.sessions_path_exists)
+                )
+                .bright_black()
+            );
+
             if !row.legacy_paths.is_empty() {
-                let legacy_desc: Vec<String> = row.legacy_paths.iter()
+                let legacy_desc: Vec<String> = row
+                    .legacy_paths
+                    .iter()
                     .map(|lp| describe_path(&lp.path, lp.exists))
                     .collect();
-                println!("  {}", format!("legacy: {}", legacy_desc.join(", ")).bright_black());
+                println!(
+                    "  {}",
+                    format!("legacy: {}", legacy_desc.join(", ")).bright_black()
+                );
             }
-            
+
             if row.headless_supported {
-                let headless_desc: Vec<String> = row.headless_paths.iter()
+                let headless_desc: Vec<String> = row
+                    .headless_paths
+                    .iter()
                     .map(|hp| describe_path(&hp.path, hp.exists))
                     .collect();
-                println!("  {}", format!("headless: {}", headless_desc.join(", ")).bright_black());
-                println!("  {}", format!("messages: {} (headless: {})", 
-                    format_number(row.message_count), 
-                    format_number(row.headless_message_count)
-                ).bright_black());
+                println!(
+                    "  {}",
+                    format!("headless: {}", headless_desc.join(", ")).bright_black()
+                );
+                println!(
+                    "  {}",
+                    format!(
+                        "messages: {} (headless: {})",
+                        format_number(row.message_count),
+                        format_number(row.headless_message_count)
+                    )
+                    .bright_black()
+                );
             } else {
-                println!("  {}", format!("messages: {}", format_number(row.message_count)).bright_black());
+                println!(
+                    "  {}",
+                    format!("messages: {}", format_number(row.message_count)).bright_black()
+                );
             }
-            
+
             println!();
         }
-        
-        println!("  {}", "Note: Headless capture is supported for Codex CLI only.".bright_black());
+
+        println!(
+            "  {}",
+            "Note: Headless capture is supported for Codex CLI only.".bright_black()
+        );
         println!();
     }
-    
+
     Ok(())
 }
 
 fn get_headless_roots(home_dir: &Path) -> Vec<PathBuf> {
     let mut roots = Vec::new();
-    
+
     if let Ok(env_dir) = std::env::var("TOKSCALE_HEADLESS_DIR") {
         roots.push(PathBuf::from(env_dir));
     } else {
         roots.push(home_dir.join(".config/tokscale/headless"));
-        
+
         #[cfg(target_os = "macos")]
         {
             roots.push(home_dir.join("Library/Application Support/tokscale/headless"));
         }
     }
-    
+
     roots
 }
 
@@ -1704,11 +1798,9 @@ fn to_ts_token_contribution_data(graph: &tokscale_core::GraphResult) -> TsTokenC
 
 fn run_login_command() -> Result<()> {
     use tokio::runtime::Runtime;
-    
+
     let rt = Runtime::new()?;
-    rt.block_on(async {
-        auth::login().await
-    })
+    rt.block_on(async { auth::login().await })
 }
 
 fn run_logout_command() -> Result<()> {
@@ -1734,7 +1826,10 @@ fn prompt_star_repo() -> Result<()> {
         return Ok(());
     }
 
-    println!("{}", "  Please consider starring tokscale on GitHub!".bright_black());
+    println!(
+        "{}",
+        "  Please consider starring tokscale on GitHub!".bright_black()
+    );
     print!("  Star now with gh CLI? [y/N]: ");
     io::stdout().flush()?;
 
@@ -1755,7 +1850,10 @@ fn prompt_star_repo() -> Result<()> {
             println!();
         }
         _ => {
-            println!("{}", "  Failed to star via gh CLI. Continuing to submit...".yellow());
+            println!(
+                "{}",
+                "  Failed to star via gh CLI. Continuing to submit...".yellow()
+            );
             println!();
         }
     }
@@ -1773,11 +1871,13 @@ fn run_graph_command(
     no_spinner: bool,
 ) -> Result<()> {
     use colored::Colorize;
-    use tokscale_core::{generate_graph, ReportOptions};
     use std::time::Instant;
+    use tokscale_core::{generate_graph, ReportOptions};
 
     let show_progress = output.is_some() && !no_spinner;
-    let include_cursor = sources.as_ref().map_or(true, |s| s.iter().any(|src| src == "cursor"));
+    let include_cursor = sources
+        .as_ref()
+        .map_or(true, |s| s.iter().any(|src| src == "cursor"));
     let has_cursor_cache = cursor::has_cursor_usage_cache();
     let mut cursor_sync_result: Option<cursor::SyncCursorResult> = None;
 
@@ -1795,37 +1895,64 @@ fn run_graph_command(
         eprintln!("  Generating graph data...");
     }
     let rt = tokio::runtime::Runtime::new()?;
-    let graph_result = rt.block_on(async {
-        generate_graph(ReportOptions {
-            home_dir: None,
-            sources,
-            since,
-            until,
-            year,
+    let graph_result = rt
+        .block_on(async {
+            generate_graph(ReportOptions {
+                home_dir: None,
+                sources,
+                since,
+                until,
+                year,
+            })
+            .await
         })
-        .await
-    }).map_err(|e| anyhow::anyhow!(e))?;
+        .map_err(|e| anyhow::anyhow!(e))?;
 
     let processing_time_ms = start.elapsed().as_millis() as u32;
     let output_data = to_ts_token_contribution_data(&graph_result);
     let json_output = serde_json::to_string_pretty(&output_data)?;
-    
+
     if let Some(output_path) = output {
         std::fs::write(&output_path, json_output)?;
 
-        eprintln!("{}", format!("✓ Graph data written to {}", output_path).green());
-        eprintln!("{}", format!("  {} days, {} sources, {} models",
-            output_data.contributions.len(),
-            output_data.summary.sources.len(),
-            output_data.summary.models.len()
-        ).bright_black());
-        eprintln!("{}", format!("  Total: {}", format_currency(output_data.summary.total_cost)).bright_black());
-        
+        eprintln!(
+            "{}",
+            format!("✓ Graph data written to {}", output_path).green()
+        );
+        eprintln!(
+            "{}",
+            format!(
+                "  {} days, {} sources, {} models",
+                output_data.contributions.len(),
+                output_data.summary.sources.len(),
+                output_data.summary.models.len()
+            )
+            .bright_black()
+        );
+        eprintln!(
+            "{}",
+            format!(
+                "  Total: {}",
+                format_currency(output_data.summary.total_cost)
+            )
+            .bright_black()
+        );
+
         if benchmark {
-            eprintln!("{}", format!("  Processing time: {}ms (Rust native)", processing_time_ms).bright_black());
+            eprintln!(
+                "{}",
+                format!("  Processing time: {}ms (Rust native)", processing_time_ms).bright_black()
+            );
             if let Some(sync) = cursor_sync_result {
                 if sync.synced {
-                    eprintln!("{}", format!("  Cursor: {} usage events synced (full lifetime data)", sync.rows).bright_black());
+                    eprintln!(
+                        "{}",
+                        format!(
+                            "  Cursor: {} usage events synced (full lifetime data)",
+                            sync.rows
+                        )
+                        .bright_black()
+                    );
                 } else if let Some(err) = sync.error {
                     if has_cursor_cache {
                         eprintln!("{}", format!("  Cursor: sync failed - {}", err).yellow());
@@ -1836,7 +1963,7 @@ fn run_graph_command(
     } else {
         println!("{}", json_output);
     }
-    
+
     Ok(())
 }
 
@@ -1890,46 +2017,83 @@ fn run_submit_command(
     }
 
     println!("\n  {}\n", "Tokscale - Submit Usage Data".cyan());
-    
-    let include_cursor = sources.as_ref().map_or(true, |s| s.iter().any(|src| src == "cursor"));
+
+    let include_cursor = sources
+        .as_ref()
+        .map_or(true, |s| s.iter().any(|src| src == "cursor"));
     let has_cursor_cache = cursor::has_cursor_usage_cache();
     if include_cursor && cursor::is_cursor_logged_in() {
         println!("{}", "  Syncing Cursor usage data...".bright_black());
         let rt_sync = Runtime::new()?;
         let sync_result = rt_sync.block_on(async { cursor::sync_cursor_cache().await });
         if sync_result.synced {
-            println!("{}", format!("  Cursor: {} usage events synced", sync_result.rows).bright_black());
+            println!(
+                "{}",
+                format!("  Cursor: {} usage events synced", sync_result.rows).bright_black()
+            );
         } else if let Some(err) = sync_result.error {
             if has_cursor_cache {
-                println!("{}", format!("  Cursor sync failed; using cached data: {}", err).yellow());
+                println!(
+                    "{}",
+                    format!("  Cursor sync failed; using cached data: {}", err).yellow()
+                );
             }
         }
     }
-    
+
     println!("{}", "  Scanning local session data...".bright_black());
 
     let rt = Runtime::new()?;
-    let graph_result = rt.block_on(async {
-        generate_graph(ReportOptions {
-            home_dir: None,
-            sources,
-            since,
-            until,
-            year,
+    let graph_result = rt
+        .block_on(async {
+            generate_graph(ReportOptions {
+                home_dir: None,
+                sources,
+                since,
+                until,
+                year,
+            })
+            .await
         })
-        .await
-    }).map_err(|e| anyhow::anyhow!(e))?;
+        .map_err(|e| anyhow::anyhow!(e))?;
 
     println!("{}", "  Data to submit:".white());
-    println!("{}", format!("    Date range: {} to {}",
-        graph_result.meta.date_range_start,
-        graph_result.meta.date_range_end,
-    ).bright_black());
-    println!("{}", format!("    Active days: {}", graph_result.summary.active_days).bright_black());
-    println!("{}", format!("    Total tokens: {}", format_tokens_with_commas(graph_result.summary.total_tokens)).bright_black());
-    println!("{}", format!("    Total cost: {}", format_currency(graph_result.summary.total_cost)).bright_black());
-    println!("{}", format!("    Sources: {}", graph_result.summary.sources.join(", ")).bright_black());
-    println!("{}", format!("    Models: {} models", graph_result.summary.models.len()).bright_black());
+    println!(
+        "{}",
+        format!(
+            "    Date range: {} to {}",
+            graph_result.meta.date_range_start, graph_result.meta.date_range_end,
+        )
+        .bright_black()
+    );
+    println!(
+        "{}",
+        format!("    Active days: {}", graph_result.summary.active_days).bright_black()
+    );
+    println!(
+        "{}",
+        format!(
+            "    Total tokens: {}",
+            format_tokens_with_commas(graph_result.summary.total_tokens)
+        )
+        .bright_black()
+    );
+    println!(
+        "{}",
+        format!(
+            "    Total cost: {}",
+            format_currency(graph_result.summary.total_cost)
+        )
+        .bright_black()
+    );
+    println!(
+        "{}",
+        format!("    Sources: {}", graph_result.summary.sources.join(", ")).bright_black()
+    );
+    println!(
+        "{}",
+        format!("    Models: {} models", graph_result.summary.models.len()).bright_black()
+    );
     println!();
 
     if graph_result.summary.total_tokens == 0 {
@@ -1961,18 +2125,30 @@ fn run_submit_command(
     match response {
         Ok(resp) => {
             let status = resp.status();
-            let body: SubmitResponse = rt.block_on(async { resp.json().await })
-                .unwrap_or_else(|_| SubmitResponse {
-                    submission_id: None,
-                    username: None,
-                    metrics: None,
-                    warnings: None,
-                    error: Some(format!("Server returned {} with unparseable response", status)),
-                    details: None,
-                });
+            let body: SubmitResponse =
+                rt.block_on(async { resp.json().await })
+                    .unwrap_or_else(|_| SubmitResponse {
+                        submission_id: None,
+                        username: None,
+                        metrics: None,
+                        warnings: None,
+                        error: Some(format!(
+                            "Server returned {} with unparseable response",
+                            status
+                        )),
+                        details: None,
+                    });
 
             if !status.is_success() {
-                eprintln!("\n  {}", format!("Error: {}", body.error.unwrap_or_else(|| "Submission failed".to_string())).red());
+                eprintln!(
+                    "\n  {}",
+                    format!(
+                        "Error: {}",
+                        body.error
+                            .unwrap_or_else(|| "Submission failed".to_string())
+                    )
+                    .red()
+                );
                 if let Some(details) = body.details {
                     for detail in details {
                         eprintln!("{}", format!("    - {}", detail).bright_black());
@@ -1990,17 +2166,31 @@ fn run_submit_command(
             }
             if let Some(metrics) = &body.metrics {
                 if let Some(tokens) = metrics.total_tokens {
-                    println!("{}", format!("    Total tokens: {}", format_tokens_with_commas(tokens)).bright_black());
+                    println!(
+                        "{}",
+                        format!("    Total tokens: {}", format_tokens_with_commas(tokens))
+                            .bright_black()
+                    );
                 }
                 if let Some(cost) = metrics.total_cost {
-                    println!("{}", format!("    Total cost: {}", format_currency(cost)).bright_black());
+                    println!(
+                        "{}",
+                        format!("    Total cost: {}", format_currency(cost)).bright_black()
+                    );
                 }
                 if let Some(days) = metrics.active_days {
                     println!("{}", format!("    Active days: {}", days).bright_black());
                 }
             }
             println!();
-            println!("{}", format!("  View your profile: {}/u/{}", api_url, credentials.username).cyan());
+            println!(
+                "{}",
+                format!(
+                    "  View your profile: {}/u/{}",
+                    api_url, credentials.username
+                )
+                .cyan()
+            );
             println!();
 
             if let Some(warnings) = body.warnings {
@@ -2058,20 +2248,20 @@ fn run_headless_command(
     output: Option<String>,
     no_auto_flags: bool,
 ) -> Result<()> {
+    use chrono::Utc;
+    use std::io::{Read, Write};
     use std::process::Command;
-    use std::io::{Write, Read};
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Arc;
     use uuid::Uuid;
-    use chrono::Utc;
-    
+
     let source_lower = source.to_lowercase();
     if source_lower != "codex" {
         eprintln!("\n  Error: Unknown headless source '{}'.", source);
         eprintln!("  Currently only 'codex' is supported.\n");
         std::process::exit(1);
     }
-    
+
     let resolved_format = match format {
         Some(f) if f == "json" || f == "jsonl" => f,
         Some(f) => {
@@ -2080,45 +2270,59 @@ fn run_headless_command(
         }
         None => "jsonl".to_string(),
     };
-    
+
     let mut final_args = args.clone();
     if !no_auto_flags && source_lower == "codex" && !final_args.contains(&"--json".to_string()) {
         final_args.push("--json".to_string());
     }
-    
-    let home_dir = dirs::home_dir()
-        .ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?;
+
+    let home_dir =
+        dirs::home_dir().ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?;
     let headless_roots = get_headless_roots(&home_dir);
-    
+
     let output_path = if let Some(custom_output) = output {
-        let parent = Path::new(&custom_output).parent().unwrap_or_else(|| Path::new("."));
+        let parent = Path::new(&custom_output)
+            .parent()
+            .unwrap_or_else(|| Path::new("."));
         std::fs::create_dir_all(parent)?;
         custom_output
     } else {
-        let root = headless_roots.first().cloned().unwrap_or_else(|| {
-            home_dir.join(".config/tokscale/headless")
-        });
+        let root = headless_roots
+            .first()
+            .cloned()
+            .unwrap_or_else(|| home_dir.join(".config/tokscale/headless"));
         let dir = root.join(&source_lower);
         std::fs::create_dir_all(&dir)?;
-        
+
         let now = Utc::now();
         let timestamp = now.format("%Y-%m-%dT%H-%M-%S-%3fZ").to_string();
-        let uuid_short = Uuid::new_v4().to_string().replace("-", "").chars().take(8).collect::<String>();
-        let filename = format!("{}-{}-{}.{}", source_lower, timestamp, uuid_short, resolved_format);
-        
+        let uuid_short = Uuid::new_v4()
+            .to_string()
+            .replace("-", "")
+            .chars()
+            .take(8)
+            .collect::<String>();
+        let filename = format!(
+            "{}-{}-{}.{}",
+            source_lower, timestamp, uuid_short, resolved_format
+        );
+
         dir.join(filename).to_string_lossy().to_string()
     };
-    
+
     let settings = tui::settings::Settings::load();
     let timeout = settings.get_native_timeout();
-    
+
     use colored::Colorize;
     println!("\n  {}", "Headless capture".cyan());
     println!("  {}", format!("source: {}", source_lower).bright_black());
     println!("  {}", format!("output: {}", output_path).bright_black());
-    println!("  {}", format!("timeout: {}s", timeout.as_secs()).bright_black());
+    println!(
+        "  {}",
+        format!("timeout: {}s", timeout.as_secs()).bright_black()
+    );
     println!();
-    
+
     let mut child = Command::new(&source_lower)
         .args(&final_args)
         .stdout(std::process::Stdio::piped())
@@ -2126,17 +2330,19 @@ fn run_headless_command(
         .stdin(std::process::Stdio::inherit())
         .spawn()
         .map_err(|e| anyhow::anyhow!("Failed to spawn '{}': {}", source_lower, e))?;
-    
-    let stdout = child.stdout.take()
+
+    let stdout = child
+        .stdout
+        .take()
         .ok_or_else(|| anyhow::anyhow!("Failed to capture stdout from command"))?;
-    
+
     let mut output_file = std::fs::File::create(&output_path)
         .map_err(|e| anyhow::anyhow!("Failed to create output file '{}': {}", output_path, e))?;
-    
+
     let timed_out = Arc::new(AtomicBool::new(false));
     let timed_out_clone = Arc::clone(&timed_out);
     let child_id = child.id();
-    
+
     let timeout_handle = std::thread::spawn(move || {
         std::thread::sleep(timeout);
         if !timed_out_clone.load(Ordering::SeqCst) {
@@ -2157,46 +2363,57 @@ fn run_headless_command(
             }
         }
     });
-    
+
     let mut reader = std::io::BufReader::new(stdout);
     let mut buffer = [0; 8192];
     loop {
         match reader.read(&mut buffer) {
             Ok(0) => break,
             Ok(n) => {
-                output_file.write_all(&buffer[..n])
+                output_file
+                    .write_all(&buffer[..n])
                     .map_err(|e| anyhow::anyhow!("Failed to write to output file: {}", e))?;
             }
             Err(e) => {
                 if timed_out.load(Ordering::SeqCst) {
                     break;
                 }
-                return Err(anyhow::anyhow!("Failed to read from subprocess stdout: {}", e));
+                return Err(anyhow::anyhow!(
+                    "Failed to read from subprocess stdout: {}",
+                    e
+                ));
             }
         }
     }
-    
-    let status = child.wait()
+
+    let status = child
+        .wait()
         .map_err(|e| anyhow::anyhow!("Failed to wait for subprocess: {}", e))?;
-    
+
     timed_out.store(true, Ordering::SeqCst);
     let _ = timeout_handle.join();
-    
+
     if timed_out.load(Ordering::SeqCst) && !status.success() {
-        eprintln!("{}", format!("\n  Subprocess timed out after {}s", timeout.as_secs()).red());
+        eprintln!(
+            "{}",
+            format!("\n  Subprocess timed out after {}s", timeout.as_secs()).red()
+        );
         eprintln!("{}", "  Partial output saved. Increase timeout with TOKSCALE_NATIVE_TIMEOUT_MS or settings.json".bright_black());
         println!();
         std::process::exit(124);
     }
-    
+
     let exit_code = status.code().unwrap_or(1);
-    
-    println!("{}", format!("✓ Saved headless output to {}", output_path).green());
+
+    println!(
+        "{}",
+        format!("✓ Saved headless output to {}", output_path).green()
+    );
     println!();
-    
+
     if exit_code != 0 {
         std::process::exit(exit_code);
     }
-    
+
     Ok(())
 }

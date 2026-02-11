@@ -474,16 +474,14 @@ pub async fn get_model_report(options: ReportOptions) -> Result<ModelReport, Str
     }
 
     let mut entries: Vec<ModelUsage> = model_map.into_values().collect();
-    entries.sort_by(|a, b| {
-        match (a.cost.is_nan(), b.cost.is_nan()) {
-            (true, true) => std::cmp::Ordering::Equal,
-            (true, false) => std::cmp::Ordering::Greater,
-            (false, true) => std::cmp::Ordering::Less,
-            (false, false) => b
-                .cost
-                .partial_cmp(&a.cost)
-                .unwrap_or(std::cmp::Ordering::Equal),
-        }
+    entries.sort_by(|a, b| match (a.cost.is_nan(), b.cost.is_nan()) {
+        (true, true) => std::cmp::Ordering::Equal,
+        (true, false) => std::cmp::Ordering::Greater,
+        (false, true) => std::cmp::Ordering::Less,
+        (false, false) => b
+            .cost
+            .partial_cmp(&a.cost)
+            .unwrap_or(std::cmp::Ordering::Equal),
     });
 
     let total_input: i64 = entries.iter().map(|e| e.input).sum();

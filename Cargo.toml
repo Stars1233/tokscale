@@ -3,7 +3,6 @@ resolver = "2"
 members = [
     "crates/tokscale-core",
     "crates/tokscale-cli",
-    "crates/tokscale-napi",
 ]
 
 [workspace.package]

@@ -31,6 +31,11 @@ dirs = { workspace = true }
 rayon = { workspace = true }
 arboard = { workspace = true }
 reqwest = { workspace = true }
+image = "0.25"
+imageproc = "0.25"
+ab_glyph = "0.2"
+resvg = "0.43"
+usvg = "0.43"
 hostname = "0.4"
 uuid = { version = "1.0", features = ["v4"] }
 rpassword = "7.0"
