@@ -439,7 +439,18 @@ fn main() -> Result<()> {
             let (since, until) = build_date_filter(today, week, month, since, until);
             let year = normalize_year_filter(today, week, month, year);
             if json || light {
-                run_models_report(json, sources, since, until, year, benchmark, no_spinner)
+                run_models_report(
+                    json,
+                    sources,
+                    since,
+                    until,
+                    year,
+                    benchmark,
+                    no_spinner,
+                    today,
+                    week,
+                    month,
+                )
             } else {
                 tui::run(
                     &cli.theme,
@@ -488,7 +499,18 @@ fn main() -> Result<()> {
             let (since, until) = build_date_filter(today, week, month, since, until);
             let year = normalize_year_filter(today, week, month, year);
             if json || light {
-                run_monthly_report(json, sources, since, until, year, benchmark, no_spinner)
+                run_monthly_report(
+                    json,
+                    sources,
+                    since,
+                    until,
+                    year,
+                    benchmark,
+                    no_spinner,
+                    today,
+                    week,
+                    month,
+                )
             } else {
                 tui::run(
                     &cli.theme,
@@ -693,9 +715,23 @@ fn main() -> Result<()> {
                     year,
                     cli.benchmark,
                     cli.no_spinner || cli.json,
+                    cli.today,
+                    cli.week,
+                    cli.month,
                 )
             } else if cli.light {
-                run_models_report(false, sources, since, until, year, cli.benchmark, cli.no_spinner)
+                run_models_report(
+                    false,
+                    sources,
+                    since,
+                    until,
+                    year,
+                    cli.benchmark,
+                    cli.no_spinner,
+                    cli.today,
+                    cli.week,
+                    cli.month,
+                )
             } else {
                 tui::run(
                     &cli.theme,
@@ -808,6 +844,41 @@ fn normalize_year_filter(
         None
     } else {
         year
+    }
+}
+
+fn get_date_range_label(
+    today: bool,
+    week: bool,
+    month: bool,
+    since: &Option<String>,
+    until: &Option<String>,
+    year: &Option<String>,
+) -> Option<String> {
+    if today {
+        return Some("Today".to_string());
+    }
+    if week {
+        return Some("Last 7 days".to_string());
+    }
+    if month {
+        let now = chrono::Local::now();
+        return Some(now.format("%B %Y").to_string());
+    }
+    if let Some(y) = year {
+        return Some(y.clone());
+    }
+    let mut parts = Vec::new();
+    if let Some(s) = since {
+        parts.push(format!("from {}", s));
+    }
+    if let Some(u) = until {
+        parts.push(format!("to {}", u));
+    }
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join(" "))
     }
 }
 
@@ -931,10 +1002,15 @@ fn run_models_report(
     year: Option<String>,
     benchmark: bool,
     no_spinner: bool,
+    today: bool,
+    week: bool,
+    month_flag: bool,
 ) -> Result<()> {
     use std::time::Instant;
     use tokio::runtime::Runtime;
     use tokscale_core::{get_model_report, ReportOptions};
+
+    let date_range = get_date_range_label(today, week, month_flag, &since, &until, &year);
 
     let spinner = if no_spinner {
         None
@@ -1137,7 +1213,11 @@ fn run_models_report(
             ]);
         }
 
-        println!("\n  Token Usage Report by Model\n");
+        let title = match &date_range {
+            Some(range) => format!("Token Usage Report by Model ({})", range),
+            None => "Token Usage Report by Model".to_string(),
+        };
+        println!("\n  {}\n", title);
         println!("{}", dim_borders(&table.to_string()));
 
         let total_tokens =
@@ -1169,10 +1249,15 @@ fn run_monthly_report(
     year: Option<String>,
     benchmark: bool,
     no_spinner: bool,
+    today: bool,
+    week: bool,
+    month_flag: bool,
 ) -> Result<()> {
     use std::time::Instant;
     use tokio::runtime::Runtime;
     use tokscale_core::{get_monthly_report, ReportOptions};
+
+    let date_range = get_date_range_label(today, week, month_flag, &since, &until, &year);
 
     let spinner = if no_spinner {
         None
@@ -1267,12 +1352,19 @@ fn run_monthly_report(
                 let models_col = if entry.models.is_empty() {
                     "-".to_string()
                 } else {
-                    entry
+                    let mut unique_models: Vec<String> = entry
                         .models
                         .iter()
                         .map(|model| format_model_name(model))
+                        .collect::<std::collections::BTreeSet<_>>()
+                        .into_iter()
+                        .collect();
+                    unique_models.sort();
+                    unique_models
+                        .iter()
+                        .map(|m| format!("- {}", m))
                         .collect::<Vec<_>>()
-                        .join(", ")
+                        .join("\n")
                 };
 
                 table.add_row(vec![
@@ -1315,12 +1407,19 @@ fn run_monthly_report(
                 let models_col = if entry.models.is_empty() {
                     "-".to_string()
                 } else {
-                    entry
+                    let mut unique_models: Vec<String> = entry
                         .models
                         .iter()
                         .map(|model| format_model_name(model))
+                        .collect::<std::collections::BTreeSet<_>>()
+                        .into_iter()
+                        .collect();
+                    unique_models.sort();
+                    unique_models
+                        .iter()
+                        .map(|m| format!("- {}", m))
                         .collect::<Vec<_>>()
-                        .join(", ")
+                        .join("\n")
                 };
                 let total = entry.input + entry.output + entry.cache_write + entry.cache_read;
 
@@ -1370,7 +1469,11 @@ fn run_monthly_report(
             ]);
         }
 
-        println!("\n  Monthly Token Usage Report\n");
+        let title = match &date_range {
+            Some(range) => format!("Monthly Token Usage Report ({})", range),
+            None => "Monthly Token Usage Report".to_string(),
+        };
+        println!("\n  {}\n", title);
         println!("{}", dim_borders(&table.to_string()));
 
         println!(
@@ -1602,11 +1705,7 @@ fn run_pricing_lookup(
 }
 
 fn format_currency(n: f64) -> String {
-    if n >= 1000.0 {
-        format!("${:.2}K", n / 1000.0)
-    } else {
-        format!("${:.2}", n)
-    }
+    format!("${:.2}", n)
 }
 
 fn dim_borders(table_str: &str) -> String {
