@@ -816,6 +816,8 @@ struct LightSpinner {
     handle: Option<JoinHandle<()>>,
 }
 
+const TABLE_PRESET: &str = "││──├─┼┤│─┼├┤┬┴┌┐└┘";
+
 impl LightSpinner {
     const WIDTH: usize = 8;
     const HOLD_START: usize = 30;
@@ -1018,68 +1020,116 @@ fn run_models_report(
     } else {
         use comfy_table::{Attribute, Cell, CellAlignment, Color, ContentArrangement, Table};
 
-        let mut table = Table::new();
-        table.set_content_arrangement(ContentArrangement::DynamicFullWidth);
-        table.set_header(vec![
-            Cell::new("Source/Model").fg(Color::Cyan),
-            Cell::new("Models").fg(Color::Cyan),
-            Cell::new("Input").fg(Color::Cyan),
-            Cell::new("Output").fg(Color::Cyan),
-            Cell::new("Cache Write").fg(Color::Cyan),
-            Cell::new("Cache Read").fg(Color::Cyan),
-            Cell::new("Total").fg(Color::Cyan),
-            Cell::new("Cost").fg(Color::Cyan),
-        ]);
+        let term_width = crossterm::terminal::size()
+            .map(|(w, _)| w as usize)
+            .unwrap_or(120);
+        let compact = term_width < 100;
 
-        for entry in &report.entries {
-            let short_model = format_model_name(&entry.model);
-            let source_model = format!("{} {}", capitalize_source(&entry.source), short_model);
-            let models_col = format!("- {}", short_model);
-            let total = entry.input + entry.output + entry.cache_write + entry.cache_read;
+        let mut table = Table::new();
+        table.load_preset(TABLE_PRESET);
+        table.set_content_arrangement(ContentArrangement::DynamicFullWidth);
+        if compact {
+            table.set_header(vec![
+                Cell::new("Source/Model").fg(Color::Cyan),
+                Cell::new("Models").fg(Color::Cyan),
+                Cell::new("Input").fg(Color::Cyan),
+                Cell::new("Output").fg(Color::Cyan),
+                Cell::new("Cost").fg(Color::Cyan),
+            ]);
+
+            for entry in &report.entries {
+                let short_model = format_model_name(&entry.model);
+                let source_model = format!("{} {}", capitalize_source(&entry.source), short_model);
+                let models_col = format!("- {}", short_model);
+
+                table.add_row(vec![
+                    Cell::new(source_model),
+                    Cell::new(models_col),
+                    Cell::new(format_tokens_with_commas(entry.input)).set_alignment(CellAlignment::Right),
+                    Cell::new(format_tokens_with_commas(entry.output)).set_alignment(CellAlignment::Right),
+                    Cell::new(format_currency(entry.cost)).set_alignment(CellAlignment::Right),
+                ]);
+            }
 
             table.add_row(vec![
-                Cell::new(source_model),
-                Cell::new(models_col),
-                Cell::new(format_tokens_with_commas(entry.input)).set_alignment(CellAlignment::Right),
-                Cell::new(format_tokens_with_commas(entry.output)).set_alignment(CellAlignment::Right),
-                Cell::new(format_tokens_with_commas(entry.cache_write))
+                Cell::new("Total")
+                    .fg(Color::Yellow)
+                    .add_attribute(Attribute::Bold),
+                Cell::new(""),
+                Cell::new(format_tokens_with_commas(report.total_input))
+                    .fg(Color::Yellow)
                     .set_alignment(CellAlignment::Right),
-                Cell::new(format_tokens_with_commas(entry.cache_read))
+                Cell::new(format_tokens_with_commas(report.total_output))
+                    .fg(Color::Yellow)
                     .set_alignment(CellAlignment::Right),
-                Cell::new(format_tokens_with_commas(total)).set_alignment(CellAlignment::Right),
-                Cell::new(format_currency(entry.cost)).set_alignment(CellAlignment::Right),
+                Cell::new(format_currency(report.total_cost))
+                    .fg(Color::Yellow)
+                    .set_alignment(CellAlignment::Right),
+            ]);
+        } else {
+            table.set_header(vec![
+                Cell::new("Source/Model").fg(Color::Cyan),
+                Cell::new("Models").fg(Color::Cyan),
+                Cell::new("Input").fg(Color::Cyan),
+                Cell::new("Output").fg(Color::Cyan),
+                Cell::new("Cache Write").fg(Color::Cyan),
+                Cell::new("Cache Read").fg(Color::Cyan),
+                Cell::new("Total").fg(Color::Cyan),
+                Cell::new("Cost").fg(Color::Cyan),
+            ]);
+
+            for entry in &report.entries {
+                let short_model = format_model_name(&entry.model);
+                let source_model = format!("{} {}", capitalize_source(&entry.source), short_model);
+                let models_col = format!("- {}", short_model);
+                let total = entry.input + entry.output + entry.cache_write + entry.cache_read;
+
+                table.add_row(vec![
+                    Cell::new(source_model),
+                    Cell::new(models_col),
+                    Cell::new(format_tokens_with_commas(entry.input)).set_alignment(CellAlignment::Right),
+                    Cell::new(format_tokens_with_commas(entry.output)).set_alignment(CellAlignment::Right),
+                    Cell::new(format_tokens_with_commas(entry.cache_write))
+                        .set_alignment(CellAlignment::Right),
+                    Cell::new(format_tokens_with_commas(entry.cache_read))
+                        .set_alignment(CellAlignment::Right),
+                    Cell::new(format_tokens_with_commas(total)).set_alignment(CellAlignment::Right),
+                    Cell::new(format_currency(entry.cost)).set_alignment(CellAlignment::Right),
+                ]);
+            }
+
+            let total_all = report.total_input
+                + report.total_output
+                + report.total_cache_write
+                + report.total_cache_read;
+            table.add_row(vec![
+                Cell::new("Total")
+                    .fg(Color::Yellow)
+                    .add_attribute(Attribute::Bold),
+                Cell::new(""),
+                Cell::new(format_tokens_with_commas(report.total_input))
+                    .fg(Color::Yellow)
+                    .set_alignment(CellAlignment::Right),
+                Cell::new(format_tokens_with_commas(report.total_output))
+                    .fg(Color::Yellow)
+                    .set_alignment(CellAlignment::Right),
+                Cell::new(format_tokens_with_commas(report.total_cache_write))
+                    .fg(Color::Yellow)
+                    .set_alignment(CellAlignment::Right),
+                Cell::new(format_tokens_with_commas(report.total_cache_read))
+                    .fg(Color::Yellow)
+                    .set_alignment(CellAlignment::Right),
+                Cell::new(format_tokens_with_commas(total_all))
+                    .fg(Color::Yellow)
+                    .set_alignment(CellAlignment::Right),
+                Cell::new(format_currency(report.total_cost))
+                    .fg(Color::Yellow)
+                    .set_alignment(CellAlignment::Right),
             ]);
         }
 
-        let total_all =
-            report.total_input + report.total_output + report.total_cache_write + report.total_cache_read;
-        table.add_row(vec![
-            Cell::new("Total")
-                .fg(Color::Yellow)
-                .add_attribute(Attribute::Bold),
-            Cell::new(""),
-            Cell::new(format_tokens_with_commas(report.total_input))
-                .fg(Color::Yellow)
-                .set_alignment(CellAlignment::Right),
-            Cell::new(format_tokens_with_commas(report.total_output))
-                .fg(Color::Yellow)
-                .set_alignment(CellAlignment::Right),
-            Cell::new(format_tokens_with_commas(report.total_cache_write))
-                .fg(Color::Yellow)
-                .set_alignment(CellAlignment::Right),
-            Cell::new(format_tokens_with_commas(report.total_cache_read))
-                .fg(Color::Yellow)
-                .set_alignment(CellAlignment::Right),
-            Cell::new(format_tokens_with_commas(total_all))
-                .fg(Color::Yellow)
-                .set_alignment(CellAlignment::Right),
-            Cell::new(format_currency(report.total_cost))
-                .fg(Color::Yellow)
-                .set_alignment(CellAlignment::Right),
-        ]);
-
         println!("\n  Token Usage Report by Model\n");
-        println!("{table}");
+        println!("{}", dim_borders(&table.to_string()));
 
         if benchmark {
             use colored::Colorize;
@@ -1177,79 +1227,132 @@ fn run_monthly_report(
     } else {
         use comfy_table::{Attribute, Cell, CellAlignment, Color, ContentArrangement, Table};
 
-        let mut table = Table::new();
-        table.set_content_arrangement(ContentArrangement::DynamicFullWidth);
-        table.set_header(vec![
-            Cell::new("Month").fg(Color::Cyan),
-            Cell::new("Models").fg(Color::Cyan),
-            Cell::new("Input").fg(Color::Cyan),
-            Cell::new("Output").fg(Color::Cyan),
-            Cell::new("Cache Write").fg(Color::Cyan),
-            Cell::new("Cache Read").fg(Color::Cyan),
-            Cell::new("Total").fg(Color::Cyan),
-            Cell::new("Cost").fg(Color::Cyan),
-        ]);
+        let term_width = crossterm::terminal::size()
+            .map(|(w, _)| w as usize)
+            .unwrap_or(120);
+        let compact = term_width < 100;
 
-        for entry in &report.entries {
-            let models_col = if entry.models.is_empty() {
-                "-".to_string()
-            } else {
-                entry
-                    .models
-                    .iter()
-                    .map(|model| format_model_name(model))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            };
-            let total = entry.input + entry.output + entry.cache_write + entry.cache_read;
+        let mut table = Table::new();
+        table.load_preset(TABLE_PRESET);
+        table.set_content_arrangement(ContentArrangement::DynamicFullWidth);
+        if compact {
+            table.set_header(vec![
+                Cell::new("Month").fg(Color::Cyan),
+                Cell::new("Models").fg(Color::Cyan),
+                Cell::new("Input").fg(Color::Cyan),
+                Cell::new("Output").fg(Color::Cyan),
+                Cell::new("Cost").fg(Color::Cyan),
+            ]);
+
+            for entry in &report.entries {
+                let models_col = if entry.models.is_empty() {
+                    "-".to_string()
+                } else {
+                    entry
+                        .models
+                        .iter()
+                        .map(|model| format_model_name(model))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                };
+
+                table.add_row(vec![
+                    Cell::new(entry.month.clone()),
+                    Cell::new(models_col),
+                    Cell::new(format_tokens_with_commas(entry.input)).set_alignment(CellAlignment::Right),
+                    Cell::new(format_tokens_with_commas(entry.output)).set_alignment(CellAlignment::Right),
+                    Cell::new(format_currency(entry.cost)).set_alignment(CellAlignment::Right),
+                ]);
+            }
 
             table.add_row(vec![
-                Cell::new(entry.month.clone()),
-                Cell::new(models_col),
-                Cell::new(format_tokens_with_commas(entry.input)).set_alignment(CellAlignment::Right),
-                Cell::new(format_tokens_with_commas(entry.output)).set_alignment(CellAlignment::Right),
-                Cell::new(format_tokens_with_commas(entry.cache_write))
+                Cell::new("Total")
+                    .fg(Color::Yellow)
+                    .add_attribute(Attribute::Bold),
+                Cell::new(""),
+                Cell::new(format_tokens_with_commas(report.entries.iter().map(|e| e.input).sum()))
+                    .fg(Color::Yellow)
                     .set_alignment(CellAlignment::Right),
-                Cell::new(format_tokens_with_commas(entry.cache_read))
+                Cell::new(format_tokens_with_commas(report.entries.iter().map(|e| e.output).sum()))
+                    .fg(Color::Yellow)
                     .set_alignment(CellAlignment::Right),
-                Cell::new(format_tokens_with_commas(total)).set_alignment(CellAlignment::Right),
-                Cell::new(format_currency(entry.cost)).set_alignment(CellAlignment::Right),
+                Cell::new(format_currency(report.total_cost))
+                    .fg(Color::Yellow)
+                    .set_alignment(CellAlignment::Right),
+            ]);
+        } else {
+            table.set_header(vec![
+                Cell::new("Month").fg(Color::Cyan),
+                Cell::new("Models").fg(Color::Cyan),
+                Cell::new("Input").fg(Color::Cyan),
+                Cell::new("Output").fg(Color::Cyan),
+                Cell::new("Cache Write").fg(Color::Cyan),
+                Cell::new("Cache Read").fg(Color::Cyan),
+                Cell::new("Total").fg(Color::Cyan),
+                Cell::new("Cost").fg(Color::Cyan),
+            ]);
+
+            for entry in &report.entries {
+                let models_col = if entry.models.is_empty() {
+                    "-".to_string()
+                } else {
+                    entry
+                        .models
+                        .iter()
+                        .map(|model| format_model_name(model))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                };
+                let total = entry.input + entry.output + entry.cache_write + entry.cache_read;
+
+                table.add_row(vec![
+                    Cell::new(entry.month.clone()),
+                    Cell::new(models_col),
+                    Cell::new(format_tokens_with_commas(entry.input)).set_alignment(CellAlignment::Right),
+                    Cell::new(format_tokens_with_commas(entry.output)).set_alignment(CellAlignment::Right),
+                    Cell::new(format_tokens_with_commas(entry.cache_write))
+                        .set_alignment(CellAlignment::Right),
+                    Cell::new(format_tokens_with_commas(entry.cache_read))
+                        .set_alignment(CellAlignment::Right),
+                    Cell::new(format_tokens_with_commas(total)).set_alignment(CellAlignment::Right),
+                    Cell::new(format_currency(entry.cost)).set_alignment(CellAlignment::Right),
+                ]);
+            }
+
+            let total_input: i64 = report.entries.iter().map(|e| e.input).sum();
+            let total_output: i64 = report.entries.iter().map(|e| e.output).sum();
+            let total_cache_write: i64 = report.entries.iter().map(|e| e.cache_write).sum();
+            let total_cache_read: i64 = report.entries.iter().map(|e| e.cache_read).sum();
+            let total_all = total_input + total_output + total_cache_write + total_cache_read;
+
+            table.add_row(vec![
+                Cell::new("Total")
+                    .fg(Color::Yellow)
+                    .add_attribute(Attribute::Bold),
+                Cell::new(""),
+                Cell::new(format_tokens_with_commas(total_input))
+                    .fg(Color::Yellow)
+                    .set_alignment(CellAlignment::Right),
+                Cell::new(format_tokens_with_commas(total_output))
+                    .fg(Color::Yellow)
+                    .set_alignment(CellAlignment::Right),
+                Cell::new(format_tokens_with_commas(total_cache_write))
+                    .fg(Color::Yellow)
+                    .set_alignment(CellAlignment::Right),
+                Cell::new(format_tokens_with_commas(total_cache_read))
+                    .fg(Color::Yellow)
+                    .set_alignment(CellAlignment::Right),
+                Cell::new(format_tokens_with_commas(total_all))
+                    .fg(Color::Yellow)
+                    .set_alignment(CellAlignment::Right),
+                Cell::new(format_currency(report.total_cost))
+                    .fg(Color::Yellow)
+                    .set_alignment(CellAlignment::Right),
             ]);
         }
 
-        let total_input: i64 = report.entries.iter().map(|e| e.input).sum();
-        let total_output: i64 = report.entries.iter().map(|e| e.output).sum();
-        let total_cache_write: i64 = report.entries.iter().map(|e| e.cache_write).sum();
-        let total_cache_read: i64 = report.entries.iter().map(|e| e.cache_read).sum();
-        let total_all = total_input + total_output + total_cache_write + total_cache_read;
-
-        table.add_row(vec![
-            Cell::new("Total")
-                .fg(Color::Yellow)
-                .add_attribute(Attribute::Bold),
-            Cell::new(""),
-            Cell::new(format_tokens_with_commas(total_input))
-                .fg(Color::Yellow)
-                .set_alignment(CellAlignment::Right),
-            Cell::new(format_tokens_with_commas(total_output))
-                .fg(Color::Yellow)
-                .set_alignment(CellAlignment::Right),
-            Cell::new(format_tokens_with_commas(total_cache_write))
-                .fg(Color::Yellow)
-                .set_alignment(CellAlignment::Right),
-            Cell::new(format_tokens_with_commas(total_cache_read))
-                .fg(Color::Yellow)
-                .set_alignment(CellAlignment::Right),
-            Cell::new(format_tokens_with_commas(total_all))
-                .fg(Color::Yellow)
-                .set_alignment(CellAlignment::Right),
-            Cell::new(format_currency(report.total_cost))
-                .fg(Color::Yellow)
-                .set_alignment(CellAlignment::Right),
-        ]);
-
         println!("\n  Monthly Token Usage Report\n");
-        println!("{table}");
+        println!("{}", dim_borders(&table.to_string()));
 
         if benchmark {
             use colored::Colorize;
@@ -1480,6 +1583,23 @@ fn format_currency(n: f64) -> String {
     } else {
         format!("${:.2}", n)
     }
+}
+
+fn dim_borders(table_str: &str) -> String {
+    let border_chars: &[char] = &['┌', '─', '┬', '┐', '│', '├', '┼', '┤', '└', '┴', '┘'];
+    let mut result = String::with_capacity(table_str.len() * 2);
+
+    for ch in table_str.chars() {
+        if border_chars.contains(&ch) {
+            result.push_str("\x1b[90m");
+            result.push(ch);
+            result.push_str("\x1b[0m");
+        } else {
+            result.push(ch);
+        }
+    }
+
+    result
 }
 
 fn format_model_name(model: &str) -> String {
