@@ -1109,25 +1109,19 @@ fn run_models_report(
         table.set_content_arrangement(ContentArrangement::DynamicFullWidth);
         if compact {
             table.set_header(vec![
-                Cell::new("Source/Model").fg(Color::Cyan),
-                Cell::new("Models").fg(Color::Cyan),
+                Cell::new("Client").fg(Color::Cyan),
+                Cell::new("Provider").fg(Color::Cyan),
+                Cell::new("Model").fg(Color::Cyan),
                 Cell::new("Input").fg(Color::Cyan),
                 Cell::new("Output").fg(Color::Cyan),
                 Cell::new("Cost").fg(Color::Cyan),
             ]);
 
             for entry in &report.entries {
-                let short_model = format_model_name(&entry.model);
-                let source_model = format!(
-                    "\x1b[2m{}\x1b[0m {}",
-                    capitalize_source(&entry.source),
-                    short_model
-                );
-                let models_col = format!("- {}", short_model);
-
                 table.add_row(vec![
-                    Cell::new(source_model),
-                    Cell::new(models_col),
+                    Cell::new(capitalize_source(&entry.source)),
+                    Cell::new(&entry.provider).add_attribute(Attribute::Dim),
+                    Cell::new(&entry.model),
                     Cell::new(format_tokens_with_commas(entry.input)).set_alignment(CellAlignment::Right),
                     Cell::new(format_tokens_with_commas(entry.output)).set_alignment(CellAlignment::Right),
                     Cell::new(format_currency(entry.cost)).set_alignment(CellAlignment::Right),
@@ -1138,6 +1132,7 @@ fn run_models_report(
                 Cell::new("Total")
                     .fg(Color::Yellow)
                     .add_attribute(Attribute::Bold),
+                Cell::new(""),
                 Cell::new(""),
                 Cell::new(format_tokens_with_commas(report.total_input))
                     .fg(Color::Yellow)
@@ -1151,8 +1146,10 @@ fn run_models_report(
             ]);
         } else {
             table.set_header(vec![
-                Cell::new("Source/Model").fg(Color::Cyan),
-                Cell::new("Models").fg(Color::Cyan),
+                Cell::new("Client").fg(Color::Cyan),
+                Cell::new("Provider").fg(Color::Cyan),
+                Cell::new("Model").fg(Color::Cyan),
+                Cell::new("Resolved").fg(Color::Cyan),
                 Cell::new("Input").fg(Color::Cyan),
                 Cell::new("Output").fg(Color::Cyan),
                 Cell::new("Cache Write").fg(Color::Cyan),
@@ -1162,18 +1159,13 @@ fn run_models_report(
             ]);
 
             for entry in &report.entries {
-                let short_model = format_model_name(&entry.model);
-                let source_model = format!(
-                    "\x1b[2m{}\x1b[0m {}",
-                    capitalize_source(&entry.source),
-                    short_model
-                );
-                let models_col = format!("- {}", short_model);
                 let total = entry.input + entry.output + entry.cache_write + entry.cache_read;
 
                 table.add_row(vec![
-                    Cell::new(source_model),
-                    Cell::new(models_col),
+                    Cell::new(capitalize_source(&entry.source)),
+                    Cell::new(&entry.provider).add_attribute(Attribute::Dim),
+                    Cell::new(&entry.model),
+                    Cell::new(format_model_name(&entry.model)),
                     Cell::new(format_tokens_with_commas(entry.input)).set_alignment(CellAlignment::Right),
                     Cell::new(format_tokens_with_commas(entry.output)).set_alignment(CellAlignment::Right),
                     Cell::new(format_tokens_with_commas(entry.cache_write))
@@ -1193,6 +1185,8 @@ fn run_models_report(
                 Cell::new("Total")
                     .fg(Color::Yellow)
                     .add_attribute(Attribute::Bold),
+                Cell::new(""),
+                Cell::new(""),
                 Cell::new(""),
                 Cell::new(format_tokens_with_commas(report.total_input))
                     .fg(Color::Yellow)
