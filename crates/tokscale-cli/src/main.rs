@@ -5,7 +5,12 @@ mod tui;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::thread::{self, JoinHandle};
+use std::time::Duration;
 use tui::Tab;
 
 #[derive(Parser)]
@@ -80,6 +85,9 @@ struct Cli {
 
     #[arg(long, help = "Show processing time")]
     benchmark: bool,
+
+    #[arg(long, help = "Disable spinner (for AI agents and scripts)")]
+    no_spinner: bool,
 }
 
 #[derive(Subcommand)]
@@ -677,9 +685,17 @@ fn main() -> Result<()> {
             let year = normalize_year_filter(cli.today, cli.week, cli.month, cli.year);
 
             if cli.json {
-                run_models_report(cli.json, sources, since, until, year, cli.benchmark, true)
+                run_models_report(
+                    cli.json,
+                    sources,
+                    since,
+                    until,
+                    year,
+                    cli.benchmark,
+                    cli.no_spinner || cli.json,
+                )
             } else if cli.light {
-                run_models_report(false, sources, since, until, year, cli.benchmark, true)
+                run_models_report(false, sources, since, until, year, cli.benchmark, cli.no_spinner)
             } else {
                 tui::run(
                     &cli.theme,
@@ -795,6 +811,116 @@ fn normalize_year_filter(
     }
 }
 
+struct LightSpinner {
+    running: Arc<AtomicBool>,
+    handle: Option<JoinHandle<()>>,
+}
+
+impl LightSpinner {
+    const WIDTH: usize = 8;
+    const HOLD_START: usize = 30;
+    const HOLD_END: usize = 9;
+    const TRAIL_LENGTH: usize = 4;
+    const TRAIL_COLORS: [u8; 6] = [51, 44, 37, 30, 23, 17];
+    const INACTIVE_COLOR: u8 = 240;
+    const FRAME_MS: u64 = 40;
+
+    fn start(message: &'static str) -> Self {
+        let running = Arc::new(AtomicBool::new(true));
+        let running_thread = Arc::clone(&running);
+        let message = message.to_string();
+
+        let handle = thread::spawn(move || {
+            let mut frame = 0usize;
+            let mut stderr = io::stderr().lock();
+
+            let _ = write!(stderr, "\x1b[?25l");
+            let _ = stderr.flush();
+
+            while running_thread.load(Ordering::Relaxed) {
+                let spinner = Self::frame(frame);
+                let _ = write!(stderr, "\r\x1b[K  {} {}", spinner, message);
+                let _ = stderr.flush();
+                frame = frame.wrapping_add(1);
+                thread::sleep(Duration::from_millis(Self::FRAME_MS));
+            }
+
+            let _ = write!(stderr, "\r\x1b[K\x1b[?25h");
+            let _ = stderr.flush();
+        });
+
+        Self {
+            running,
+            handle: Some(handle),
+        }
+    }
+
+    fn stop(mut self) {
+        self.stop_inner();
+    }
+
+    fn stop_inner(&mut self) {
+        self.running.store(false, Ordering::Relaxed);
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
+    }
+
+    fn frame(frame: usize) -> String {
+        let (position, forward) = Self::scanner_state(frame);
+        let mut out = String::new();
+
+        for i in 0..Self::WIDTH {
+            let distance = if forward {
+                if position >= i {
+                    position - i
+                } else {
+                    usize::MAX
+                }
+            } else if i >= position {
+                i - position
+            } else {
+                usize::MAX
+            };
+
+            if distance < Self::TRAIL_LENGTH {
+                let color = Self::TRAIL_COLORS[distance.min(Self::TRAIL_COLORS.len() - 1)];
+                out.push_str(&format!("\x1b[38;5;{}m■\x1b[0m", color));
+            } else {
+                out.push_str(&format!("\x1b[38;5;{}m⬝\x1b[0m", Self::INACTIVE_COLOR));
+            }
+        }
+
+        out
+    }
+
+    fn scanner_state(frame: usize) -> (usize, bool) {
+        let forward_frames = Self::WIDTH;
+        let backward_frames = Self::WIDTH - 1;
+        let total_cycle = forward_frames + Self::HOLD_END + backward_frames + Self::HOLD_START;
+        let normalized = frame % total_cycle;
+
+        if normalized < forward_frames {
+            (normalized, true)
+        } else if normalized < forward_frames + Self::HOLD_END {
+            (Self::WIDTH - 1, true)
+        } else if normalized < forward_frames + Self::HOLD_END + backward_frames {
+            (
+                Self::WIDTH - 2 - (normalized - forward_frames - Self::HOLD_END),
+                false,
+            )
+        } else {
+            (0, false)
+        }
+    }
+}
+
+impl Drop for LightSpinner {
+    fn drop(&mut self) {
+        self.stop_inner();
+    }
+}
+
 fn run_models_report(
     json: bool,
     sources: Option<Vec<String>>,
@@ -808,9 +934,11 @@ fn run_models_report(
     use tokio::runtime::Runtime;
     use tokscale_core::{get_model_report, ReportOptions};
 
-    if !no_spinner {
-        eprintln!("  Scanning session data...");
-    }
+    let spinner = if no_spinner {
+        None
+    } else {
+        Some(LightSpinner::start("Scanning session data..."))
+    };
     let start = Instant::now();
     let rt = Runtime::new()?;
     let report = rt
@@ -825,6 +953,11 @@ fn run_models_report(
             .await
         })
         .map_err(|e| anyhow::anyhow!(e))?;
+
+    if let Some(spinner) = spinner {
+        spinner.stop();
+    }
+
     let processing_time_ms = start.elapsed().as_millis();
 
     if json {
@@ -973,9 +1106,11 @@ fn run_monthly_report(
     use tokio::runtime::Runtime;
     use tokscale_core::{get_monthly_report, ReportOptions};
 
-    if !no_spinner {
-        eprintln!("  Scanning session data...");
-    }
+    let spinner = if no_spinner {
+        None
+    } else {
+        Some(LightSpinner::start("Scanning session data..."))
+    };
     let start = Instant::now();
     let rt = Runtime::new()?;
     let report = rt
@@ -990,6 +1125,11 @@ fn run_monthly_report(
             .await
         })
         .map_err(|e| anyhow::anyhow!(e))?;
+
+    if let Some(spinner) = spinner {
+        spinner.stop();
+    }
+
     let processing_time_ms = start.elapsed().as_millis();
 
     if json {
