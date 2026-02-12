@@ -1028,6 +1028,7 @@ fn run_models_report(
         let mut table = Table::new();
         table.load_preset(TABLE_PRESET);
         table.set_content_arrangement(ContentArrangement::DynamicFullWidth);
+        table.enforce_styling();
         if compact {
             table.set_header(vec![
                 Cell::new("Source/Model").fg(Color::Cyan),
@@ -1039,7 +1040,11 @@ fn run_models_report(
 
             for entry in &report.entries {
                 let short_model = format_model_name(&entry.model);
-                let source_model = format!("{} {}", capitalize_source(&entry.source), short_model);
+                let source_model = format!(
+                    "\x1b[2m{}\x1b[0m {}",
+                    capitalize_source(&entry.source),
+                    short_model
+                );
                 let models_col = format!("- {}", short_model);
 
                 table.add_row(vec![
@@ -1080,7 +1085,11 @@ fn run_models_report(
 
             for entry in &report.entries {
                 let short_model = format_model_name(&entry.model);
-                let source_model = format!("{} {}", capitalize_source(&entry.source), short_model);
+                let source_model = format!(
+                    "\x1b[2m{}\x1b[0m {}",
+                    capitalize_source(&entry.source),
+                    short_model
+                );
                 let models_col = format!("- {}", short_model);
                 let total = entry.input + entry.output + entry.cache_write + entry.cache_read;
 
@@ -1130,6 +1139,15 @@ fn run_models_report(
 
         println!("\n  Token Usage Report by Model\n");
         println!("{}", dim_borders(&table.to_string()));
+
+        let total_tokens =
+            report.total_input + report.total_output + report.total_cache_write + report.total_cache_read;
+        println!(
+            "\x1b[90m\n  Total: {} messages, {} tokens, \x1b[32m{}\x1b[90m\x1b[0m",
+            format_tokens_with_commas(report.total_messages as i64),
+            format_tokens_with_commas(total_tokens),
+            format_currency(report.total_cost)
+        );
 
         if benchmark {
             use colored::Colorize;
@@ -1235,6 +1253,7 @@ fn run_monthly_report(
         let mut table = Table::new();
         table.load_preset(TABLE_PRESET);
         table.set_content_arrangement(ContentArrangement::DynamicFullWidth);
+        table.enforce_styling();
         if compact {
             table.set_header(vec![
                 Cell::new("Month").fg(Color::Cyan),
@@ -1353,6 +1372,11 @@ fn run_monthly_report(
 
         println!("\n  Monthly Token Usage Report\n");
         println!("{}", dim_borders(&table.to_string()));
+
+        println!(
+            "\x1b[90m\n  Total Cost: \x1b[32m{}\x1b[90m\x1b[0m",
+            format_currency(report.total_cost)
+        );
 
         if benchmark {
             use colored::Colorize;
