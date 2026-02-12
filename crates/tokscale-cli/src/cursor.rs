@@ -135,55 +135,63 @@ fn count_cursor_csv_rows(csv_text: &str) -> usize {
 }
 
 fn atomic_write_file(path: &std::path::Path, contents: &str) -> Result<()> {
-    let parent = path
-        .parent()
-        .ok_or_else(|| anyhow::anyhow!("Invalid cache path"))?;
-    if !parent.exists() {
-        fs::create_dir_all(parent)?;
-    }
+     let parent = path
+         .parent()
+         .ok_or_else(|| anyhow::anyhow!("Invalid cache path"))?;
+     if !parent.exists() {
+         fs::create_dir_all(parent)?;
+     }
 
-    let temp_name = format!(
-        ".tmp-{}-{}",
-        path.file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("cursor"),
-        std::process::id()
-    );
-    let temp_path = parent.join(temp_name);
+     let temp_name = format!(
+         ".tmp-{}-{}",
+         path.file_name()
+             .and_then(|name| name.to_str())
+             .unwrap_or("cursor"),
+         std::process::id()
+     );
+     let temp_path = parent.join(temp_name);
 
-    fs::write(&temp_path, contents)?;
+     #[cfg(unix)]
+     {
+         use std::fs::OpenOptions;
+         use std::os::unix::fs::OpenOptionsExt;
 
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        if let Err(e) = fs::set_permissions(&temp_path, fs::Permissions::from_mode(0o600)) {
-            let _ = fs::remove_file(&temp_path);
-            return Err(e.into());
-        }
-    }
+         let mut file = OpenOptions::new()
+             .write(true)
+             .create(true)
+             .truncate(true)
+             .mode(0o600)
+             .open(&temp_path)?;
+         file.write_all(contents.as_bytes())?;
+     }
 
-    if let Err(err) = fs::rename(&temp_path, path) {
-        if path.exists() {
-            match fs::copy(&temp_path, path) {
-                Ok(_) => {
-                    let _ = fs::remove_file(&temp_path);
-                }
-                Err(copy_err) => {
-                    let _ = fs::remove_file(&temp_path);
-                    return Err(anyhow::anyhow!(
-                        "Failed to persist file with rename ({}) and copy fallback ({})",
-                        err,
-                        copy_err
-                    ));
-                }
-            }
-        } else {
-            let _ = fs::remove_file(&temp_path);
-            return Err(err.into());
-        }
-    }
-    Ok(())
-}
+     #[cfg(not(unix))]
+     {
+         fs::write(&temp_path, contents)?;
+     }
+
+     if let Err(err) = fs::rename(&temp_path, path) {
+         if path.exists() {
+             match fs::copy(&temp_path, path) {
+                 Ok(_) => {
+                     let _ = fs::remove_file(&temp_path);
+                 }
+                 Err(copy_err) => {
+                     let _ = fs::remove_file(&temp_path);
+                     return Err(anyhow::anyhow!(
+                         "Failed to persist file with rename ({}) and copy fallback ({})",
+                         err,
+                         copy_err
+                     ));
+                 }
+             }
+         } else {
+             let _ = fs::remove_file(&temp_path);
+             return Err(err.into());
+         }
+     }
+     Ok(())
+ }
 
 fn ensure_config_dir() -> Result<()> {
     let config_dir = home_dir()?.join(".config/tokscale");

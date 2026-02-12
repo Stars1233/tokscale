@@ -100,6 +100,10 @@ pub fn calculate_years(contributions: &[DailyContribution]) -> Vec<YearSummary> 
     for c in contributions {
         // Guard against short/invalid date strings
         if c.date.len() < 4 {
+            eprintln!(
+                "Warning: Skipping contribution with invalid date '{}' ({} tokens, ${:.4} cost)",
+                c.date, c.totals.tokens, c.totals.cost
+            );
             continue;
         }
         let year = &c.date[0..4];
