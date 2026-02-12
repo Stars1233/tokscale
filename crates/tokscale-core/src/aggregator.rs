@@ -216,13 +216,17 @@ impl DayAccumulator {
             .saturating_add(msg.tokens.reasoning);
 
         // Update source contribution
-        let key = format!("{}:{}", msg.source, msg.model_id);
+        let key = format!(
+            "{}:{}",
+            msg.source,
+            crate::normalize_model_for_grouping(&msg.model_id)
+        );
         let source = self
             .sources
             .entry(key)
             .or_insert_with(|| SourceContribution {
                 source: msg.source.clone(),
-                model_id: msg.model_id.clone(),
+                model_id: crate::normalize_model_for_grouping(&msg.model_id),
                 provider_id: msg.provider_id.clone(),
                 tokens: TokenBreakdown::default(),
                 cost: 0.0,
