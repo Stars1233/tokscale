@@ -178,9 +178,13 @@ fn run_loop_with_background(
                 }
             }
             Err(TryRecvError::Disconnected) => {
-                app.set_background_loading(false);
-                app.set_error(Some("Background thread disconnected".to_string()));
-                app.set_status("Error: Background thread disconnected");
+                // Only treat as error if we were still waiting for data
+                // After data is received, disconnect is expected (thread completed)
+                if app.background_loading {
+                    app.set_background_loading(false);
+                    app.set_error(Some("Background thread disconnected".to_string()));
+                    app.set_status("Error: Background thread disconnected");
+                }
             }
             Err(TryRecvError::Empty) => {
                 // No data available yet, continue
