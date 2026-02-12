@@ -1219,7 +1219,7 @@ fn run_models_report(
             Some(range) => format!("Token Usage Report by Model ({})", range),
             None => "Token Usage Report by Model".to_string(),
         };
-        println!("\n  {}\n", title);
+        println!("\n  \x1b[36m{}\x1b[0m\n", title);
         println!("{}", dim_borders(&table.to_string()));
 
         let total_tokens =
@@ -1474,7 +1474,7 @@ fn run_monthly_report(
             Some(range) => format!("Monthly Token Usage Report ({})", range),
             None => "Monthly Token Usage Report".to_string(),
         };
-        println!("\n  {}\n", title);
+        println!("\n  \x1b[36m{}\x1b[0m\n", title);
         println!("{}", dim_borders(&table.to_string()));
 
         println!(
