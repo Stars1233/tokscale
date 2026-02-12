@@ -883,29 +883,70 @@ fn run_models_report(
         };
         println!("{}", serde_json::to_string_pretty(&output)?);
     } else {
-        use comfy_table::{ContentArrangement, Table};
+        use comfy_table::{Attribute, Cell, CellAlignment, Color, ContentArrangement, Table};
 
         let mut table = Table::new();
-        table.set_content_arrangement(ContentArrangement::Dynamic);
-        table.set_header(vec!["Source", "Model", "Input", "Output", "Cache", "Cost"]);
+        table.set_content_arrangement(ContentArrangement::DynamicFullWidth);
+        table.set_header(vec![
+            Cell::new("Source/Model").fg(Color::Cyan),
+            Cell::new("Models").fg(Color::Cyan),
+            Cell::new("Input").fg(Color::Cyan),
+            Cell::new("Output").fg(Color::Cyan),
+            Cell::new("Cache Write").fg(Color::Cyan),
+            Cell::new("Cache Read").fg(Color::Cyan),
+            Cell::new("Total").fg(Color::Cyan),
+            Cell::new("Cost").fg(Color::Cyan),
+        ]);
 
         for entry in &report.entries {
+            let short_model = format_model_name(&entry.model);
+            let source_model = format!("{} {}", capitalize_source(&entry.source), short_model);
+            let models_col = format!("- {}", short_model);
+            let total = entry.input + entry.output + entry.cache_write + entry.cache_read;
+
             table.add_row(vec![
-                entry.source.clone(),
-                entry.model.clone(),
-                format_tokens(entry.input),
-                format_tokens(entry.output),
-                format_tokens(entry.cache_read),
-                format_currency(entry.cost),
+                Cell::new(source_model),
+                Cell::new(models_col),
+                Cell::new(format_tokens_with_commas(entry.input)).set_alignment(CellAlignment::Right),
+                Cell::new(format_tokens_with_commas(entry.output)).set_alignment(CellAlignment::Right),
+                Cell::new(format_tokens_with_commas(entry.cache_write))
+                    .set_alignment(CellAlignment::Right),
+                Cell::new(format_tokens_with_commas(entry.cache_read))
+                    .set_alignment(CellAlignment::Right),
+                Cell::new(format_tokens_with_commas(total)).set_alignment(CellAlignment::Right),
+                Cell::new(format_currency(entry.cost)).set_alignment(CellAlignment::Right),
             ]);
         }
 
+        let total_all =
+            report.total_input + report.total_output + report.total_cache_write + report.total_cache_read;
+        table.add_row(vec![
+            Cell::new("Total")
+                .fg(Color::Yellow)
+                .add_attribute(Attribute::Bold),
+            Cell::new(""),
+            Cell::new(format_tokens_with_commas(report.total_input))
+                .fg(Color::Yellow)
+                .set_alignment(CellAlignment::Right),
+            Cell::new(format_tokens_with_commas(report.total_output))
+                .fg(Color::Yellow)
+                .set_alignment(CellAlignment::Right),
+            Cell::new(format_tokens_with_commas(report.total_cache_write))
+                .fg(Color::Yellow)
+                .set_alignment(CellAlignment::Right),
+            Cell::new(format_tokens_with_commas(report.total_cache_read))
+                .fg(Color::Yellow)
+                .set_alignment(CellAlignment::Right),
+            Cell::new(format_tokens_with_commas(total_all))
+                .fg(Color::Yellow)
+                .set_alignment(CellAlignment::Right),
+            Cell::new(format_currency(report.total_cost))
+                .fg(Color::Yellow)
+                .set_alignment(CellAlignment::Right),
+        ]);
+
+        println!("\n  Token Usage Report by Model\n");
         println!("{table}");
-        println!(
-            "\nTotal: {} | Cost: {}",
-            format_tokens(report.total_input + report.total_output + report.total_cache_read),
-            format_currency(report.total_cost)
-        );
 
         if benchmark {
             use colored::Colorize;
@@ -994,34 +1035,81 @@ fn run_monthly_report(
 
         println!("{}", serde_json::to_string_pretty(&output)?);
     } else {
-        use comfy_table::{ContentArrangement, Table};
+        use comfy_table::{Attribute, Cell, CellAlignment, Color, ContentArrangement, Table};
 
         let mut table = Table::new();
-        table.set_content_arrangement(ContentArrangement::Dynamic);
-        table.set_header(vec!["Month", "Input", "Output", "Cache", "Cost"]);
+        table.set_content_arrangement(ContentArrangement::DynamicFullWidth);
+        table.set_header(vec![
+            Cell::new("Month").fg(Color::Cyan),
+            Cell::new("Models").fg(Color::Cyan),
+            Cell::new("Input").fg(Color::Cyan),
+            Cell::new("Output").fg(Color::Cyan),
+            Cell::new("Cache Write").fg(Color::Cyan),
+            Cell::new("Cache Read").fg(Color::Cyan),
+            Cell::new("Total").fg(Color::Cyan),
+            Cell::new("Cost").fg(Color::Cyan),
+        ]);
 
         for entry in &report.entries {
+            let models_col = if entry.models.is_empty() {
+                "-".to_string()
+            } else {
+                entry
+                    .models
+                    .iter()
+                    .map(|model| format_model_name(model))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            };
+            let total = entry.input + entry.output + entry.cache_write + entry.cache_read;
+
             table.add_row(vec![
-                entry.month.clone(),
-                format_tokens(entry.input),
-                format_tokens(entry.output),
-                format_tokens(entry.cache_read),
-                format_currency(entry.cost),
+                Cell::new(entry.month.clone()),
+                Cell::new(models_col),
+                Cell::new(format_tokens_with_commas(entry.input)).set_alignment(CellAlignment::Right),
+                Cell::new(format_tokens_with_commas(entry.output)).set_alignment(CellAlignment::Right),
+                Cell::new(format_tokens_with_commas(entry.cache_write))
+                    .set_alignment(CellAlignment::Right),
+                Cell::new(format_tokens_with_commas(entry.cache_read))
+                    .set_alignment(CellAlignment::Right),
+                Cell::new(format_tokens_with_commas(total)).set_alignment(CellAlignment::Right),
+                Cell::new(format_currency(entry.cost)).set_alignment(CellAlignment::Right),
             ]);
         }
 
-        println!("{table}");
-
-        // Calculate totals from entries
         let total_input: i64 = report.entries.iter().map(|e| e.input).sum();
         let total_output: i64 = report.entries.iter().map(|e| e.output).sum();
+        let total_cache_write: i64 = report.entries.iter().map(|e| e.cache_write).sum();
         let total_cache_read: i64 = report.entries.iter().map(|e| e.cache_read).sum();
+        let total_all = total_input + total_output + total_cache_write + total_cache_read;
 
-        println!(
-            "\nTotal: {} | Cost: {}",
-            format_tokens(total_input + total_output + total_cache_read),
-            format_currency(report.total_cost)
-        );
+        table.add_row(vec![
+            Cell::new("Total")
+                .fg(Color::Yellow)
+                .add_attribute(Attribute::Bold),
+            Cell::new(""),
+            Cell::new(format_tokens_with_commas(total_input))
+                .fg(Color::Yellow)
+                .set_alignment(CellAlignment::Right),
+            Cell::new(format_tokens_with_commas(total_output))
+                .fg(Color::Yellow)
+                .set_alignment(CellAlignment::Right),
+            Cell::new(format_tokens_with_commas(total_cache_write))
+                .fg(Color::Yellow)
+                .set_alignment(CellAlignment::Right),
+            Cell::new(format_tokens_with_commas(total_cache_read))
+                .fg(Color::Yellow)
+                .set_alignment(CellAlignment::Right),
+            Cell::new(format_tokens_with_commas(total_all))
+                .fg(Color::Yellow)
+                .set_alignment(CellAlignment::Right),
+            Cell::new(format_currency(report.total_cost))
+                .fg(Color::Yellow)
+                .set_alignment(CellAlignment::Right),
+        ]);
+
+        println!("\n  Monthly Token Usage Report\n");
+        println!("{table}");
 
         if benchmark {
             use colored::Colorize;
@@ -1246,23 +1334,37 @@ fn run_pricing_lookup(
     Ok(())
 }
 
-fn format_tokens(n: i64) -> String {
-    if n >= 1_000_000_000 {
-        format!("{:.1}B", n as f64 / 1_000_000_000.0)
-    } else if n >= 1_000_000 {
-        format!("{:.1}M", n as f64 / 1_000_000.0)
-    } else if n >= 1_000 {
-        format!("{:.1}K", n as f64 / 1_000.0)
-    } else {
-        n.to_string()
-    }
-}
-
 fn format_currency(n: f64) -> String {
     if n >= 1000.0 {
         format!("${:.2}K", n / 1000.0)
     } else {
         format!("${:.2}", n)
+    }
+}
+
+fn format_model_name(model: &str) -> String {
+    let name = model.strip_prefix("claude-").unwrap_or(model);
+    if name.len() > 9 {
+        let potential_date = &name[name.len() - 8..];
+        if potential_date.chars().all(|c| c.is_ascii_digit()) && name.as_bytes()[name.len() - 9] == b'-' {
+            return name[..name.len() - 9].to_string();
+        }
+    }
+    name.to_string()
+}
+
+fn capitalize_source(source: &str) -> String {
+    match source {
+        "opencode" => "OpenCode".to_string(),
+        "claude" => "Claude".to_string(),
+        "codex" => "Codex".to_string(),
+        "cursor" => "Cursor".to_string(),
+        "gemini" => "Gemini".to_string(),
+        "amp" => "Amp".to_string(),
+        "droid" => "Droid".to_string(),
+        "openclaw" => "openclaw".to_string(),
+        "pi" => "Pi".to_string(),
+        other => other.to_string(),
     }
 }
 
