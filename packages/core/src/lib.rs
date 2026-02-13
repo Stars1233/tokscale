@@ -452,12 +452,12 @@ fn parse_all_messages_with_pricing(
         .collect();
     all_messages.extend(droid_messages);
 
-    // Parse OpenClaw index files
+    // Parse OpenClaw transcript JSONL files
     let openclaw_messages: Vec<UnifiedMessage> = scan_result
         .openclaw_files
         .par_iter()
         .flat_map(|path| {
-            sessions::openclaw::parse_openclaw_index(path)
+            sessions::openclaw::parse_openclaw_transcript(path)
                 .into_iter()
                 .map(|mut msg| {
                     msg.cost = pricing.calculate_cost(
