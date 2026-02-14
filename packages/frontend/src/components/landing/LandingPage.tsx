@@ -22,11 +22,15 @@ function useSquircleClip<T extends HTMLElement = HTMLElement>(
   bottomOnly: boolean = false
 ) {
   const ref = useRef<T | null>(null);
+  const clipIdRef = useRef(
+    `squircle-clip-${Math.random().toString(36).slice(2, 9)}`
+  );
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  const clipPath = useMemo(() => {
+  const clipResult = useMemo(() => {
     const { width, height } = dimensions;
-    if (width === 0 || height === 0) return "";
+    if (width === 0 || height === 0)
+      return { clipPath: "", svgDef: null };
 
     if (bottomOnly) {
       const effectiveHeight = height + cornerRadius;
@@ -36,14 +40,17 @@ function useSquircleClip<T extends HTMLElement = HTMLElement>(
         cornerRadius,
         cornerSmoothing,
       });
-      return `path('${path}')`;
+      const clipId = clipIdRef.current;
+
+      return {
+        clipPath: `url(#${clipId})`,
+        svgDef: { id: clipId, path, width, effectiveHeight, cornerRadius },
+      };
     }
 
     const path = getSvgPath({ width, height, cornerRadius, cornerSmoothing });
-    return `path('${path}')`;
+    return { clipPath: `path('${path}')`, svgDef: null };
   }, [dimensions, cornerRadius, cornerSmoothing, bottomOnly]);
-
-  const offset = bottomOnly ? -cornerRadius : 0;
 
   useEffect(() => {
     if (!ref.current) return;
@@ -70,7 +77,11 @@ function useSquircleClip<T extends HTMLElement = HTMLElement>(
     }
   }, []);
 
-  return { ref: setRef, clipPath, offset };
+  return {
+    ref: setRef,
+    clipPath: clipResult.clipPath,
+    svgDef: clipResult.svgDef,
+  };
 }
 
 interface LandingPageProps {
@@ -92,10 +103,30 @@ export function LandingPage({ stargazersCount = 0 }: LandingPageProps) {
 
   return (
     <PageWrapper>
+      {/* SVG clip-path defs for bottom-only squircles */}
+      <svg
+        width="0"
+        height="0"
+        style={{ position: "absolute", overflow: "hidden" }}
+        aria-hidden="true"
+        role="presentation"
+      >
+        <defs>
+          {[heroRight.svgDef, cardsRow.svgDef, globeSection.svgDef]
+            .filter(Boolean)
+            .map((def) => (
+              <clipPath key={def!.id} id={def!.id}>
+                <path
+                  d={def!.path}
+                  transform={`translate(0, -${def!.cornerRadius})`}
+                />
+              </clipPath>
+            ))}
+        </defs>
+      </svg>
       <PageInner>
         {/* ── Section 1: Hero ── */}
         <HeroRow>
-          {/* Left: Hero SVG illustration */}
           <HeroLeft>
             <HeroSVG
               src="/assets/landing/hero-main.svg"
@@ -106,13 +137,10 @@ export function LandingPage({ stargazersCount = 0 }: LandingPageProps) {
             />
           </HeroLeft>
 
-          {/* Right: Hero content */}
           <HeroRight
             ref={heroRight.ref}
             style={{
               clipPath: heroRight.clipPath || undefined,
-              marginTop: heroRight.offset || undefined,
-              paddingTop: heroRight.offset ? -heroRight.offset : undefined,
             }}
           >
             {/* Top part with BG image */}
@@ -190,8 +218,6 @@ export function LandingPage({ stargazersCount = 0 }: LandingPageProps) {
               ref={cardsRow.ref}
               style={{
                 clipPath: cardsRow.clipPath || undefined,
-                marginTop: cardsRow.offset || undefined,
-                paddingTop: cardsRow.offset ? -cardsRow.offset : undefined,
               }}
             >
             {/* Left Card */}
@@ -273,8 +299,6 @@ export function LandingPage({ stargazersCount = 0 }: LandingPageProps) {
           ref={globeSection.ref}
           style={{
             clipPath: globeSection.clipPath || undefined,
-            marginTop: globeSection.offset || undefined,
-            paddingTop: globeSection.offset ? -globeSection.offset : undefined,
           }}
         >
           <GlobeImage>
@@ -519,6 +543,7 @@ const StarButton = styled.a`
   align-items: center;
   gap: 6px;
   width: 198px;
+  min-width: 198px;
   height: 48px;
   padding: 0 28px;
   background: #000000;
@@ -528,6 +553,7 @@ const StarButton = styled.a`
   text-decoration: none;
   overflow: hidden;
   transition: opacity 0.2s;
+  flex-shrink: 0;
 
   &::before {
     content: "";
@@ -574,6 +600,7 @@ const StarButtonText = styled.span`
   letter-spacing: -0.0174em;
   text-align: center;
   color: #ffffff;
+  white-space: nowrap;
   z-index: 1;
 
   @media (max-width: 480px) {
@@ -654,8 +681,8 @@ const SeparatorBar = styled.div`
   justify-content: center;
   padding: 20px 32px;
   box-sizing: content-box;
-  background-image: url("/assets/landing/bg-pattern-slash.svg");
-  background-size: 16px 16px;
+  background-image: url("/assets/landing/separator-bar-fill.png");
+  background-size: 24px 24px;
   background-repeat: repeat;
   border-left: 1px solid #10233e;
   border-right: 1px solid #10233e;
@@ -739,8 +766,8 @@ const CardPatternOverlay = styled.div<{ $position: "left" | "right" }>`
   width: 100%;
   max-width: 600px;
   height: 20px;
-  background-image: url("/assets/landing/bg-pattern-slash.svg");
-  background-size: 16px 16px;
+  background-image: url("/assets/landing/separator-bar-fill.png");
+  background-size: 20px 20px;
   background-repeat: repeat;
   padding: 16.67px 26.67px;
   pointer-events: none;
@@ -860,8 +887,8 @@ const GlobeSeparatorBar = styled.div`
   justify-content: center;
   padding: 20px 32px;
   box-sizing: content-box;
-  background-image: url("/assets/landing/bg-pattern-slash.svg");
-  background-size: 16px 16px;
+  background-image: url("/assets/landing/separator-bar-fill.png");
+  background-size: 24px 24px;
   background-repeat: repeat;
   border-top: 1px solid #10233e;
   border-left: 1px solid #10233e;
