@@ -233,6 +233,11 @@ impl DayAccumulator {
                 messages: 0,
             });
 
+        // Merge provider_id if different provider contributes to same source+model
+        if !source.provider_id.split(", ").any(|p| p == msg.provider_id) {
+            source.provider_id = format!("{}, {}", source.provider_id, msg.provider_id);
+        }
+
         source.tokens.input = source.tokens.input.saturating_add(msg.tokens.input);
         source.tokens.output = source.tokens.output.saturating_add(msg.tokens.output);
         source.tokens.cache_read = source
@@ -286,6 +291,13 @@ impl DayAccumulator {
                     cost: 0.0,
                     messages: 0,
                 });
+
+            // Merge provider_ids from parallel reduction
+            for provider in source.provider_id.split(", ") {
+                if !entry.provider_id.split(", ").any(|p| p == provider) {
+                    entry.provider_id = format!("{}, {}", entry.provider_id, provider);
+                }
+            }
 
             entry.tokens.input = entry.tokens.input.saturating_add(source.tokens.input);
             entry.tokens.output = entry.tokens.output.saturating_add(source.tokens.output);
