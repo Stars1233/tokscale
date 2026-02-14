@@ -2,6 +2,11 @@
 
 AI-agent knowledge base for the tokscale project.
 
+## Agent Command Execution
+
+- When running `tokscale` CLI commands from an automated agent (tests, CI, or tool-driven shells), always pass `--no-spinner` unless spinner behavior is the thing being tested.
+- This avoids non-interactive terminal issues and keeps command output stable for assertions and logs.
+
 ## Release & Deployment
 
 ### Overview

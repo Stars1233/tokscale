@@ -397,7 +397,10 @@ enum CursorSubcommand {
 }
 
 fn main() -> Result<()> {
+    use std::io::IsTerminal;
+
     let cli = Cli::parse();
+    let can_use_tui = std::io::stdin().is_terminal() && std::io::stdout().is_terminal();
 
     if cli.test_data {
         return tui::test_data_loading();
@@ -438,7 +441,7 @@ fn main() -> Result<()> {
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             let year = normalize_year_filter(today, week, month, year);
-            if json || light {
+            if json || light || !can_use_tui {
                 run_models_report(
                     json,
                     sources,
@@ -446,7 +449,7 @@ fn main() -> Result<()> {
                     until,
                     year,
                     benchmark,
-                    no_spinner,
+                    no_spinner || !can_use_tui,
                     today,
                     week,
                     month,
@@ -498,7 +501,7 @@ fn main() -> Result<()> {
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             let year = normalize_year_filter(today, week, month, year);
-            if json || light {
+            if json || light || !can_use_tui {
                 run_monthly_report(
                     json,
                     sources,
@@ -506,7 +509,7 @@ fn main() -> Result<()> {
                     until,
                     year,
                     benchmark,
-                    no_spinner,
+                    no_spinner || !can_use_tui,
                     today,
                     week,
                     month,
@@ -719,7 +722,7 @@ fn main() -> Result<()> {
                     cli.week,
                     cli.month,
                 )
-            } else if cli.light {
+            } else if cli.light || !can_use_tui {
                 run_models_report(
                     false,
                     sources,
@@ -727,7 +730,7 @@ fn main() -> Result<()> {
                     until,
                     year,
                     cli.benchmark,
-                    cli.no_spinner,
+                    cli.no_spinner || !can_use_tui,
                     cli.today,
                     cli.week,
                     cli.month,
@@ -862,7 +865,7 @@ fn get_date_range_label(
         return Some("Last 7 days".to_string());
     }
     if month {
-        let now = chrono::Local::now();
+        let now = chrono::Utc::now();
         return Some(now.format("%B %Y").to_string());
     }
     if let Some(y) = year {
@@ -1104,7 +1107,6 @@ fn run_models_report(
         let mut table = Table::new();
         table.load_preset(TABLE_PRESET);
         table.set_content_arrangement(ContentArrangement::DynamicFullWidth);
-        table.enforce_styling();
         if compact {
             table.set_header(vec![
                 Cell::new("Source/Model").fg(Color::Cyan),
@@ -1338,7 +1340,6 @@ fn run_monthly_report(
         let mut table = Table::new();
         table.load_preset(TABLE_PRESET);
         table.set_content_arrangement(ContentArrangement::DynamicFullWidth);
-        table.enforce_styling();
         if compact {
             table.set_header(vec![
                 Cell::new("Month").fg(Color::Cyan),
