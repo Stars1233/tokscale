@@ -263,6 +263,9 @@ export function Navigation() {
   return (
     <NavContainer aria-label="Main navigation">
       <NavItemLink href="/" $isActive={pathname === "/"}>
+        ABOUT
+      </NavItemLink>
+      <NavItemLink href="/leaderboard" $isActive={pathname === "/leaderboard"}>
         LEADERBOARD
       </NavItemLink>
       <NavItemLink href="/profile" $isActive={pathname === "/profile" || pathname.startsWith("/u/")}>
@@ -327,7 +330,7 @@ export function Navigation() {
                   onSelect={async () => {
                     await fetch("/api/auth/logout", { method: "POST" });
                     setUser(null);
-                    window.location.href = "/";
+                    window.location.href = "/leaderboard";
                   }}
                 >
                   <ActionList.LeadingVisual>

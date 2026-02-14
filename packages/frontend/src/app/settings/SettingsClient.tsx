@@ -149,7 +149,7 @@ export default function SettingsClient() {
         setIsLoading(false);
       })
       .catch(() => {
-        router.push("/");
+        router.push("/leaderboard");
       });
 
     fetch("/api/settings/tokens")
