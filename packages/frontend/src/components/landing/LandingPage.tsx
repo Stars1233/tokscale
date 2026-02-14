@@ -16,10 +16,24 @@ function useCopy(text: string) {
   return { copied, copy };
 }
 
+interface SquircleBorderDef {
+  outerClipId: string;
+  innerClipId: string;
+  maskId: string;
+  outerPath: string;
+  innerPath: string;
+  width: number;
+  height: number;
+  cornerRadius: number;
+  borderWidth: number;
+  bottomOnly: boolean;
+}
+
 function useSquircleClip<T extends HTMLElement = HTMLElement>(
   cornerRadius: number,
   cornerSmoothing: number = 0.6,
-  bottomOnly: boolean = false
+  bottomOnly: boolean = false,
+  borderWidth: number = 0
 ) {
   const ref = useRef<T | null>(null);
   const clipIdRef = useRef(
@@ -30,27 +44,73 @@ function useSquircleClip<T extends HTMLElement = HTMLElement>(
   const clipResult = useMemo(() => {
     const { width, height } = dimensions;
     if (width === 0 || height === 0)
-      return { clipPath: "", svgDef: null };
+      return { clipPath: "", svgDef: null, borderDef: null };
+
+    const baseId = clipIdRef.current;
+    let borderDef: SquircleBorderDef | null = null;
 
     if (bottomOnly) {
       const effectiveHeight = height + cornerRadius;
-      const path = getSvgPath({
+      const outerPath = getSvgPath({
         width,
         height: effectiveHeight,
         cornerRadius,
         cornerSmoothing,
       });
-      const clipId = clipIdRef.current;
+
+      if (borderWidth > 0) {
+        const innerPath = getSvgPath({
+          width: width - borderWidth * 2,
+          height: effectiveHeight - borderWidth * 2,
+          cornerRadius: Math.max(0, cornerRadius - borderWidth),
+          cornerSmoothing,
+        });
+        borderDef = {
+          outerClipId: `${baseId}-border-outer`,
+          innerClipId: `${baseId}-border-inner`,
+          maskId: `${baseId}-border-mask`,
+          outerPath,
+          innerPath,
+          width,
+          height,
+          cornerRadius,
+          borderWidth,
+          bottomOnly: true,
+        };
+      }
 
       return {
-        clipPath: `url(#${clipId})`,
-        svgDef: { id: clipId, path, width, effectiveHeight, cornerRadius },
+        clipPath: `url(#${baseId})`,
+        svgDef: { id: baseId, path: outerPath, width, effectiveHeight, cornerRadius },
+        borderDef,
       };
     }
 
-    const path = getSvgPath({ width, height, cornerRadius, cornerSmoothing });
-    return { clipPath: `path('${path}')`, svgDef: null };
-  }, [dimensions, cornerRadius, cornerSmoothing, bottomOnly]);
+    const outerPath = getSvgPath({ width, height, cornerRadius, cornerSmoothing });
+
+    if (borderWidth > 0) {
+      const innerPath = getSvgPath({
+        width: width - borderWidth * 2,
+        height: height - borderWidth * 2,
+        cornerRadius: Math.max(0, cornerRadius - borderWidth),
+        cornerSmoothing,
+      });
+      borderDef = {
+        outerClipId: `${baseId}-border-outer`,
+        innerClipId: `${baseId}-border-inner`,
+        maskId: `${baseId}-border-mask`,
+        outerPath,
+        innerPath,
+        width,
+        height,
+        cornerRadius,
+        borderWidth,
+        bottomOnly: false,
+      };
+    }
+
+    return { clipPath: `path('${outerPath}')`, svgDef: null, borderDef };
+  }, [dimensions, cornerRadius, cornerSmoothing, bottomOnly, borderWidth]);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -81,7 +141,80 @@ function useSquircleClip<T extends HTMLElement = HTMLElement>(
     ref: setRef,
     clipPath: clipResult.clipPath,
     svgDef: clipResult.svgDef,
+    borderDef: clipResult.borderDef,
   };
+}
+
+function SquircleBorder({
+  def,
+  color = "#10233E",
+}: {
+  def: SquircleBorderDef | null;
+  color?: string;
+}) {
+  if (!def) return null;
+  const {
+    outerClipId, innerClipId, maskId,
+    outerPath, innerPath,
+    width, height, cornerRadius, borderWidth, bottomOnly,
+  } = def;
+
+  return (
+    <svg
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        pointerEvents: "none",
+        zIndex: 1,
+      }}
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <defs>
+        <clipPath id={outerClipId}>
+          <path
+            d={outerPath}
+            transform={bottomOnly ? `translate(0, -${cornerRadius})` : undefined}
+          />
+        </clipPath>
+        <clipPath id={innerClipId}>
+          <path
+            d={innerPath}
+            transform={
+              bottomOnly
+                ? `translate(${borderWidth}, ${borderWidth - cornerRadius})`
+                : `translate(${borderWidth}, ${borderWidth})`
+            }
+          />
+        </clipPath>
+        <mask id={maskId}>
+          <rect
+            width={width}
+            height={height}
+            fill="white"
+            clipPath={`url(#${outerClipId})`}
+          />
+          <rect
+            width={width - borderWidth * 2}
+            height={height - borderWidth * 2}
+            x={borderWidth}
+            y={borderWidth}
+            fill="black"
+            clipPath={`url(#${innerClipId})`}
+          />
+        </mask>
+      </defs>
+      <rect
+        width={width}
+        height={height}
+        fill={color}
+        mask={`url(#${maskId})`}
+      />
+    </svg>
+  );
 }
 
 interface LandingPageProps {
@@ -93,8 +226,8 @@ export function LandingPage({ stargazersCount = 0 }: LandingPageProps) {
   const submit = useCopy("bunx tokscale@latest submit");
 
   const heroRight = useSquircleClip<HTMLDivElement>(32, 0.6, true);
-  const cardsRow = useSquircleClip<HTMLDivElement>(32, 0.6, true);
-  const globeSection = useSquircleClip<HTMLDivElement>(32, 0.6, true);
+  const cardsRow = useSquircleClip<HTMLDivElement>(32, 0.6, true, 1);
+  const globeSection = useSquircleClip<HTMLDivElement>(32, 0.6, true, 1);
 
   const starsText =
     stargazersCount > 0
@@ -211,6 +344,7 @@ export function LandingPage({ stargazersCount = 0 }: LandingPageProps) {
                 clipPath: cardsRow.clipPath || undefined,
               }}
             >
+            <SquircleBorder def={cardsRow.borderDef} />
             {/* Left Card */}
             <QuickstartCard $position="left">
               <CardPatternOverlay $position="left" />
@@ -283,6 +417,7 @@ export function LandingPage({ stargazersCount = 0 }: LandingPageProps) {
             clipPath: globeSection.clipPath || undefined,
           }}
         >
+          <SquircleBorder def={globeSection.borderDef} />
           <GlobeImage>
             <Image
               src="/assets/landing/globe-illustration.svg"
@@ -699,11 +834,11 @@ const QuickstartCardsWrapper = styled.div`
 `;
 
 const QuickstartCardsRow = styled.div`
+  position: relative;
   width: 100%;
   display: flex;
   flex-direction: row;
   background: #01070f;
-  border: 1px solid #10233e;
   overflow: hidden;
 
   @media (max-width: 768px) {
@@ -867,12 +1002,12 @@ const GlobeSeparatorBar = styled.div`
 `;
 
 const GlobeSection = styled.div`
+  position: relative;
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   background: #010a15;
-  border: 1px solid #10233e;
   overflow: hidden;
 `;
 
