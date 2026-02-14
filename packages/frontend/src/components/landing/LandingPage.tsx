@@ -229,6 +229,60 @@ export function LandingPage({ stargazersCount = 0 }: LandingPageProps) {
   const cardsRow = useSquircleClip<HTMLDivElement>(32, 0.6, true, 1);
   const globeSection = useSquircleClip<HTMLDivElement>(32, 0.6, true, 1);
 
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationRef = useRef<number>(0);
+
+  // Chroma-key rendering: remove near-black pixels from video frames
+  useEffect(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
+
+    const renderFrame = () => {
+      if (video.paused || video.ended) return;
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      ctx.drawImage(video, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      const hardThreshold = 12;
+      const softThreshold = 35;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const maxChannel = Math.max(r, g, b);
+
+        if (maxChannel < hardThreshold) {
+          data[i + 3] = 0;
+        } else if (maxChannel < softThreshold) {
+          const alpha =
+            (maxChannel - hardThreshold) / (softThreshold - hardThreshold);
+          data[i + 3] = Math.round(alpha * 255);
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      animationRef.current = requestAnimationFrame(renderFrame);
+    };
+
+    video.addEventListener("play", renderFrame);
+    if (!video.paused) renderFrame();
+
+    return () => {
+      video.removeEventListener("play", renderFrame);
+      cancelAnimationFrame(animationRef.current);
+    };
+  }, []);
+
   const starsText =
     stargazersCount > 0
       ? `${stargazersCount.toLocaleString()} stars`
@@ -261,13 +315,21 @@ export function LandingPage({ stargazersCount = 0 }: LandingPageProps) {
         {/* ── Section 1: Hero ── */}
         <HeroRow>
           <HeroLeft>
-            <HeroSVG
-              src="/assets/landing/hero-main.svg"
-              alt="Tokscale hero illustration"
-              width={600}
+            <HeroBgStarfield
+              src="/assets/landing/hero-bg-starfield.png"
+              alt=""
+              width={1076}
               height={536}
-              priority
             />
+            <HiddenVideo
+              ref={videoRef}
+              src="/assets/landing/hero-video.mp4"
+              autoPlay
+              loop
+              muted
+              playsInline
+            />
+            <HeroCanvas ref={canvasRef} />
           </HeroLeft>
 
           <HeroRight
@@ -561,17 +623,22 @@ const HeroRow = styled.div`
 `;
 
 const HeroLeft = styled.div`
-  flex: 0 0 auto;
+  position: relative;
+  flex: 0 0 600px;
   display: flex;
   flex-direction: column;
   align-items: center;
   align-self: stretch;
   justify-content: center;
+  background: #000000;
   border-right: 1px solid #10233e;
   overflow: hidden;
   padding-bottom: 64px;
 
   @media (max-width: 900px) {
+    flex: 0 0 auto;
+    width: 100%;
+    height: 400px;
     border-right: none;
     border-bottom: 1px solid #10233e;
     padding-bottom: 32px;
@@ -579,16 +646,42 @@ const HeroLeft = styled.div`
   }
 `;
 
-const HeroSVG = styled(Image)`
-  width: auto;
-  height: 100%;
-  max-height: 536px;
-  object-fit: contain;
+const HeroBgStarfield = styled(Image)`
+  position: absolute;
+  top: 0;
+  left: -238px;
+  width: 1076px;
+  height: 536px;
+  object-fit: cover;
+  pointer-events: none;
 
   @media (max-width: 900px) {
+    left: 50%;
+    transform: translateX(-50%);
     width: 100%;
-    height: auto;
-    max-height: 320px;
+    height: 100%;
+  }
+`;
+
+const HiddenVideo = styled.video`
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+`;
+
+const HeroCanvas = styled.canvas`
+  position: relative;
+  width: 466.6px;
+  height: auto;
+  max-height: 583.25px;
+  object-fit: contain;
+  z-index: 1;
+
+  @media (max-width: 900px) {
+    width: 70%;
+    max-height: none;
   }
 `;
 
