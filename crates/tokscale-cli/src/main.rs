@@ -86,6 +86,14 @@ struct Cli {
     #[arg(long, help = "Show processing time")]
     benchmark: bool,
 
+    #[arg(
+        long,
+        value_name = "STRATEGY",
+        default_value = "client,model",
+        help = "Grouping strategy: model, client,model, client,provider,model"
+    )]
+    group_by: String,
+
     #[arg(long, help = "Disable spinner (for AI agents and scripts)")]
     no_spinner: bool,
 }
@@ -130,6 +138,13 @@ enum Commands {
         year: Option<String>,
         #[arg(long, help = "Show processing time")]
         benchmark: bool,
+        #[arg(
+            long,
+            value_name = "STRATEGY",
+            default_value = "client,model",
+            help = "Grouping strategy: model, client,model, client,provider,model"
+        )]
+        group_by: String,
         #[arg(long, help = "Disable spinner")]
         no_spinner: bool,
     },
@@ -426,8 +441,15 @@ fn main() -> Result<()> {
             until,
             year,
             benchmark,
+            group_by,
             no_spinner,
         }) => {
+            use tokscale_core::GroupBy;
+
+            let group_by: GroupBy = group_by.parse().unwrap_or_else(|e| {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            });
             let sources = build_source_filter(SourceFlags {
                 opencode,
                 claude,
@@ -453,6 +475,7 @@ fn main() -> Result<()> {
                     today,
                     week,
                     month,
+                    group_by,
                 )
             } else {
                 tui::run(
@@ -708,6 +731,10 @@ fn main() -> Result<()> {
             let (since, until) =
                 build_date_filter(cli.today, cli.week, cli.month, cli.since, cli.until);
             let year = normalize_year_filter(cli.today, cli.week, cli.month, cli.year);
+            let group_by: tokscale_core::GroupBy = cli.group_by.parse().unwrap_or_else(|e| {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            });
 
             if cli.json {
                 run_models_report(
@@ -721,6 +748,7 @@ fn main() -> Result<()> {
                     cli.today,
                     cli.week,
                     cli.month,
+                    group_by,
                 )
             } else if cli.light || !can_use_tui {
                 run_models_report(
@@ -734,6 +762,7 @@ fn main() -> Result<()> {
                     cli.today,
                     cli.week,
                     cli.month,
+                    group_by,
                 )
             } else {
                 tui::run(
@@ -1008,10 +1037,11 @@ fn run_models_report(
     today: bool,
     week: bool,
     month_flag: bool,
+    group_by: tokscale_core::GroupBy,
 ) -> Result<()> {
     use std::time::Instant;
     use tokio::runtime::Runtime;
-    use tokscale_core::{get_model_report, ReportOptions};
+    use tokscale_core::{get_model_report, GroupBy, ReportOptions};
 
     let date_range = get_date_range_label(today, week, month_flag, &since, &until, &year);
 
@@ -1030,6 +1060,7 @@ fn run_models_report(
                 since,
                 until,
                 year,
+                group_by: group_by.clone(),
             })
             .await
         })
@@ -1046,6 +1077,7 @@ fn run_models_report(
         #[serde(rename_all = "camelCase")]
         struct ModelUsageJson {
             source: String,
+            merged_clients: Option<String>,
             model: String,
             provider: String,
             input: i64,
@@ -1060,6 +1092,7 @@ fn run_models_report(
         #[derive(serde::Serialize)]
         #[serde(rename_all = "camelCase")]
         struct ModelReportJson {
+            group_by: String,
             entries: Vec<ModelUsageJson>,
             total_input: i64,
             total_output: i64,
@@ -1071,11 +1104,13 @@ fn run_models_report(
         }
 
         let output = ModelReportJson {
+            group_by: group_by.to_string(),
             entries: report
                 .entries
                 .into_iter()
                 .map(|e| ModelUsageJson {
                     source: e.source,
+                    merged_clients: e.merged_clients,
                     model: e.model,
                     provider: e.provider,
                     input: e.input,
@@ -1113,106 +1148,236 @@ fn run_models_report(
         };
         table.set_content_arrangement(arrangement);
         table.enforce_styling();
+
         if compact {
-            table.set_header(vec![
-                Cell::new("Client").fg(Color::Cyan),
-                Cell::new("Provider").fg(Color::Cyan),
-                Cell::new("Model").fg(Color::Cyan),
-                Cell::new("Input").fg(Color::Cyan),
-                Cell::new("Output").fg(Color::Cyan),
-                Cell::new("Cost").fg(Color::Cyan),
-            ]);
+            match group_by {
+                GroupBy::Model => {
+                    table.set_header(vec![
+                        Cell::new("Clients").fg(Color::Cyan),
+                        Cell::new("Providers").fg(Color::Cyan),
+                        Cell::new("Model").fg(Color::Cyan),
+                        Cell::new("Input").fg(Color::Cyan),
+                        Cell::new("Output").fg(Color::Cyan),
+                        Cell::new("Cost").fg(Color::Cyan),
+                    ]);
 
-            for entry in &report.entries {
-                table.add_row(vec![
-                    Cell::new(capitalize_source(&entry.source)),
-                    Cell::new(&entry.provider).add_attribute(Attribute::Dim),
-                    Cell::new(&entry.model),
-                    Cell::new(format_tokens_with_commas(entry.input)).set_alignment(CellAlignment::Right),
-                    Cell::new(format_tokens_with_commas(entry.output)).set_alignment(CellAlignment::Right),
-                    Cell::new(format_currency(entry.cost)).set_alignment(CellAlignment::Right),
-                ]);
+                    for entry in &report.entries {
+                        let clients_str = entry.merged_clients.as_deref().unwrap_or(&entry.source);
+                        let capitalized_clients = clients_str
+                            .split(", ")
+                            .map(|s| capitalize_source(s))
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        table.add_row(vec![
+                            Cell::new(capitalized_clients),
+                            Cell::new(&entry.provider).add_attribute(Attribute::Dim),
+                            Cell::new(&entry.model),
+                            Cell::new(format_tokens_with_commas(entry.input))
+                                .set_alignment(CellAlignment::Right),
+                            Cell::new(format_tokens_with_commas(entry.output))
+                                .set_alignment(CellAlignment::Right),
+                            Cell::new(format_currency(entry.cost)).set_alignment(CellAlignment::Right),
+                        ]);
+                    }
+
+                    table.add_row(vec![
+                        Cell::new("Total")
+                            .fg(Color::Yellow)
+                            .add_attribute(Attribute::Bold),
+                        Cell::new(""),
+                        Cell::new(""),
+                        Cell::new(format_tokens_with_commas(report.total_input))
+                            .fg(Color::Yellow)
+                            .set_alignment(CellAlignment::Right),
+                        Cell::new(format_tokens_with_commas(report.total_output))
+                            .fg(Color::Yellow)
+                            .set_alignment(CellAlignment::Right),
+                        Cell::new(format_currency(report.total_cost))
+                            .fg(Color::Yellow)
+                            .set_alignment(CellAlignment::Right),
+                    ]);
+                }
+                GroupBy::ClientModel | GroupBy::ClientProviderModel => {
+                    table.set_header(vec![
+                        Cell::new("Client").fg(Color::Cyan),
+                        Cell::new("Provider").fg(Color::Cyan),
+                        Cell::new("Model").fg(Color::Cyan),
+                        Cell::new("Input").fg(Color::Cyan),
+                        Cell::new("Output").fg(Color::Cyan),
+                        Cell::new("Cost").fg(Color::Cyan),
+                    ]);
+
+                    for entry in &report.entries {
+                        table.add_row(vec![
+                            Cell::new(capitalize_source(&entry.source)),
+                            Cell::new(&entry.provider).add_attribute(Attribute::Dim),
+                            Cell::new(&entry.model),
+                            Cell::new(format_tokens_with_commas(entry.input))
+                                .set_alignment(CellAlignment::Right),
+                            Cell::new(format_tokens_with_commas(entry.output))
+                                .set_alignment(CellAlignment::Right),
+                            Cell::new(format_currency(entry.cost)).set_alignment(CellAlignment::Right),
+                        ]);
+                    }
+
+                    table.add_row(vec![
+                        Cell::new("Total")
+                            .fg(Color::Yellow)
+                            .add_attribute(Attribute::Bold),
+                        Cell::new(""),
+                        Cell::new(""),
+                        Cell::new(format_tokens_with_commas(report.total_input))
+                            .fg(Color::Yellow)
+                            .set_alignment(CellAlignment::Right),
+                        Cell::new(format_tokens_with_commas(report.total_output))
+                            .fg(Color::Yellow)
+                            .set_alignment(CellAlignment::Right),
+                        Cell::new(format_currency(report.total_cost))
+                            .fg(Color::Yellow)
+                            .set_alignment(CellAlignment::Right),
+                    ]);
+                }
             }
-
-            table.add_row(vec![
-                Cell::new("Total")
-                    .fg(Color::Yellow)
-                    .add_attribute(Attribute::Bold),
-                Cell::new(""),
-                Cell::new(""),
-                Cell::new(format_tokens_with_commas(report.total_input))
-                    .fg(Color::Yellow)
-                    .set_alignment(CellAlignment::Right),
-                Cell::new(format_tokens_with_commas(report.total_output))
-                    .fg(Color::Yellow)
-                    .set_alignment(CellAlignment::Right),
-                Cell::new(format_currency(report.total_cost))
-                    .fg(Color::Yellow)
-                    .set_alignment(CellAlignment::Right),
-            ]);
         } else {
-            table.set_header(vec![
-                Cell::new("Client").fg(Color::Cyan),
-                Cell::new("Provider").fg(Color::Cyan),
-                Cell::new("Model").fg(Color::Cyan),
-                Cell::new("Resolved").fg(Color::Cyan),
-                Cell::new("Input").fg(Color::Cyan),
-                Cell::new("Output").fg(Color::Cyan),
-                Cell::new("Cache Write").fg(Color::Cyan),
-                Cell::new("Cache Read").fg(Color::Cyan),
-                Cell::new("Total").fg(Color::Cyan),
-                Cell::new("Cost").fg(Color::Cyan),
-            ]);
+            match group_by {
+                GroupBy::Model => {
+                    table.set_header(vec![
+                        Cell::new("Clients").fg(Color::Cyan),
+                        Cell::new("Providers").fg(Color::Cyan),
+                        Cell::new("Model").fg(Color::Cyan),
+                        Cell::new("Input").fg(Color::Cyan),
+                        Cell::new("Output").fg(Color::Cyan),
+                        Cell::new("Cache Write").fg(Color::Cyan),
+                        Cell::new("Cache Read").fg(Color::Cyan),
+                        Cell::new("Total").fg(Color::Cyan),
+                        Cell::new("Cost").fg(Color::Cyan),
+                    ]);
 
-            for entry in &report.entries {
-                let total = entry.input + entry.output + entry.cache_write + entry.cache_read;
+                    for entry in &report.entries {
+                        let total = entry.input + entry.output + entry.cache_write + entry.cache_read;
 
-                table.add_row(vec![
-                    Cell::new(capitalize_source(&entry.source)),
-                    Cell::new(&entry.provider).add_attribute(Attribute::Dim),
-                    Cell::new(&entry.model),
-                    Cell::new(format_model_name(&entry.model)),
-                    Cell::new(format_tokens_with_commas(entry.input)).set_alignment(CellAlignment::Right),
-                    Cell::new(format_tokens_with_commas(entry.output)).set_alignment(CellAlignment::Right),
-                    Cell::new(format_tokens_with_commas(entry.cache_write))
-                        .set_alignment(CellAlignment::Right),
-                    Cell::new(format_tokens_with_commas(entry.cache_read))
-                        .set_alignment(CellAlignment::Right),
-                    Cell::new(format_tokens_with_commas(total)).set_alignment(CellAlignment::Right),
-                    Cell::new(format_currency(entry.cost)).set_alignment(CellAlignment::Right),
-                ]);
+                        let clients_str = entry.merged_clients.as_deref().unwrap_or(&entry.source);
+                        let capitalized_clients = clients_str
+                            .split(", ")
+                            .map(|s| capitalize_source(s))
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        table.add_row(vec![
+                            Cell::new(capitalized_clients),
+                            Cell::new(&entry.provider).add_attribute(Attribute::Dim),
+                            Cell::new(&entry.model),
+                            Cell::new(format_tokens_with_commas(entry.input))
+                                .set_alignment(CellAlignment::Right),
+                            Cell::new(format_tokens_with_commas(entry.output))
+                                .set_alignment(CellAlignment::Right),
+                            Cell::new(format_tokens_with_commas(entry.cache_write))
+                                .set_alignment(CellAlignment::Right),
+                            Cell::new(format_tokens_with_commas(entry.cache_read))
+                                .set_alignment(CellAlignment::Right),
+                            Cell::new(format_tokens_with_commas(total))
+                                .set_alignment(CellAlignment::Right),
+                            Cell::new(format_currency(entry.cost)).set_alignment(CellAlignment::Right),
+                        ]);
+                    }
+
+                    let total_all = report.total_input
+                        + report.total_output
+                        + report.total_cache_write
+                        + report.total_cache_read;
+                    table.add_row(vec![
+                        Cell::new("Total")
+                            .fg(Color::Yellow)
+                            .add_attribute(Attribute::Bold),
+                        Cell::new(""),
+                        Cell::new(""),
+                        Cell::new(format_tokens_with_commas(report.total_input))
+                            .fg(Color::Yellow)
+                            .set_alignment(CellAlignment::Right),
+                        Cell::new(format_tokens_with_commas(report.total_output))
+                            .fg(Color::Yellow)
+                            .set_alignment(CellAlignment::Right),
+                        Cell::new(format_tokens_with_commas(report.total_cache_write))
+                            .fg(Color::Yellow)
+                            .set_alignment(CellAlignment::Right),
+                        Cell::new(format_tokens_with_commas(report.total_cache_read))
+                            .fg(Color::Yellow)
+                            .set_alignment(CellAlignment::Right),
+                        Cell::new(format_tokens_with_commas(total_all))
+                            .fg(Color::Yellow)
+                            .set_alignment(CellAlignment::Right),
+                        Cell::new(format_currency(report.total_cost))
+                            .fg(Color::Yellow)
+                            .set_alignment(CellAlignment::Right),
+                    ]);
+                }
+                GroupBy::ClientModel | GroupBy::ClientProviderModel => {
+                    table.set_header(vec![
+                        Cell::new("Client").fg(Color::Cyan),
+                        Cell::new("Provider").fg(Color::Cyan),
+                        Cell::new("Model").fg(Color::Cyan),
+                        Cell::new("Resolved").fg(Color::Cyan),
+                        Cell::new("Input").fg(Color::Cyan),
+                        Cell::new("Output").fg(Color::Cyan),
+                        Cell::new("Cache Write").fg(Color::Cyan),
+                        Cell::new("Cache Read").fg(Color::Cyan),
+                        Cell::new("Total").fg(Color::Cyan),
+                        Cell::new("Cost").fg(Color::Cyan),
+                    ]);
+
+                    for entry in &report.entries {
+                        let total = entry.input + entry.output + entry.cache_write + entry.cache_read;
+
+                        table.add_row(vec![
+                            Cell::new(capitalize_source(&entry.source)),
+                            Cell::new(&entry.provider).add_attribute(Attribute::Dim),
+                            Cell::new(&entry.model),
+                            Cell::new(format_model_name(&entry.model)),
+                            Cell::new(format_tokens_with_commas(entry.input))
+                                .set_alignment(CellAlignment::Right),
+                            Cell::new(format_tokens_with_commas(entry.output))
+                                .set_alignment(CellAlignment::Right),
+                            Cell::new(format_tokens_with_commas(entry.cache_write))
+                                .set_alignment(CellAlignment::Right),
+                            Cell::new(format_tokens_with_commas(entry.cache_read))
+                                .set_alignment(CellAlignment::Right),
+                            Cell::new(format_tokens_with_commas(total))
+                                .set_alignment(CellAlignment::Right),
+                            Cell::new(format_currency(entry.cost)).set_alignment(CellAlignment::Right),
+                        ]);
+                    }
+
+                    let total_all = report.total_input
+                        + report.total_output
+                        + report.total_cache_write
+                        + report.total_cache_read;
+                    table.add_row(vec![
+                        Cell::new("Total")
+                            .fg(Color::Yellow)
+                            .add_attribute(Attribute::Bold),
+                        Cell::new(""),
+                        Cell::new(""),
+                        Cell::new(""),
+                        Cell::new(format_tokens_with_commas(report.total_input))
+                            .fg(Color::Yellow)
+                            .set_alignment(CellAlignment::Right),
+                        Cell::new(format_tokens_with_commas(report.total_output))
+                            .fg(Color::Yellow)
+                            .set_alignment(CellAlignment::Right),
+                        Cell::new(format_tokens_with_commas(report.total_cache_write))
+                            .fg(Color::Yellow)
+                            .set_alignment(CellAlignment::Right),
+                        Cell::new(format_tokens_with_commas(report.total_cache_read))
+                            .fg(Color::Yellow)
+                            .set_alignment(CellAlignment::Right),
+                        Cell::new(format_tokens_with_commas(total_all))
+                            .fg(Color::Yellow)
+                            .set_alignment(CellAlignment::Right),
+                        Cell::new(format_currency(report.total_cost))
+                            .fg(Color::Yellow)
+                            .set_alignment(CellAlignment::Right),
+                    ]);
+                }
             }
-
-            let total_all = report.total_input
-                + report.total_output
-                + report.total_cache_write
-                + report.total_cache_read;
-            table.add_row(vec![
-                Cell::new("Total")
-                    .fg(Color::Yellow)
-                    .add_attribute(Attribute::Bold),
-                Cell::new(""),
-                Cell::new(""),
-                Cell::new(""),
-                Cell::new(format_tokens_with_commas(report.total_input))
-                    .fg(Color::Yellow)
-                    .set_alignment(CellAlignment::Right),
-                Cell::new(format_tokens_with_commas(report.total_output))
-                    .fg(Color::Yellow)
-                    .set_alignment(CellAlignment::Right),
-                Cell::new(format_tokens_with_commas(report.total_cache_write))
-                    .fg(Color::Yellow)
-                    .set_alignment(CellAlignment::Right),
-                Cell::new(format_tokens_with_commas(report.total_cache_read))
-                    .fg(Color::Yellow)
-                    .set_alignment(CellAlignment::Right),
-                Cell::new(format_tokens_with_commas(total_all))
-                    .fg(Color::Yellow)
-                    .set_alignment(CellAlignment::Right),
-                Cell::new(format_currency(report.total_cost))
-                    .fg(Color::Yellow)
-                    .set_alignment(CellAlignment::Right),
-            ]);
         }
 
         let title = match &date_range {
@@ -1257,7 +1422,7 @@ fn run_monthly_report(
 ) -> Result<()> {
     use std::time::Instant;
     use tokio::runtime::Runtime;
-    use tokscale_core::{get_monthly_report, ReportOptions};
+    use tokscale_core::{get_monthly_report, GroupBy, ReportOptions};
 
     let date_range = get_date_range_label(today, week, month_flag, &since, &until, &year);
 
@@ -1276,6 +1441,7 @@ fn run_monthly_report(
                 since,
                 until,
                 year,
+                group_by: GroupBy::default(),
             })
             .await
         })
@@ -2364,7 +2530,7 @@ fn run_graph_command(
 ) -> Result<()> {
     use colored::Colorize;
     use std::time::Instant;
-    use tokscale_core::{generate_graph, ReportOptions};
+    use tokscale_core::{generate_graph, GroupBy, ReportOptions};
 
     let show_progress = output.is_some() && !no_spinner;
     let include_cursor = sources
@@ -2395,6 +2561,7 @@ fn run_graph_command(
                 since,
                 until,
                 year,
+                group_by: GroupBy::default(),
             })
             .await
         })
@@ -2493,7 +2660,7 @@ fn run_submit_command(
     use colored::Colorize;
     use std::io::IsTerminal;
     use tokio::runtime::Runtime;
-    use tokscale_core::{generate_graph, ReportOptions};
+    use tokscale_core::{generate_graph, GroupBy, ReportOptions};
 
     let credentials = match auth::load_credentials() {
         Some(creds) => creds,
@@ -2544,6 +2711,7 @@ fn run_submit_command(
                 since,
                 until,
                 year,
+                group_by: GroupBy::default(),
             })
             .await
         })

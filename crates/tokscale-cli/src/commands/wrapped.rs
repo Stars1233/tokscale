@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tokio::runtime::Runtime;
-use tokscale_core::{generate_graph, parse_local_sources, LocalParseOptions, ReportOptions};
+use tokscale_core::{generate_graph, parse_local_sources, GroupBy, LocalParseOptions, ReportOptions};
 
 const SCALE: i32 = 2;
 const IMAGE_WIDTH: i32 = 1200 * SCALE;
@@ -232,6 +232,7 @@ async fn load_wrapped_data(options: &WrappedOptions) -> Result<WrappedData> {
         since: Some(since),
         until: Some(until),
         year: Some(year.clone()),
+        group_by: GroupBy::default(),
     })
     .await
     .map_err(anyhow::Error::msg)?;
