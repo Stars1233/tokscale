@@ -394,12 +394,14 @@ const PageWrapper = styled.div`
 `;
 
 const PageInner = styled.div`
-  width: 100%;
-  max-width: 1200px;
+  width: 1200px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0;
+
+  @media (max-width: 1200px) {
+    width: 100%;
+  }
 `;
 
 /* ── Hero ── */
@@ -409,7 +411,6 @@ const HeroRow = styled.div`
   flex-direction: row;
   height: 536px;
   border: 1px solid #10233e;
-  border-top: none;
   overflow: hidden;
 
   @media (max-width: 900px) {
@@ -421,7 +422,9 @@ const HeroRow = styled.div`
 const HeroLeft = styled.div`
   flex: 0 0 auto;
   display: flex;
+  flex-direction: column;
   align-items: center;
+  align-self: stretch;
   justify-content: center;
   border-right: 1px solid #10233e;
   overflow: hidden;
@@ -453,6 +456,7 @@ const HeroRight = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-self: stretch;
   overflow: hidden;
 `;
 
@@ -913,6 +917,7 @@ const GlobeTwoCol = styled.div`
   width: 100%;
   display: flex;
   flex-direction: row;
+  align-items: stretch;
   background: #01070f;
 
   @media (max-width: 768px) {
@@ -978,9 +983,12 @@ const LeaderboardBtnText = styled.span`
 
 const GlobeRightCol = styled.div`
   flex: 1;
-  min-height: 120px;
-  background: #020f1e;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   padding: 0 32px;
+  background: #020f1e;
 
   @media (max-width: 768px) {
     min-height: 80px;
@@ -1139,6 +1147,7 @@ const LandingFooter = styled.div`
   width: 100%;
   display: flex;
   flex-direction: column;
+  gap: 48px;
   padding: 0 0 100px;
 
   @media (max-width: 768px) {
