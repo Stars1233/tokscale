@@ -17,7 +17,7 @@
     },
     "packages/cli": {
       "name": "@tokscale/cli",
-      "version": "1.1.2",
+      "version": "1.2.3",
       "dependencies": {
         "@napi-rs/canvas": "^0.1.68",
         "@opentui/core": "0.1.60",
@@ -40,7 +40,7 @@
     },
     "packages/core": {
       "name": "@tokscale/core",
-      "version": "1.1.2",
+      "version": "1.2.3",
       "devDependencies": {
         "@napi-rs/cli": "^3.4.1",
         "ava": "^6.1.0",
@@ -58,6 +58,7 @@
         "@vercel/analytics": "^1.6.1",
         "date-fns": "^4.1.0",
         "drizzle-orm": "^0.38.3",
+        "figma-squircle": "^1.1.0",
         "next": "16.0.7",
         "nextjs-toploader": "^3.9.17",
         "obelisk.js": "^1.2.2",
@@ -84,7 +85,7 @@
     },
     "packages/tokscale": {
       "name": "tokscale",
-      "version": "1.1.2",
+      "version": "1.2.3",
       "bin": {
         "tokscale": "./bin.js",
       },
@@ -1157,6 +1158,8 @@
     "fastq": ["fastq@1.19.1", "", { "dependencies": { "reusify": "^1.0.4" } }, "sha512-GwLTyxkCXjXbxqIhTsMI2Nui8huMPtnxg7krajPJAjnEG/iiOS7i+zCtWGZR9G0NBKbXKh6X9m9UIsYX/N6vvQ=="],
 
     "fdir": ["fdir@6.5.0", "", { "peerDependencies": { "picomatch": "^3 || ^4" }, "optionalPeers": ["picomatch"] }, "sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg=="],
+
+    "figma-squircle": ["figma-squircle@1.1.0", "", {}, "sha512-3aa6bOurrsybsuYo1TMRuasBpXgVjgnmOUtZ40il6e1dJF2lhTRq89z7oy1uzKDspbH3630rLZD2UvJqXDiktA=="],
 
     "figures": ["figures@6.1.0", "", { "dependencies": { "is-unicode-supported": "^2.0.0" } }, "sha512-d+l3qxjSesT4V7v2fh+QnmFnUWv9lSpjarhShNTgBOfA0ttejbQUAlHLitbjkoRiDulW0OPoQPYIGhIC8ohejg=="],
 

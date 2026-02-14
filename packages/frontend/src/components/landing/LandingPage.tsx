@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import styled from "styled-components";
+import { getSvgPath } from "figma-squircle";
 
-/* ─── Copy helper ─── */
 function useCopy(text: string) {
   const [copied, setCopied] = useState(false);
   const copy = () => {
@@ -16,12 +16,79 @@ function useCopy(text: string) {
   return { copied, copy };
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   Landing Page
-   ═══════════════════════════════════════════════════════════════ */
-export function LandingPage() {
+function useSquircleClip<T extends HTMLElement = HTMLElement>(
+  cornerRadius: number,
+  cornerSmoothing: number = 0.6,
+  bottomOnly: boolean = false
+) {
+  const ref = useRef<T | null>(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+  const clipPath = useMemo(() => {
+    const { width, height } = dimensions;
+    if (width === 0 || height === 0) return "";
+
+    if (bottomOnly) {
+      const effectiveHeight = height + cornerRadius;
+      const path = getSvgPath({
+        width,
+        height: effectiveHeight,
+        cornerRadius,
+        cornerSmoothing,
+      });
+      return `path('${path}')`;
+    }
+
+    const path = getSvgPath({ width, height, cornerRadius, cornerSmoothing });
+    return `path('${path}')`;
+  }, [dimensions, cornerRadius, cornerSmoothing, bottomOnly]);
+
+  const offset = bottomOnly ? -cornerRadius : 0;
+
+  useEffect(() => {
+    if (!ref.current) return;
+    const el = ref.current;
+
+    const update = () => {
+      const { width, height } = el.getBoundingClientRect();
+      setDimensions({ width: Math.round(width), height: Math.round(height) });
+    };
+
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const setRef = useCallback((node: T | null) => {
+    ref.current = node;
+    if (node) {
+      const { width, height } = node.getBoundingClientRect();
+      if (width > 0 || height > 0) {
+        setDimensions({ width: Math.round(width), height: Math.round(height) });
+      }
+    }
+  }, []);
+
+  return { ref: setRef, clipPath, offset };
+}
+
+interface LandingPageProps {
+  stargazersCount?: number;
+}
+
+export function LandingPage({ stargazersCount = 0 }: LandingPageProps) {
   const tui = useCopy("bunx tokscale@latest");
   const submit = useCopy("bunx tokscale@latest submit");
+
+  const heroRight = useSquircleClip<HTMLDivElement>(32, 0.6, true);
+  const cardsRow = useSquircleClip<HTMLDivElement>(32, 0.6, true);
+  const globeSection = useSquircleClip<HTMLDivElement>(32, 0.6, true);
+
+  const starsText =
+    stargazersCount > 0
+      ? `${stargazersCount.toLocaleString()} stars`
+      : "Star on GitHub";
 
   return (
     <PageWrapper>
@@ -40,7 +107,14 @@ export function LandingPage() {
           </HeroLeft>
 
           {/* Right: Hero content */}
-          <HeroRight>
+          <HeroRight
+            ref={heroRight.ref}
+            style={{
+              clipPath: heroRight.clipPath || undefined,
+              marginTop: heroRight.offset || undefined,
+              paddingTop: heroRight.offset ? -heroRight.offset : undefined,
+            }}
+          >
             {/* Top part with BG image */}
             <HeroTopSection>
               <HeroContent>
@@ -73,7 +147,7 @@ export function LandingPage() {
                   width={18}
                   height={18}
                 />
-                <StarBadgeText>643+ stars</StarBadgeText>
+                <StarBadgeText>{starsText}</StarBadgeText>
               </StarBadge>
             </HeroTopSection>
 
@@ -112,7 +186,14 @@ export function LandingPage() {
 
         {/* ── Section 4: Quickstart Cards ── */}
         <QuickstartCardsWrapper>
-          <QuickstartCardsRow>
+          <QuickstartCardsRow
+              ref={cardsRow.ref}
+              style={{
+                clipPath: cardsRow.clipPath || undefined,
+                marginTop: cardsRow.offset || undefined,
+                paddingTop: cardsRow.offset ? -cardsRow.offset : undefined,
+              }}
+            >
             {/* Left Card */}
             <QuickstartCard $position="left">
               <CardPatternOverlay $position="left" />
@@ -188,7 +269,14 @@ export function LandingPage() {
         </GlobeSeparatorBar>
 
         {/* ── Section 5: Globe + Largest Group ── */}
-        <GlobeSection>
+        <GlobeSection
+          ref={globeSection.ref}
+          style={{
+            clipPath: globeSection.clipPath || undefined,
+            marginTop: globeSection.offset || undefined,
+            paddingTop: globeSection.offset ? -globeSection.offset : undefined,
+          }}
+        >
           <GlobeImage>
             <Image
               src="/assets/landing/globe-illustration.svg"
@@ -365,12 +453,7 @@ const HeroRight = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: center;
-  border-radius: 0px 0px 32px 32px;
   overflow: hidden;
-
-  @media (max-width: 900px) {
-    border-radius: 0;
-  }
 `;
 
 const HeroTopSection = styled.div`
@@ -617,7 +700,6 @@ const QuickstartCardsRow = styled.div`
   flex-direction: row;
   background: #01070f;
   border: 1px solid #10233e;
-  border-radius: 0px 0px 32px 32px;
   overflow: hidden;
 
   @media (max-width: 768px) {
@@ -790,7 +872,6 @@ const GlobeSection = styled.div`
   align-items: center;
   background: #010a15;
   border: 1px solid #10233e;
-  border-radius: 0px 0px 32px 32px;
   overflow: hidden;
 `;
 
