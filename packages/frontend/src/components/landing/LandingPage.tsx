@@ -196,16 +196,7 @@ export function LandingPage({ stargazersCount = 0 }: LandingPageProps) {
         </HeroRow>
 
         {/* ── Section 2: Separator Bar ── */}
-        <SeparatorBar>
-          <SeparatorIcon>
-            <Image
-              src="/assets/landing/separator-pattern.svg"
-              alt=""
-              width={16}
-              height={16}
-            />
-          </SeparatorIcon>
-        </SeparatorBar>
+        <SeparatorBar />
 
         {/* ── Section 3: Quickstart Label ── */}
         <QuickstartLabel>
@@ -283,16 +274,7 @@ export function LandingPage({ stargazersCount = 0 }: LandingPageProps) {
         </QuickstartCardsWrapper>
 
         {/* ── Separator before Globe ── */}
-        <GlobeSeparatorBar>
-          <SeparatorIcon>
-            <Image
-              src="/assets/landing/separator-pattern.svg"
-              alt=""
-              width={16}
-              height={16}
-            />
-          </SeparatorIcon>
-        </GlobeSeparatorBar>
+        <GlobeSeparatorBar />
 
         {/* ── Section 5: Globe + Largest Group ── */}
         <GlobeSection
@@ -679,23 +661,14 @@ const SeparatorBar = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px 32px;
-  box-sizing: content-box;
-  background-image: url("/assets/landing/separator-bar-fill.png");
+  background-image: url("/assets/landing/separator-pattern-slash.svg");
   background-size: 24px 24px;
   background-repeat: repeat;
-  border-left: 1px solid #10233e;
-  border-right: 1px solid #10233e;
-  border-bottom: 1px solid #10233e;
+  border-left: 1px solid #10233E;
+  border-right: 1px solid #10233E;
+  border-bottom: 1px solid #10233E;
 `;
 
-const SeparatorIcon = styled.div`
-  width: 16px;
-  height: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
 
 /* ── Quickstart Label ── */
 const QuickstartLabel = styled.div`
@@ -765,11 +738,10 @@ const CardPatternOverlay = styled.div<{ $position: "left" | "right" }>`
   top: ${({ $position }) => ($position === "left" ? "142px" : "121px")};
   width: 100%;
   max-width: 600px;
-  height: 20px;
-  background-image: url("/assets/landing/separator-bar-fill.png");
-  background-size: 20px 20px;
+  height: 24px;
+  background-image: url("/assets/landing/separator-pattern-slash.svg");
+  background-size: 24px 24px;
   background-repeat: repeat;
-  padding: 16.67px 26.67px;
   pointer-events: none;
 `;
 
@@ -885,14 +857,12 @@ const GlobeSeparatorBar = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px 32px;
-  box-sizing: content-box;
-  background-image: url("/assets/landing/separator-bar-fill.png");
+  background-image: url("/assets/landing/separator-pattern-slash.svg");
   background-size: 24px 24px;
   background-repeat: repeat;
-  border-top: 1px solid #10233e;
-  border-left: 1px solid #10233e;
-  border-right: 1px solid #10233e;
+  border-top: 1px solid #10233E;
+  border-left: 1px solid #10233E;
+  border-right: 1px solid #10233E;
   border-bottom: none;
 `;
 
