@@ -58,7 +58,18 @@ jobs:
       - name: Extract coverage percentage
         id: coverage
         run: |
-          COVERAGE=$(cat ./coverage/tarpaulin.json | jq -r '.files | to_entries | map(.value.covered / .value.coverable * 100) | add / length')
+          # Compute total covered / total coverable (not average of per-file percentages)
+          # Guards against division by zero and NaN from files with coverable=0
+          COVERAGE=$(cat ./coverage/tarpaulin.json | jq -r '
+            .files | to_entries | map(.value) |
+            (map(.covered) | add) as $total_covered |
+            (map(.coverable) | add) as $total_coverable |
+            if $total_coverable > 0 then 
+              ($total_covered / $total_coverable * 100)
+            else 
+              0 
+            end
+          ')
           COVERAGE_INT=$(printf "%.0f" $COVERAGE)
           echo "percentage=$COVERAGE" >> $GITHUB_OUTPUT
           echo "percentage_int=$COVERAGE_INT" >> $GITHUB_OUTPUT
