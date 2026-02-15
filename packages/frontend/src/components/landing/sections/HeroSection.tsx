@@ -480,7 +480,7 @@ const CursorTooltip = styled.div<{ $visible: boolean }>`
   position: absolute;
   pointer-events: none;
   transform: translate(8px, 16px);
-  background-color: rgba(23, 23, 23, 0.95);
+  background-color: #111B2C;
   color: #e5e5e5;
   border-radius: 8px;
   padding: 10px 14px;
