@@ -77,6 +77,7 @@ AI支援開発の時代において、**トークンは新しいエネルギー*
   - [TUI機能](#tui機能)
   - [プラットフォーム別フィルタリング](#プラットフォーム別フィルタリング)
   - [日付フィルタリング](#日付フィルタリング)
+  - [モデルグルーピング](#モデルグルーピング)
   - [価格検索](#価格検索)
   - [ソーシャルプラットフォームコマンド](#ソーシャルプラットフォームコマンド)
   - [Cursor IDEコマンド](#cursor-ideコマンド)
@@ -260,6 +261,29 @@ tokscale monthly --month --benchmark
 
 > **注**: 日付フィルターはローカルタイムゾーンを使用します。`--since`と`--until`は両方とも包括的です。
 
+### モデルグルーピング
+
+`--light`および`--json`出力でのモデルグルーピング方法を`--group-by`フラグで制御できます：
+
+```bash
+# モデルのみでグルーピング（クライアント/プロバイダーを統合）
+tokscale models --light --group-by model
+
+# クライアント + モデルでグルーピング（デフォルト）
+tokscale models --light --group-by client,model
+
+# クライアント + プロバイダー + モデルでグルーピング（最も詳細）
+tokscale models --light --group-by client,provider,model
+```
+
+| 戦略 | カラム | 説明 |
+|----------|---------|-------------|
+| `model` | Clients, Providers, Model | 各モデルについて、すべてのクライアントとプロバイダーの使用量を統合します |
+| `client,model` | Client, Provider, Model, Resolved, Input, Output, Cache, Total, Cost | デフォルト。クライアントごとのモデル内訳を表示します |
+| `client,provider,model` | Client, Provider, Model, Resolved, Input, Output, Cache, Total, Cost | 最も詳細。各クライアント内でプロバイダーごとに分離します |
+
+> **注**: 異なる日付サフィックスを持つモデル（例：`claude-sonnet-4-20250514` vs `claude-sonnet-4-20250415`）やバージョン区切り文字（`3.5` vs `3-5`）は、集約時に自動的に正規化・統合されます。
+
 ### 価格検索
 
 任意のモデルのリアルタイム価格を検索します：
@@ -370,6 +394,8 @@ tokscale cursor logout --all --purge-cache
 > ⚠️ **セキュリティ警告**: セッショントークンはパスワードのように扱ってください。公開したり、バージョン管理にコミットしたりしないでください。トークンはCursorアカウントへの完全なアクセス権を付与します。
 
 ### 出力例（`--light`バージョン）
+
+`--light`テーブルは`--group-by`戦略に応じてカラムが変わります。デフォルト（`client,model`）では、**Client**、**Provider**、**Model**、**Resolved**（価格設定に使用される正規化されたモデル名）、**Input**、**Output**、**Cache Write**、**Cache Read**、**Total**、**Cost** カラムを表示します。
 
 <img alt="CLI Light" src="./.github/assets/cli-light.png" />
 

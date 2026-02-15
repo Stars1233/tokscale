@@ -76,6 +76,7 @@ In the age of AI-assisted development, **tokens are the new energy**. They power
   - [TUI Features](#tui-features)
   - [Filtering by Platform](#filtering-by-platform)
   - [Date Filtering](#date-filtering)
+  - [Model Grouping](#model-grouping)
   - [Pricing Lookup](#pricing-lookup)
   - [Social](#social)
   - [Cursor IDE Commands](#cursor-ide-commands)
@@ -295,6 +296,29 @@ tokscale monthly --month --benchmark
 
 > **Note**: Date filters use your local timezone. Both `--since` and `--until` are inclusive.
 
+### Model Grouping
+
+Control how models are grouped in `--light` and `--json` output using the `--group-by` flag:
+
+```bash
+# Group by model only (merge across clients/providers)
+tokscale models --light --group-by model
+
+# Group by client + model (default)
+tokscale models --light --group-by client,model
+
+# Group by client + provider + model (most detailed)
+tokscale models --light --group-by client,provider,model
+```
+
+| Strategy | Columns | Description |
+|----------|---------|-------------|
+| `model` | Clients, Providers, Model | Merges usage across all clients and providers for each model |
+| `client,model` | Client, Provider, Model, Resolved, Input, Output, Cache, Total, Cost | Default. Shows per-client model breakdown |
+| `client,provider,model` | Client, Provider, Model, Resolved, Input, Output, Cache, Total, Cost | Most granular. Separates by provider within each client |
+
+> **Note**: Models with different date suffixes (e.g., `claude-sonnet-4-20250514` vs `claude-sonnet-4-20250415`) or version separators (`3.5` vs `3-5`) are automatically normalized and consolidated during aggregation.
+
 ### Pricing Lookup
 
 Look up real-time pricing for any model:
@@ -409,6 +433,8 @@ When you log out, tokscale keeps your cached usage history by moving it to `curs
 > ⚠️ **Security Warning**: Treat your session token like a password. Never share it publicly or commit it to version control. The token grants full access to your Cursor account.
 
 ### Example Output (`--light` version)
+
+The `--light` table displays columns based on your `--group-by` strategy. The default (`client,model`) shows: **Client**, **Provider**, **Model**, **Resolved** (normalized model name used for pricing), **Input**, **Output**, **Cache Write**, **Cache Read**, **Total**, and **Cost**.
 
 <img alt="CLI Light" src="./.github/assets/cli-light.png" />
 

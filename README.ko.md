@@ -77,6 +77,7 @@ AI 지원 개발 시대에 **토큰은 새로운 에너지**입니다. 토큰은
   - [TUI 기능](#tui-기능)
   - [플랫폼별 필터링](#플랫폼별-필터링)
   - [날짜 필터링](#날짜-필터링)
+  - [모델 그룹화](#모델-그룹화)
   - [가격 조회](#가격-조회)
   - [소셜 플랫폼 명령어](#소셜-플랫폼-명령어)
   - [Cursor IDE 명령어](#cursor-ide-명령어)
@@ -259,6 +260,29 @@ tokscale monthly --month --benchmark
 
 > **참고**: 날짜 필터는 로컬 타임존을 사용합니다. `--since`와 `--until` 모두 해당 날짜를 포함합니다.
 
+### 모델 그룹화
+
+`--light` 및 `--json` 출력에서 모델 그룹화 방식을 `--group-by` 플래그로 제어할 수 있습니다:
+
+```bash
+# 모델만으로 그룹화 (클라이언트/프로바이더 통합)
+tokscale models --light --group-by model
+
+# 클라이언트 + 모델로 그룹화 (기본값)
+tokscale models --light --group-by client,model
+
+# 클라이언트 + 프로바이더 + 모델로 그룹화 (가장 상세)
+tokscale models --light --group-by client,provider,model
+```
+
+| 전략 | 컬럼 | 설명 |
+|----------|---------|-------------|
+| `model` | Clients, Providers, Model | 각 모델에 대해 모든 클라이언트와 프로바이더의 사용량을 통합합니다 |
+| `client,model` | Client, Provider, Model, Resolved, Input, Output, Cache, Total, Cost | 기본값. 클라이언트별 모델 분석을 표시합니다 |
+| `client,provider,model` | Client, Provider, Model, Resolved, Input, Output, Cache, Total, Cost | 가장 세분화된 설정. 각 클라이언트 내에서 프로바이더별로 분리합니다 |
+
+> **참고**: 날짜 접미사가 다른 모델(예: `claude-sonnet-4-20250514` vs `claude-sonnet-4-20250415`)이나 버전 구분자가 다른 모델(`3.5` vs `3-5`)은 집계 시 자동으로 정규화되어 통합됩니다.
+
 ### 가격 조회
 
 모든 모델의 실시간 가격을 조회합니다:
@@ -369,6 +393,8 @@ tokscale cursor logout --all --purge-cache
 > ⚠️ **보안 경고**: 세션 토큰을 비밀번호처럼 취급하세요. 절대 공개적으로 공유하거나 버전 관리에 커밋하지 마세요. 토큰은 Cursor 계정에 대한 전체 액세스 권한을 부여합니다.
 
 ### 예시 출력 (`--light` 버전)
+
+`--light` 테이블은 `--group-by` 전략에 따라 컬럼이 달라집니다. 기본값(`client,model`)에서는 **Client**, **Provider**, **Model**, **Resolved**(가격 책정에 사용되는 정규화된 모델 이름), **Input**, **Output**, **Cache Write**, **Cache Read**, **Total**, **Cost** 컬럼을 표시합니다.
 
 <img alt="CLI Light" src="./.github/assets/cli-light.png" />
 

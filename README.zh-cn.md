@@ -77,6 +77,7 @@
   - [TUI 功能](#tui-功能)
   - [按平台筛选](#按平台筛选)
   - [日期筛选](#日期筛选)
+  - [模型分组](#模型分组)
   - [价格查询](#价格查询)
   - [社交平台命令](#社交平台命令)
   - [Cursor IDE 命令](#cursor-ide-命令)
@@ -260,6 +261,29 @@ tokscale monthly --month --benchmark
 
 > **注意**：日期筛选器使用本地时区。`--since` 和 `--until` 都是包含的。
 
+### 模型分组
+
+通过 `--group-by` 标志控制 `--light` 和 `--json` 输出中的模型分组方式：
+
+```bash
+# 仅按模型分组（合并所有客户端/提供商）
+tokscale models --light --group-by model
+
+# 按客户端 + 模型分组（默认）
+tokscale models --light --group-by client,model
+
+# 按客户端 + 提供商 + 模型分组（最详细）
+tokscale models --light --group-by client,provider,model
+```
+
+| 策略 | 列 | 描述 |
+|----------|---------|-------------|
+| `model` | Clients, Providers, Model | 合并每个模型在所有客户端和提供商中的使用量 |
+| `client,model` | Client, Provider, Model, Resolved, Input, Output, Cache, Total, Cost | 默认。显示每个客户端的模型细分 |
+| `client,provider,model` | Client, Provider, Model, Resolved, Input, Output, Cache, Total, Cost | 最精细。在每个客户端内按提供商分离 |
+
+> **注意**：具有不同日期后缀的模型（如 `claude-sonnet-4-20250514` vs `claude-sonnet-4-20250415`）或版本分隔符不同的模型（`3.5` vs `3-5`）在聚合时会自动标准化和合并。
+
 ### 价格查询
 
 查询任何模型的实时价格：
@@ -370,6 +394,8 @@ tokscale cursor logout --all --purge-cache
 > ⚠️ **安全警告**：像对待密码一样对待您的会话令牌。切勿公开分享或提交到版本控制。该令牌授予对您 Cursor 账户的完全访问权限。
 
 ### 示例输出（`--light` 版本）
+
+`--light` 表格根据 `--group-by` 策略显示不同的列。默认（`client,model`）显示：**Client**、**Provider**、**Model**、**Resolved**（用于定价的标准化模型名称）、**Input**、**Output**、**Cache Write**、**Cache Read**、**Total** 和 **Cost**。
 
 <img alt="CLI Light" src="./.github/assets/cli-light.png" />
 
