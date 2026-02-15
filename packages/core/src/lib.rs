@@ -452,12 +452,12 @@ fn parse_all_messages_with_pricing(
         .collect();
     all_messages.extend(droid_messages);
 
-    // Parse OpenClaw index files
+    // Parse OpenClaw transcript JSONL files
     let openclaw_messages: Vec<UnifiedMessage> = scan_result
         .openclaw_files
         .par_iter()
         .flat_map(|path| {
-            sessions::openclaw::parse_openclaw_index(path)
+            sessions::openclaw::parse_openclaw_transcript(path)
                 .into_iter()
                 .map(|mut msg| {
                     msg.cost = pricing.calculate_cost(
@@ -888,12 +888,12 @@ pub fn parse_local_sources(options: LocalParseOptions) -> napi::Result<ParsedMes
     let droid_count = droid_msgs.len() as i32;
     messages.extend(droid_msgs);
 
-    // Parse OpenClaw index files (each index points to session files)
+    // Parse OpenClaw transcript JSONL files
     let openclaw_msgs: Vec<ParsedMessage> = scan_result
         .openclaw_files
         .par_iter()
         .flat_map(|path| {
-            sessions::openclaw::parse_openclaw_index(path)
+            sessions::openclaw::parse_openclaw_transcript(path)
                 .into_iter()
                 .map(|msg| unified_to_parsed(&msg))
                 .collect::<Vec<_>>()

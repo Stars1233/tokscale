@@ -243,16 +243,19 @@ pub fn scan_all_sources(home_dir: &str, sources: &[String]) -> ScanResult {
     }
 
     if include_openclaw {
-        // Current path
+        // OpenClaw transcripts: ~/.openclaw/agents/**/*.jsonl
         let openclaw_path = format!("{}/.openclaw/agents", home_dir);
-        tasks.push((SessionType::OpenClaw, openclaw_path, "sessions.json"));
+        tasks.push((SessionType::OpenClaw, openclaw_path, "*.jsonl"));
+
         // Legacy paths (Clawd -> Moltbot -> OpenClaw rebrand history)
         let clawdbot_path = format!("{}/.clawdbot/agents", home_dir);
-        tasks.push((SessionType::OpenClaw, clawdbot_path, "sessions.json"));
+        tasks.push((SessionType::OpenClaw, clawdbot_path, "*.jsonl"));
+
         let moltbot_path = format!("{}/.moltbot/agents", home_dir);
-        tasks.push((SessionType::OpenClaw, moltbot_path, "sessions.json"));
+        tasks.push((SessionType::OpenClaw, moltbot_path, "*.jsonl"));
+
         let moldbot_path = format!("{}/.moldbot/agents", home_dir);
-        tasks.push((SessionType::OpenClaw, moldbot_path, "sessions.json"));
+        tasks.push((SessionType::OpenClaw, moldbot_path, "*.jsonl"));
     }
 
     if include_pi {
@@ -487,6 +490,19 @@ mod tests {
         file.write_all(b"{}").unwrap();
     }
 
+    fn setup_mock_openclaw_dir(base: &std::path::Path) {
+        // Mirror real OpenClaw layout: ~/.openclaw/agents/<agentId>/sessions/*.jsonl
+        let openclaw_sessions = base.join(".openclaw/agents/main/sessions");
+        fs::create_dir_all(&openclaw_sessions).unwrap();
+
+        let mut transcript = File::create(openclaw_sessions.join("session-abc.jsonl")).unwrap();
+        transcript.write_all(b"{}").unwrap();
+
+        // Even if an index exists, we should count JSONL transcripts (not sessions.json only)
+        let mut index = File::create(openclaw_sessions.join("sessions.json")).unwrap();
+        index.write_all(b"{}").unwrap();
+    }
+
     #[test]
     #[serial]
     fn test_headless_roots_default() {
@@ -573,6 +589,17 @@ mod tests {
         let result = scan_all_sources(home.to_str().unwrap(), &["gemini".to_string()]);
         assert_eq!(result.gemini_files.len(), 1);
         assert!(result.opencode_files.is_empty());
+    }
+
+    #[test]
+    fn test_scan_all_sources_openclaw_jsonl_only() {
+        let dir = TempDir::new().unwrap();
+        let home = dir.path();
+        setup_mock_openclaw_dir(home);
+
+        let result = scan_all_sources(home.to_str().unwrap(), &["openclaw".to_string()]);
+        assert_eq!(result.openclaw_files.len(), 1);
+        assert!(result.openclaw_files[0].ends_with("session-abc.jsonl"));
     }
 
     #[test]
