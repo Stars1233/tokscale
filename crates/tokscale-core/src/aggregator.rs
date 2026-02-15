@@ -251,6 +251,12 @@ impl DayAccumulator {
         source.tokens.reasoning = source.tokens.reasoning.saturating_add(msg.tokens.reasoning);
         source.cost += msg.cost;
         source.messages = source.messages.saturating_add(1);
+
+        // Normalize provider order for deterministic output
+        let mut providers: Vec<&str> = source.provider_id.split(", ").collect();
+        providers.sort_unstable();
+        providers.dedup();
+        source.provider_id = providers.join(", ");
     }
 
     fn merge(&mut self, other: DayAccumulator) {
@@ -315,6 +321,14 @@ impl DayAccumulator {
                 .saturating_add(source.tokens.reasoning);
             entry.cost += source.cost;
             entry.messages = entry.messages.saturating_add(source.messages);
+        }
+
+        // Normalize provider order for deterministic output
+        for entry in self.sources.values_mut() {
+            let mut providers: Vec<&str> = entry.provider_id.split(", ").collect();
+            providers.sort_unstable();
+            providers.dedup();
+            entry.provider_id = providers.join(", ");
         }
     }
 

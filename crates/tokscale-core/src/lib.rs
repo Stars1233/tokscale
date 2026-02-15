@@ -519,7 +519,17 @@ pub async fn get_model_report(options: ReportOptions) -> Result<ModelReport, Str
         entry.cost += msg.cost;
     }
 
-    let mut entries: Vec<ModelUsage> = model_map.into_values().collect();
+    let mut entries: Vec<ModelUsage> = model_map
+        .into_values()
+        .map(|mut entry| {
+            // Normalize provider order for deterministic output
+            let mut providers: Vec<&str> = entry.provider.split(", ").collect();
+            providers.sort_unstable();
+            providers.dedup();
+            entry.provider = providers.join(", ");
+            entry
+        })
+        .collect();
     entries.sort_by(|a, b| match (a.cost.is_nan(), b.cost.is_nan()) {
         (true, true) => std::cmp::Ordering::Equal,
         (true, false) => std::cmp::Ordering::Greater,
