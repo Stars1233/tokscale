@@ -275,25 +275,42 @@ fn parse_all_messages_with_pricing(
     let scan_result = scanner::scan_all_sources(home_dir, sources);
     let mut all_messages: Vec<UnifiedMessage> = Vec::new();
 
-    // Parse OpenCode files in parallel
-    let opencode_messages: Vec<UnifiedMessage> = scan_result
-        .opencode_files
-        .par_iter()
-        .filter_map(|path| {
-            let mut msg = sessions::opencode::parse_opencode_file(path)?;
-            // Recalculate cost using pricing data
-            msg.cost = pricing.calculate_cost(
-                &msg.model_id,
-                msg.tokens.input,
-                msg.tokens.output,
-                msg.tokens.cache_read,
-                msg.tokens.cache_write,
-                msg.tokens.reasoning,
-            );
-            Some(msg)
-        })
-        .collect();
-    all_messages.extend(opencode_messages);
+    // Parse OpenCode: prefer SQLite (1.2+), fall back to legacy JSON
+    if let Some(db_path) = &scan_result.opencode_db {
+        let sqlite_messages: Vec<UnifiedMessage> = sessions::opencode::parse_opencode_sqlite(db_path)
+            .into_iter()
+            .map(|mut msg| {
+                msg.cost = pricing.calculate_cost(
+                    &msg.model_id,
+                    msg.tokens.input,
+                    msg.tokens.output,
+                    msg.tokens.cache_read,
+                    msg.tokens.cache_write,
+                    msg.tokens.reasoning,
+                );
+                msg
+            })
+            .collect();
+        all_messages.extend(sqlite_messages);
+    } else {
+        let opencode_messages: Vec<UnifiedMessage> = scan_result
+            .opencode_files
+            .par_iter()
+            .filter_map(|path| {
+                let mut msg = sessions::opencode::parse_opencode_file(path)?;
+                msg.cost = pricing.calculate_cost(
+                    &msg.model_id,
+                    msg.tokens.input,
+                    msg.tokens.output,
+                    msg.tokens.cache_read,
+                    msg.tokens.cache_write,
+                    msg.tokens.reasoning,
+                );
+                Some(msg)
+            })
+            .collect();
+        all_messages.extend(opencode_messages);
+    }
 
     // Parse Claude files in parallel
     let claude_messages: Vec<UnifiedMessage> = scan_result
@@ -791,17 +808,28 @@ pub fn parse_local_sources(options: LocalParseOptions) -> napi::Result<ParsedMes
 
     let mut messages: Vec<ParsedMessage> = Vec::new();
 
-    // Parse OpenCode files in parallel
-    let opencode_msgs: Vec<ParsedMessage> = scan_result
-        .opencode_files
-        .par_iter()
-        .filter_map(|path| {
-            let msg = sessions::opencode::parse_opencode_file(path)?;
-            Some(unified_to_parsed(&msg))
-        })
-        .collect();
-    let opencode_count = opencode_msgs.len() as i32;
-    messages.extend(opencode_msgs);
+    // Parse OpenCode: prefer SQLite (1.2+), fall back to legacy JSON
+    let opencode_count: i32 = if let Some(db_path) = &scan_result.opencode_db {
+        let sqlite_msgs: Vec<ParsedMessage> = sessions::opencode::parse_opencode_sqlite(db_path)
+            .into_iter()
+            .map(|msg| unified_to_parsed(&msg))
+            .collect();
+        let count = sqlite_msgs.len() as i32;
+        messages.extend(sqlite_msgs);
+        count
+    } else {
+        let opencode_msgs: Vec<ParsedMessage> = scan_result
+            .opencode_files
+            .par_iter()
+            .filter_map(|path| {
+                let msg = sessions::opencode::parse_opencode_file(path)?;
+                Some(unified_to_parsed(&msg))
+            })
+            .collect();
+        let count = opencode_msgs.len() as i32;
+        messages.extend(opencode_msgs);
+        count
+    };
 
     // Parse Claude files in parallel, then deduplicate globally
     let claude_msgs_raw: Vec<(String, ParsedMessage)> = scan_result
