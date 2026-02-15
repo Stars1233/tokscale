@@ -24,6 +24,7 @@ pub enum SessionType {
 #[derive(Debug, Default)]
 pub struct ScanResult {
     pub opencode_files: Vec<PathBuf>,
+    pub opencode_db: Option<PathBuf>,
     pub claude_files: Vec<PathBuf>,
     pub codex_files: Vec<PathBuf>,
     pub gemini_files: Vec<PathBuf>,
@@ -187,9 +188,16 @@ pub fn scan_all_sources(home_dir: &str, sources: &[String]) -> ScanResult {
     let mut tasks: Vec<(SessionType, String, &str)> = Vec::new();
 
     if include_opencode {
-        // OpenCode: ~/.local/share/opencode/storage/message/*/*.json
         let xdg_data =
             std::env::var("XDG_DATA_HOME").unwrap_or_else(|_| format!("{}/.local/share", home_dir));
+
+        // OpenCode 1.2+: SQLite database at ~/.local/share/opencode/opencode.db
+        let opencode_db_path = PathBuf::from(format!("{}/opencode/opencode.db", xdg_data));
+        if opencode_db_path.exists() {
+            result.opencode_db = Some(opencode_db_path);
+        }
+
+        // OpenCode legacy: JSON files at ~/.local/share/opencode/storage/message/*/*.json
         let opencode_path = format!("{}/opencode/storage/message", xdg_data);
         tasks.push((SessionType::OpenCode, opencode_path, "*.json"));
     }
@@ -307,6 +315,7 @@ mod tests {
     fn test_scan_result_total_files() {
         let result = ScanResult {
             opencode_files: vec![PathBuf::from("a.json"), PathBuf::from("b.json")],
+            opencode_db: None,
             claude_files: vec![PathBuf::from("c.jsonl")],
             codex_files: vec![],
             gemini_files: vec![PathBuf::from("d.json")],
@@ -323,6 +332,7 @@ mod tests {
     fn test_scan_result_all_files() {
         let result = ScanResult {
             opencode_files: vec![PathBuf::from("a.json")],
+            opencode_db: None,
             claude_files: vec![PathBuf::from("b.jsonl")],
             codex_files: vec![PathBuf::from("c.jsonl")],
             gemini_files: vec![PathBuf::from("d.json")],
