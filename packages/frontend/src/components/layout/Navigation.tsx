@@ -39,7 +39,6 @@ const NavContainer = styled.nav`
   z-index: 50;
   
   @media (max-width: 767px) {
-    width: calc(100% - 24px);
     max-width: 100%;
     gap: 2px;
   }
@@ -56,7 +55,6 @@ const NavItemBase = styled.a<{ $isActive: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 1;
   text-decoration: none;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -64,13 +62,7 @@ const NavItemBase = styled.a<{ $isActive: boolean }>`
   min-width: 0;
   
   @media (max-width: 767px) {
-    font-size: 11px;
     padding: 8px 10px;
-  }
-  
-  @media (max-width: 374px) {
-    font-size: 10px;
-    padding: 8px 6px;
   }
   
   ${({ $isActive }) =>
@@ -102,7 +94,6 @@ const NavItemLink = styled(Link)<{ $isActive: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 1;
   text-decoration: none;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -110,13 +101,7 @@ const NavItemLink = styled(Link)<{ $isActive: boolean }>`
   min-width: 0;
   
   @media (max-width: 767px) {
-    font-size: 11px;
     padding: 8px 10px;
-  }
-  
-  @media (max-width: 374px) {
-    font-size: 10px;
-    padding: 8px 6px;
   }
   
   ${({ $isActive }) =>
@@ -263,13 +248,13 @@ export function Navigation() {
   return (
     <NavContainer aria-label="Main navigation">
       <NavItemLink href="/" $isActive={pathname === "/"}>
-        ABOUT
+        About
       </NavItemLink>
       <NavItemLink href="/leaderboard" $isActive={pathname === "/leaderboard"}>
-        LEADERBOARD
+        Leaderboard
       </NavItemLink>
       <NavItemLink href="/profile" $isActive={pathname === "/profile" || pathname.startsWith("/u/")}>
-        PROFILE
+        Profile
       </NavItemLink>
       <NavItemBase
         as="a"
@@ -278,7 +263,7 @@ export function Navigation() {
         rel="noopener noreferrer"
         $isActive={false}
       >
-        GITHUB
+        GitHub
       </NavItemBase>
 
       {isLoading ? (
