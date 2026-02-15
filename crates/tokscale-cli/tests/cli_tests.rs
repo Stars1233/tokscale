@@ -166,6 +166,7 @@ fn test_headless_command_invalid_source() {
 fn test_models_with_invalid_date_format() {
     let mut cmd = Command::cargo_bin("tokscale").unwrap();
     cmd.arg("models")
+        .arg("--light")
         .arg("--since")
         .arg("invalid-date")
         .assert()
@@ -176,6 +177,7 @@ fn test_models_with_invalid_date_format() {
 fn test_models_with_invalid_year() {
     let mut cmd = Command::cargo_bin("tokscale").unwrap();
     cmd.arg("models")
+        .arg("--light")
         .arg("--year")
         .arg("not-a-year")
         .assert()

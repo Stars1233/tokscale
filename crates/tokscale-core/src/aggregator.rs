@@ -216,18 +216,27 @@ impl DayAccumulator {
             .saturating_add(msg.tokens.reasoning);
 
         // Update source contribution
-        let key = format!("{}:{}", msg.source, msg.model_id);
+        let key = format!(
+            "{}:{}",
+            msg.source,
+            crate::normalize_model_for_grouping(&msg.model_id)
+        );
         let source = self
             .sources
             .entry(key)
             .or_insert_with(|| SourceContribution {
                 source: msg.source.clone(),
-                model_id: msg.model_id.clone(),
+                model_id: crate::normalize_model_for_grouping(&msg.model_id),
                 provider_id: msg.provider_id.clone(),
                 tokens: TokenBreakdown::default(),
                 cost: 0.0,
                 messages: 0,
             });
+
+        // Merge provider_id if different provider contributes to same source+model
+        if !source.provider_id.split(", ").any(|p| p == msg.provider_id) {
+            source.provider_id = format!("{}, {}", source.provider_id, msg.provider_id);
+        }
 
         source.tokens.input = source.tokens.input.saturating_add(msg.tokens.input);
         source.tokens.output = source.tokens.output.saturating_add(msg.tokens.output);
@@ -242,6 +251,12 @@ impl DayAccumulator {
         source.tokens.reasoning = source.tokens.reasoning.saturating_add(msg.tokens.reasoning);
         source.cost += msg.cost;
         source.messages = source.messages.saturating_add(1);
+
+        // Normalize provider order for deterministic output
+        let mut providers: Vec<&str> = source.provider_id.split(", ").collect();
+        providers.sort_unstable();
+        providers.dedup();
+        source.provider_id = providers.join(", ");
     }
 
     fn merge(&mut self, other: DayAccumulator) {
@@ -283,6 +298,13 @@ impl DayAccumulator {
                     messages: 0,
                 });
 
+            // Merge provider_ids from parallel reduction
+            for provider in source.provider_id.split(", ") {
+                if !entry.provider_id.split(", ").any(|p| p == provider) {
+                    entry.provider_id = format!("{}, {}", entry.provider_id, provider);
+                }
+            }
+
             entry.tokens.input = entry.tokens.input.saturating_add(source.tokens.input);
             entry.tokens.output = entry.tokens.output.saturating_add(source.tokens.output);
             entry.tokens.cache_read = entry
@@ -299,6 +321,14 @@ impl DayAccumulator {
                 .saturating_add(source.tokens.reasoning);
             entry.cost += source.cost;
             entry.messages = entry.messages.saturating_add(source.messages);
+        }
+
+        // Normalize provider order for deterministic output
+        for entry in self.sources.values_mut() {
+            let mut providers: Vec<&str> = entry.provider_id.split(", ").collect();
+            providers.sort_unstable();
+            providers.dedup();
+            entry.provider_id = providers.join(", ");
         }
     }
 

@@ -24,6 +24,39 @@ pub fn health_check() -> String {
     "tokscale-core is healthy!".to_string()
 }
 
+pub fn normalize_model_for_grouping(model_id: &str) -> String {
+    let mut name = model_id.to_lowercase();
+
+    if name.len() > 9 {
+        let potential_date = &name[name.len() - 8..];
+        if potential_date.chars().all(|c| c.is_ascii_digit())
+            && name.as_bytes()[name.len() - 9] == b'-'
+        {
+            name = name[..name.len() - 9].to_string();
+        }
+    }
+
+    if name.contains("claude") {
+        let chars: Vec<char> = name.chars().collect();
+        let mut result = String::with_capacity(name.len());
+        for i in 0..chars.len() {
+            if chars[i] == '.'
+                && i > 0
+                && i < chars.len() - 1
+                && chars[i - 1].is_ascii_digit()
+                && chars[i + 1].is_ascii_digit()
+            {
+                result.push('-');
+            } else {
+                result.push(chars[i]);
+            }
+        }
+        name = result;
+    }
+
+    name
+}
+
 #[derive(Debug, Clone, Default, serde::Serialize)]
 pub struct TokenBreakdown {
     pub input: i64,
@@ -458,10 +491,11 @@ pub async fn get_model_report(options: ReportOptions) -> Result<ModelReport, Str
     let mut model_map: HashMap<String, ModelUsage> = HashMap::new();
 
     for msg in filtered {
-        let key = format!("{}:{}:{}", msg.source, msg.provider_id, msg.model_id);
+        let normalized = normalize_model_for_grouping(&msg.model_id);
+        let key = format!("{}:{}", msg.source, normalized);
         let entry = model_map.entry(key).or_insert_with(|| ModelUsage {
             source: msg.source.clone(),
-            model: msg.model_id.clone(),
+            model: normalized.clone(),
             provider: msg.provider_id.clone(),
             input: 0,
             output: 0,
@@ -472,6 +506,10 @@ pub async fn get_model_report(options: ReportOptions) -> Result<ModelReport, Str
             cost: 0.0,
         });
 
+        if !entry.provider.split(", ").any(|p| p == msg.provider_id) {
+            entry.provider = format!("{}, {}", entry.provider, msg.provider_id);
+        }
+
         entry.input += msg.tokens.input;
         entry.output += msg.tokens.output;
         entry.cache_read += msg.tokens.cache_read;
@@ -481,7 +519,17 @@ pub async fn get_model_report(options: ReportOptions) -> Result<ModelReport, Str
         entry.cost += msg.cost;
     }
 
-    let mut entries: Vec<ModelUsage> = model_map.into_values().collect();
+    let mut entries: Vec<ModelUsage> = model_map
+        .into_values()
+        .map(|mut entry| {
+            // Normalize provider order for deterministic output
+            let mut providers: Vec<&str> = entry.provider.split(", ").collect();
+            providers.sort_unstable();
+            providers.dedup();
+            entry.provider = providers.join(", ");
+            entry
+        })
+        .collect();
     entries.sort_by(|a, b| match (a.cost.is_nan(), b.cost.is_nan()) {
         (true, true) => std::cmp::Ordering::Equal,
         (true, false) => std::cmp::Ordering::Greater,
@@ -557,7 +605,9 @@ pub async fn get_monthly_report(options: ReportOptions) -> Result<MonthlyReport,
 
         let entry = month_map.entry(month).or_default();
 
-        entry.models.insert(msg.model_id.clone());
+        entry
+            .models
+            .insert(normalize_model_for_grouping(&msg.model_id));
         entry.input += msg.tokens.input;
         entry.output += msg.tokens.output;
         entry.cache_read += msg.tokens.cache_read;
@@ -869,5 +919,75 @@ pub fn parsed_to_unified(msg: &ParsedMessage, cost: f64) -> UnifiedMessage {
         cost,
         agent: msg.agent.clone(),
         dedup_key: None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_model_for_grouping;
+
+    #[test]
+    fn test_normalize_model_for_grouping() {
+        assert_eq!(
+            normalize_model_for_grouping("claude-opus-4-5-20251101"),
+            "claude-opus-4-5"
+        );
+        assert_eq!(
+            normalize_model_for_grouping("claude-sonnet-4-5-20250929"),
+            "claude-sonnet-4-5"
+        );
+        assert_eq!(
+            normalize_model_for_grouping("claude-sonnet-4-20250514"),
+            "claude-sonnet-4"
+        );
+
+        assert_eq!(
+            normalize_model_for_grouping("claude-opus-4.5"),
+            "claude-opus-4-5"
+        );
+        assert_eq!(
+            normalize_model_for_grouping("claude-sonnet-4.5"),
+            "claude-sonnet-4-5"
+        );
+        assert_eq!(
+            normalize_model_for_grouping("claude-opus-4.6"),
+            "claude-opus-4-6"
+        );
+
+        assert_eq!(normalize_model_for_grouping("gpt-5.2"), "gpt-5.2");
+        assert_eq!(
+            normalize_model_for_grouping("gemini-2.5-pro"),
+            "gemini-2.5-pro"
+        );
+
+        assert_eq!(
+            normalize_model_for_grouping("claude-opus-4-5-high"),
+            "claude-opus-4-5-high"
+        );
+        assert_eq!(
+            normalize_model_for_grouping("claude-opus-4-5-thinking-high"),
+            "claude-opus-4-5-thinking-high"
+        );
+        assert_eq!(
+            normalize_model_for_grouping("claude-sonnet-4-5-high"),
+            "claude-sonnet-4-5-high"
+        );
+
+        assert_eq!(
+            normalize_model_for_grouping("claude-4-sonnet"),
+            "claude-4-sonnet"
+        );
+        assert_eq!(
+            normalize_model_for_grouping("claude-4-opus-thinking"),
+            "claude-4-opus-thinking"
+        );
+
+        assert_eq!(normalize_model_for_grouping("big-pickle"), "big-pickle");
+        assert_eq!(normalize_model_for_grouping("grok-code"), "grok-code");
+
+        assert_eq!(
+            normalize_model_for_grouping("claude-opus-4.5-20251101"),
+            "claude-opus-4-5"
+        );
     }
 }
