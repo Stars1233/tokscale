@@ -93,9 +93,10 @@ fn parse_openclaw_session(session_path: &Path, session_id: &str) -> Vec<UnifiedM
     };
 
     let reader = BufReader::new(file);
-    let mut messages = Vec::new();
+    let mut messages = Vec::with_capacity(64);
     let mut current_model: Option<String> = None;
     let mut current_provider: Option<String> = None;
+    let mut buffer = Vec::with_capacity(4096);
 
     for line in reader.lines() {
         let line = match line {
@@ -108,8 +109,9 @@ fn parse_openclaw_session(session_path: &Path, session_id: &str) -> Vec<UnifiedM
             continue;
         }
 
-        let mut bytes = trimmed.as_bytes().to_vec();
-        let entry: OpenClawEntry = match simd_json::from_slice(&mut bytes) {
+        buffer.clear();
+        buffer.extend_from_slice(trimmed.as_bytes());
+        let entry: OpenClawEntry = match simd_json::from_slice(&mut buffer) {
             Ok(e) => e,
             Err(_) => continue,
         };

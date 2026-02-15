@@ -64,7 +64,8 @@ pub fn parse_pi_file(path: &Path) -> Vec<UnifiedMessage> {
     let fallback_timestamp = file_modified_timestamp_ms(path);
 
     let reader = BufReader::new(file);
-    let mut messages: Vec<UnifiedMessage> = Vec::new();
+    let mut messages: Vec<UnifiedMessage> = Vec::with_capacity(64);
+    let mut buffer = Vec::with_capacity(4096);
 
     let mut session_id: Option<String> = None;
     for line in reader.lines() {
@@ -79,8 +80,9 @@ pub fn parse_pi_file(path: &Path) -> Vec<UnifiedMessage> {
         }
 
         if session_id.is_none() {
-            let mut bytes = trimmed.as_bytes().to_vec();
-            let header = match simd_json::from_slice::<PiSessionHeader>(&mut bytes) {
+            buffer.clear();
+            buffer.extend_from_slice(trimmed.as_bytes());
+            let header = match simd_json::from_slice::<PiSessionHeader>(&mut buffer) {
                 Ok(h) => h,
                 Err(_) => return Vec::new(),
             };
@@ -92,8 +94,9 @@ pub fn parse_pi_file(path: &Path) -> Vec<UnifiedMessage> {
             continue;
         }
 
-        let mut bytes = trimmed.as_bytes().to_vec();
-        let entry = match simd_json::from_slice::<PiSessionEntry>(&mut bytes) {
+        buffer.clear();
+        buffer.extend_from_slice(trimmed.as_bytes());
+        let entry = match simd_json::from_slice::<PiSessionEntry>(&mut buffer) {
             Ok(e) => e,
             Err(_) => continue,
         };

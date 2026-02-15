@@ -21,6 +21,7 @@ where
 {
     let file = fs::File::open(path).map_err(|e| ParseError::IoError(e.to_string()))?;
     let reader = BufReader::new(file);
+    let mut buffer = Vec::with_capacity(4096);
 
     for line in reader.lines() {
         let line = line.map_err(|e| ParseError::IoError(e.to_string()))?;
@@ -29,10 +30,12 @@ where
             continue;
         }
 
-        let mut bytes = trimmed.as_bytes().to_vec();
-        match simd_json::from_slice::<T>(&mut bytes) {
+        buffer.clear();
+        buffer.extend_from_slice(trimmed.as_bytes());
+
+        match simd_json::from_slice::<T>(&mut buffer) {
             Ok(value) => process(value),
-            Err(_) => continue, // Skip malformed lines (match TypeScript behavior)
+            Err(_) => continue,
         }
     }
 

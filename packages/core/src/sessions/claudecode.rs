@@ -64,9 +64,10 @@ pub fn parse_claude_file(path: &Path) -> Vec<UnifiedMessage> {
     };
 
     let reader = BufReader::new(file);
-    let mut messages = Vec::new();
+    let mut messages = Vec::with_capacity(64);
     let mut processed_hashes: HashSet<String> = HashSet::new();
     let mut headless_state = ClaudeHeadlessState::default();
+    let mut buffer = Vec::with_capacity(4096);
 
     for line in reader.lines() {
         let line = match line {
@@ -80,8 +81,9 @@ pub fn parse_claude_file(path: &Path) -> Vec<UnifiedMessage> {
         }
 
         let mut handled = false;
-        let mut bytes = trimmed.as_bytes().to_vec();
-        if let Ok(entry) = simd_json::from_slice::<ClaudeEntry>(&mut bytes) {
+        buffer.clear();
+        buffer.extend_from_slice(trimmed.as_bytes());
+        if let Ok(entry) = simd_json::from_slice::<ClaudeEntry>(&mut buffer) {
             // Only process assistant messages with usage data
             if entry.entry_type == "assistant" {
                 let message = match entry.message {
@@ -186,7 +188,7 @@ fn parse_claude_headless_json(
         Err(_) => return Vec::new(),
     };
 
-    let mut messages = Vec::new();
+    let mut messages = Vec::with_capacity(1);
     if let Some(message) = extract_claude_headless_message(&value, session_id, fallback_timestamp) {
         messages.push(message);
     }

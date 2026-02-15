@@ -87,7 +87,7 @@ pub fn parse_gemini_file(path: &Path) -> Vec<UnifiedMessage> {
 }
 
 fn parse_gemini_session(session: GeminiSession, fallback_timestamp: i64) -> Vec<UnifiedMessage> {
-    let mut messages = Vec::new();
+    let mut messages = Vec::with_capacity(session.messages.len());
     let session_id = session.session_id.clone();
 
     for msg in session.messages {
@@ -145,7 +145,8 @@ fn parse_gemini_headless_jsonl(path: &Path, fallback_timestamp: i64) -> Vec<Unif
         .to_string();
     let mut current_model: Option<String> = None;
     let reader = BufReader::new(file);
-    let mut messages = Vec::new();
+    let mut messages = Vec::with_capacity(64);
+    let mut buffer = Vec::with_capacity(4096);
 
     for line in reader.lines() {
         let line = match line {
@@ -158,8 +159,9 @@ fn parse_gemini_headless_jsonl(path: &Path, fallback_timestamp: i64) -> Vec<Unif
             continue;
         }
 
-        let mut bytes = trimmed.as_bytes().to_vec();
-        let value: Value = match simd_json::from_slice(&mut bytes) {
+        buffer.clear();
+        buffer.extend_from_slice(trimmed.as_bytes());
+        let value: Value = match simd_json::from_slice(&mut buffer) {
             Ok(v) => v,
             Err(_) => continue,
         };

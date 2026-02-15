@@ -107,7 +107,7 @@ pub fn parse_amp_file(path: &Path) -> Vec<UnifiedMessage> {
             .to_string()
     });
 
-    let mut messages = Vec::new();
+    let mut messages = Vec::with_capacity(32);
 
     // Prefer usageLedger.events (cleaner aggregated data)
     if let Some(ledger) = thread.usage_ledger {

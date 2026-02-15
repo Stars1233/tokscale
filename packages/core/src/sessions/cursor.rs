@@ -93,7 +93,7 @@ pub fn parse_cursor_file(path: &Path) -> Vec<UnifiedMessage> {
         Err(_) => return vec![],
     };
 
-    let mut messages = Vec::new();
+    let mut messages = Vec::with_capacity(128);
     let mut lines = content.lines();
 
     // Parse header line to determine column indices

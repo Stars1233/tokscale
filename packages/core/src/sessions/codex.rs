@@ -64,11 +64,11 @@ pub fn parse_codex_file(path: &Path) -> Vec<UnifiedMessage> {
     let fallback_timestamp = file_modified_timestamp_ms(path);
 
     let reader = BufReader::new(file);
-    let mut messages = Vec::new();
+    let mut messages = Vec::with_capacity(64);
+    let mut buffer = Vec::with_capacity(4096);
 
-    // Stateful tracking
     let mut current_model: Option<String> = None;
-    let mut previous_totals: Option<(i64, i64, i64)> = None; // (input, output, cached)
+    let mut previous_totals: Option<(i64, i64, i64)> = None;
     let mut session_is_headless = false;
 
     for line in reader.lines() {
@@ -83,8 +83,9 @@ pub fn parse_codex_file(path: &Path) -> Vec<UnifiedMessage> {
         }
 
         let mut handled = false;
-        let mut bytes = trimmed.as_bytes().to_vec();
-        if let Ok(entry) = simd_json::from_slice::<CodexEntry>(&mut bytes) {
+        buffer.clear();
+        buffer.extend_from_slice(trimmed.as_bytes());
+        if let Ok(entry) = simd_json::from_slice::<CodexEntry>(&mut buffer) {
             if let Some(payload) = entry.payload {
                 // Check session_meta for headless exec sessions
                 if entry.entry_type == "session_meta" {
