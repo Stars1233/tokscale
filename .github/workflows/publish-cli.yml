@@ -430,36 +430,19 @@ jobs:
                 fi
               done || echo "")
           
-          # Build release notes using heredoc to preserve formatting
-          NOTES=$(cat <<EOF
-<div align="center">
-
-[![Tokscale](https://github.com/junhoyeo/tokscale/raw/main/.github/assets/hero.png)](https://github.com/junhoyeo/tokscale)
-
-# \`tokscale@v$NEW_VERSION\` is here!
-</div>
-
-## What's Changed
-$PRS
-EOF
-)
+          NOTES=$(printf '%s\n\n%s\n\n%s\n%s\n\n%s\n%s' \
+            '<div align="center">' \
+            "[![Tokscale](https://github.com/junhoyeo/tokscale/raw/main/.github/assets/hero.png)](https://github.com/junhoyeo/tokscale)" \
+            "# \`tokscale@v$NEW_VERSION\` is here!" \
+            '</div>' \
+            '## What'"'"'s Changed' \
+            "$PRS")
           
           if [ -n "$NEW_CONTRIBUTORS" ]; then
-            NOTES=$(cat <<EOF
-$NOTES
-
-## New Contributors
-$NEW_CONTRIBUTORS
-EOF
-)
+            NOTES=$(printf '%s\n\n%s\n%s' "$NOTES" '## New Contributors' "$NEW_CONTRIBUTORS")
           fi
           
-          NOTES=$(cat <<EOF
-$NOTES
-
-**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...v$NEW_VERSION
-EOF
-)
+          NOTES=$(printf '%s\n\n%s' "$NOTES" "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...v$NEW_VERSION")
           
           # Create release
           gh release create "v$NEW_VERSION" \
