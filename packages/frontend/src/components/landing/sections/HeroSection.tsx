@@ -58,31 +58,28 @@ export function HeroSection({ stargazersCount }: HeroSectionProps) {
               </HeroTitle>
 
               <HeroButtonsRow>
-                <StarButton
-                  href="https://github.com/junhoyeo/tokscale"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <StarGlow />
-                  <StarButtonText>Star us on GitHub</StarButtonText>
-                  <ArrowIcon />
-                </StarButton>
+                <CTAWrapper>
+                  <StarButton
+                    href="https://github.com/junhoyeo/tokscale"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <StarGlow />
+                    <StarButtonText>Star us on GitHub</StarButtonText>
+                    <ArrowIcon />
+                  </StarButton>
+                  <StarBadge>
+                    <Image
+                      src="/assets/landing/star-link-icon.svg"
+                      alt="Star"
+                      width={18}
+                      height={18}
+                    />
+                    <StarBadgeText>{starsText}</StarBadgeText>
+                  </StarBadge>
+                </CTAWrapper>
               </HeroButtonsRow>
             </HeroContent>
-
-            <StarBadge
-              href="https://github.com/junhoyeo/tokscale/stargazers"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Image
-                src="/assets/landing/star-link-icon.svg"
-                alt="Star"
-                width={18}
-                height={18}
-              />
-              <StarBadgeText>{starsText}</StarBadgeText>
-            </StarBadge>
           </HeroTopSection>
 
           {/* Bottom part: Trusted By */}
@@ -288,6 +285,17 @@ const HeroButtonsRow = styled.div`
   gap: 20px;
 `;
 
+const CTAWrapper = styled.div`
+  position: relative;
+  width: fit-content;
+  height: 48px;
+
+  @media (max-width: 480px) {
+    width: fit-content;
+    height: 44px;
+  }
+`;
+
 const StarButton = styled.a`
   position: relative;
   display: flex;
@@ -359,10 +367,10 @@ const StarButtonText = styled.span`
   }
 `;
 
-const StarBadge = styled.a`
+const StarBadge = styled.div`
   position: absolute;
-  left: 136.38px;
-  top: 310px;
+  bottom: -20px;
+  right: -16px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -372,18 +380,6 @@ const StarBadge = styled.a`
   border: 1px solid rgba(0, 115, 255, 0.26);
   backdrop-filter: blur(4px);
   border-radius: 12px;
-  text-decoration: none;
-  transition: opacity 0.2s;
-
-  &:hover {
-    opacity: 0.8;
-  }
-
-  @media (max-width: 900px) {
-    left: 24px;
-    top: auto;
-    bottom: 12px;
-  }
 `;
 
 const StarBadgeText = styled.span`
