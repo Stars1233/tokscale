@@ -2,12 +2,18 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import styled from "styled-components";
+import dynamic from "next/dynamic";
 import type { TokenContributionData, DailyContribution, ViewMode, SourceType, TooltipPosition } from "@/lib/types";
 import { getPalette } from "@/lib/themes";
 import { useSettings } from "@/lib/useSettings";
 import { filterBySource, filterByYear, recalculateIntensity, findBestDay, calculateCurrentStreak, calculateLongestStreak } from "@/lib/utils";
 import { TokenGraph2D } from "./TokenGraph2D";
-import { TokenGraph3D } from "./TokenGraph3D";
+
+// Lazy load 3D graph (Three.js) - reduces initial bundle, SSR disabled for WebGL
+const TokenGraph3D = dynamic(() => import("./TokenGraph3D").then((mod) => mod.TokenGraph3D), {
+  ssr: false,
+  loading: () => <Graph3DPlaceholder>Loading 3D view...</Graph3DPlaceholder>,
+});
 import { GraphControls } from "./GraphControls";
 import { Tooltip } from "./Tooltip";
 import { BreakdownPanel } from "./BreakdownPanel";
@@ -17,6 +23,15 @@ const Container = styled.div`
   display: flex;
   flex-direction: column;
   gap: 24px;
+`;
+
+const Graph3DPlaceholder = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  color: var(--color-fg-muted);
+  font-size: 14px;
 `;
 
 const GraphCard = styled.div`
