@@ -5,7 +5,7 @@ mod tui;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -1106,28 +1106,28 @@ fn run_models_report(
 
         let mut table = Table::new();
         table.load_preset(TABLE_PRESET);
-        table.set_content_arrangement(ContentArrangement::DynamicFullWidth);
+        let arrangement = if std::io::stdout().is_terminal() {
+            ContentArrangement::DynamicFullWidth
+        } else {
+            ContentArrangement::Dynamic
+        };
+        table.set_content_arrangement(arrangement);
+        table.enforce_styling();
         if compact {
             table.set_header(vec![
-                Cell::new("Source/Model").fg(Color::Cyan),
-                Cell::new("Models").fg(Color::Cyan),
+                Cell::new("Client").fg(Color::Cyan),
+                Cell::new("Provider").fg(Color::Cyan),
+                Cell::new("Model").fg(Color::Cyan),
                 Cell::new("Input").fg(Color::Cyan),
                 Cell::new("Output").fg(Color::Cyan),
                 Cell::new("Cost").fg(Color::Cyan),
             ]);
 
             for entry in &report.entries {
-                let short_model = format_model_name(&entry.model);
-                let source_model = format!(
-                    "\x1b[2m{}\x1b[0m {}",
-                    capitalize_source(&entry.source),
-                    short_model
-                );
-                let models_col = format!("- {}", short_model);
-
                 table.add_row(vec![
-                    Cell::new(source_model),
-                    Cell::new(models_col),
+                    Cell::new(capitalize_source(&entry.source)),
+                    Cell::new(&entry.provider).add_attribute(Attribute::Dim),
+                    Cell::new(&entry.model),
                     Cell::new(format_tokens_with_commas(entry.input)).set_alignment(CellAlignment::Right),
                     Cell::new(format_tokens_with_commas(entry.output)).set_alignment(CellAlignment::Right),
                     Cell::new(format_currency(entry.cost)).set_alignment(CellAlignment::Right),
@@ -1138,6 +1138,7 @@ fn run_models_report(
                 Cell::new("Total")
                     .fg(Color::Yellow)
                     .add_attribute(Attribute::Bold),
+                Cell::new(""),
                 Cell::new(""),
                 Cell::new(format_tokens_with_commas(report.total_input))
                     .fg(Color::Yellow)
@@ -1151,8 +1152,10 @@ fn run_models_report(
             ]);
         } else {
             table.set_header(vec![
-                Cell::new("Source/Model").fg(Color::Cyan),
-                Cell::new("Models").fg(Color::Cyan),
+                Cell::new("Client").fg(Color::Cyan),
+                Cell::new("Provider").fg(Color::Cyan),
+                Cell::new("Model").fg(Color::Cyan),
+                Cell::new("Resolved").fg(Color::Cyan),
                 Cell::new("Input").fg(Color::Cyan),
                 Cell::new("Output").fg(Color::Cyan),
                 Cell::new("Cache Write").fg(Color::Cyan),
@@ -1162,18 +1165,13 @@ fn run_models_report(
             ]);
 
             for entry in &report.entries {
-                let short_model = format_model_name(&entry.model);
-                let source_model = format!(
-                    "\x1b[2m{}\x1b[0m {}",
-                    capitalize_source(&entry.source),
-                    short_model
-                );
-                let models_col = format!("- {}", short_model);
                 let total = entry.input + entry.output + entry.cache_write + entry.cache_read;
 
                 table.add_row(vec![
-                    Cell::new(source_model),
-                    Cell::new(models_col),
+                    Cell::new(capitalize_source(&entry.source)),
+                    Cell::new(&entry.provider).add_attribute(Attribute::Dim),
+                    Cell::new(&entry.model),
+                    Cell::new(format_model_name(&entry.model)),
                     Cell::new(format_tokens_with_commas(entry.input)).set_alignment(CellAlignment::Right),
                     Cell::new(format_tokens_with_commas(entry.output)).set_alignment(CellAlignment::Right),
                     Cell::new(format_tokens_with_commas(entry.cache_write))
@@ -1193,6 +1191,8 @@ fn run_models_report(
                 Cell::new("Total")
                     .fg(Color::Yellow)
                     .add_attribute(Attribute::Bold),
+                Cell::new(""),
+                Cell::new(""),
                 Cell::new(""),
                 Cell::new(format_tokens_with_commas(report.total_input))
                     .fg(Color::Yellow)
@@ -1219,7 +1219,7 @@ fn run_models_report(
             Some(range) => format!("Token Usage Report by Model ({})", range),
             None => "Token Usage Report by Model".to_string(),
         };
-        println!("\n  {}\n", title);
+        println!("\n  \x1b[36m{}\x1b[0m\n", title);
         println!("{}", dim_borders(&table.to_string()));
 
         let total_tokens =
@@ -1339,7 +1339,13 @@ fn run_monthly_report(
 
         let mut table = Table::new();
         table.load_preset(TABLE_PRESET);
-        table.set_content_arrangement(ContentArrangement::DynamicFullWidth);
+        let arrangement = if std::io::stdout().is_terminal() {
+            ContentArrangement::DynamicFullWidth
+        } else {
+            ContentArrangement::Dynamic
+        };
+        table.set_content_arrangement(arrangement);
+        table.enforce_styling();
         if compact {
             table.set_header(vec![
                 Cell::new("Month").fg(Color::Cyan),
@@ -1474,7 +1480,7 @@ fn run_monthly_report(
             Some(range) => format!("Monthly Token Usage Report ({})", range),
             None => "Monthly Token Usage Report".to_string(),
         };
-        println!("\n  {}\n", title);
+        println!("\n  \x1b[36m{}\x1b[0m\n", title);
         println!("{}", dim_borders(&table.to_string()));
 
         println!(
