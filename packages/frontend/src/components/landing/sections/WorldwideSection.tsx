@@ -5,13 +5,13 @@ import styled from "styled-components";
 import { useSquircleClip } from "../hooks";
 import { SquircleBorder } from "../components";
 
-export function GlobeSection() {
-  const globeSection = useSquircleClip<HTMLDivElement>(32, 0.6, true, 1);
+export function WorldwideSection() {
+  const worldwideSection = useSquircleClip<HTMLDivElement>(32, 0.6, true, 1);
 
   return (
     <>
       {/* SVG clip-path def for globe section */}
-      {globeSection.svgDef && (
+      {worldwideSection.svgDef && (
         <svg
           width="0"
           height="0"
@@ -20,10 +20,10 @@ export function GlobeSection() {
           role="presentation"
         >
           <defs>
-            <clipPath id={globeSection.svgDef.id}>
+            <clipPath id={worldwideSection.svgDef.id}>
               <path
-                d={globeSection.svgDef.path}
-                transform={`translate(0, -${globeSection.svgDef.cornerRadius})`}
+                d={worldwideSection.svgDef.path}
+                transform={`translate(0, -${worldwideSection.svgDef.cornerRadius})`}
               />
             </clipPath>
           </defs>
@@ -35,12 +35,12 @@ export function GlobeSection() {
 
       {/* Globe + Largest Group */}
       <GlobeSectionWrapper
-        ref={globeSection.ref}
+        ref={worldwideSection.ref}
         style={{
-          clipPath: globeSection.clipPath || undefined,
+          clipPath: worldwideSection.clipPath || undefined,
         }}
       >
-        <SquircleBorder def={globeSection.borderDef} />
+        <SquircleBorder def={worldwideSection.borderDef} />
         <GlobeImageWrapper>
           <GlobeBackground />
           <GlobeFadeTop />
@@ -91,8 +91,9 @@ const GlobeSeparatorBar = styled.div`
   background-image: url("/assets/landing/separator-pattern-slash.svg");
   background-size: 24px 24px;
   background-repeat: repeat;
-
-  border: 1px solid #10233E;
+  border-top: 1px solid #10233E;
+  border-left: 1px solid #10233E;
+  border-right: 1px solid #10233E;
   border-bottom: none;
 `;
 
@@ -102,8 +103,8 @@ const GlobeSectionWrapper = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
+  background: #010a15;
   overflow: hidden;
-  border: 1px solid #10233E;
 `;
 
 const GlobeImageWrapper = styled.div`
@@ -151,6 +152,7 @@ const GlobeContentStack = styled.div`
   width: 100%;
   display: flex;
   flex-direction: column;
+  margin-top: -24px;
 `;
 
 const GlobeBlueHeader = styled.div`
@@ -160,6 +162,8 @@ const GlobeBlueHeader = styled.div`
   justify-content: center;
   padding: 20px 32px;
   background: #0073ff;
+  border-left: 1px solid #10233e;
+  border-right: 1px solid #10233e;
 `;
 
 const GlobeHeaderText = styled.span`

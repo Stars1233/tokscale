@@ -1,15 +1,27 @@
 "use client";
 
+import { useState, useRef } from "react";
 import Image from "next/image";
 import styled from "styled-components";
-import { useSquircleClip } from "../hooks";
 
 interface HeroSectionProps {
   stargazersCount: number;
 }
 
 export function HeroSection({ stargazersCount }: HeroSectionProps) {
-  const heroRight = useSquircleClip<HTMLDivElement>(32, 0.6, true);
+  const [isHovered, setIsHovered] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setMousePos({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      });
+    }
+  };
 
   const starsText =
     stargazersCount > 0
@@ -18,25 +30,6 @@ export function HeroSection({ stargazersCount }: HeroSectionProps) {
 
   return (
     <>
-      {/* SVG clip-path def for hero */}
-      {heroRight.svgDef && (
-        <svg
-          width="0"
-          height="0"
-          style={{ position: "absolute", overflow: "hidden" }}
-          aria-hidden="true"
-          role="presentation"
-        >
-          <defs>
-            <clipPath id={heroRight.svgDef.id}>
-              <path
-                d={heroRight.svgDef.path}
-                transform={`translate(0, -${heroRight.svgDef.cornerRadius})`}
-              />
-            </clipPath>
-          </defs>
-        </svg>
-      )}
       <HeroRow>
         <HeroLeft>
           <HeroBgStarfield
@@ -54,12 +47,7 @@ export function HeroSection({ stargazersCount }: HeroSectionProps) {
           />
         </HeroLeft>
 
-        <HeroRight
-          ref={heroRight.ref}
-          style={{
-            clipPath: heroRight.clipPath || undefined,
-          }}
-        >
+        <HeroRight>
           {/* Top part with BG image */}
           <HeroTopSection>
             <HeroContent>
@@ -77,6 +65,7 @@ export function HeroSection({ stargazersCount }: HeroSectionProps) {
                 >
                   <StarGlow />
                   <StarButtonText>Star us on GitHub</StarButtonText>
+                  <ArrowIcon />
                 </StarButton>
               </HeroButtonsRow>
             </HeroContent>
@@ -97,17 +86,62 @@ export function HeroSection({ stargazersCount }: HeroSectionProps) {
           </HeroTopSection>
 
           {/* Bottom part: Trusted By */}
-          <TrustedBySection>
+          <TrustedBySection
+            ref={containerRef}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            onMouseMove={handleMouseMove}
+          >
             <TrustedByLabel>Trusted by professionals at</TrustedByLabel>
             <TrustedByLogos>
-              <Image
-                src="/assets/landing/trusted-by-logos.svg"
-                alt="Trusted by companies"
-                width={408}
-                height={73}
-                style={{ width: "100%", maxWidth: 408, height: "auto" }}
+              <TrustedByLogo
+                src="/assets/landing/trusted-by-microsoft.svg"
+                alt="Microsoft"
+                width={104}
+                height={22}
+              />
+              <TrustedByLogo
+                src="/assets/landing/trusted-by-amazon.svg"
+                alt="Amazon"
+                width={72}
+                height={24}
+              />
+              <TrustedByLogo
+                src="/assets/landing/trusted-by-meta.svg"
+                alt="Meta"
+                width={103}
+                height={17}
+              />
+              <TrustedByLogo
+                src="/assets/landing/trusted-by-google.svg"
+                alt="Google"
+                width={76}
+                height={26}
+              />
+              <TrustedByLogo
+                src="/assets/landing/trusted-by-toss.png"
+                alt="Toss"
+                width={86}
+                height={26}
               />
             </TrustedByLogos>
+            <CursorTooltip
+              $visible={isHovered}
+              style={{
+                left: mousePos.x,
+                top: mousePos.y,
+              }}
+            >
+              Based on{" "}
+              <TooltipLink
+                href="https://github.com/junhoyeo/tokscale"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                tokscale
+              </TooltipLink>{" "}
+              community reports
+            </CursorTooltip>
           </TrustedBySection>
         </HeroRight>
       </HeroRow>
@@ -182,6 +216,7 @@ const HeroVideo = styled.video`
   object-fit: contain;
   z-index: 1;
   margin-top: 120px;
+  margin-right: -40px;
 
   @media (max-width: 900px) {
     width: 70%;
@@ -259,8 +294,7 @@ const StarButton = styled.a`
   justify-content: center;
   align-items: center;
   gap: 6px;
-  width: 198px;
-  min-width: 198px;
+  width: fit-content;
   height: 48px;
   padding: 0 28px;
   background: #000000;
@@ -363,11 +397,13 @@ const StarBadgeText = styled.span`
 `;
 
 const TrustedBySection = styled.div`
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 28px;
   padding: 28px 32px 36px;
   background: #01070f;
+  cursor: help;
 
   @media (max-width: 900px) {
     padding: 20px 20px 28px;
@@ -389,8 +425,84 @@ const TrustedByLabel = styled.p`
 
 const TrustedByLogos = styled.div`
   display: flex;
+  flex-wrap: wrap;
+  gap: 38px;
+  max-width: 408px;
 
   @media (max-width: 900px) {
     justify-content: center;
+  }
+`;
+
+const TrustedByLogo = styled(Image)`
+  height: auto;
+  object-fit: contain;
+`;
+
+const ArrowIconSvg = styled.svg`
+  margin-left: 6px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+  transition: transform 0.2s ease;
+
+  ${StarButton}:hover & {
+    transform: translateX(3px);
+  }
+`;
+
+const ArrowIcon = () => (
+  <ArrowIconSvg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M3.33334 8H12.6667"
+      stroke="#FFFFFF"
+      strokeWidth="1.33301"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M8.66666 4L12.6667 8L8.66666 12"
+      stroke="#FFFFFF"
+      strokeWidth="1.33301"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </ArrowIconSvg>
+);
+
+const CursorTooltip = styled.div<{ $visible: boolean }>`
+  position: absolute;
+  pointer-events: none;
+  transform: translate(8px, 16px);
+  background-color: rgba(23, 23, 23, 0.95);
+  color: #e5e5e5;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-family: var(--font-figtree), "Figtree", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: -0.2px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  user-select: none;
+  white-space: nowrap;
+  z-index: 1000;
+  opacity: ${({ $visible }) => ($visible ? 1 : 0)};
+  transition: opacity 0.15s ease;
+`;
+
+const TooltipLink = styled.a`
+  color: #0073ff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: #3399ff;
   }
 `;

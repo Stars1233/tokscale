@@ -4,7 +4,7 @@ import styled from "styled-components";
 import {
   HeroSection,
   QuickstartSection,
-  GlobeSection,
+  WorldwideSection,
   DescriptionSection,
   FollowSection,
   FooterSection,
@@ -20,7 +20,7 @@ export function LandingPage({ stargazersCount = 0 }: LandingPageProps) {
       <PageInner>
         <HeroSection stargazersCount={stargazersCount} />
         <QuickstartSection />
-        <GlobeSection />
+        <WorldwideSection />
         <DescriptionSection />
         <FollowSection />
         <FooterSection />

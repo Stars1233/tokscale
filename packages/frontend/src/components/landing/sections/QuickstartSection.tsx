@@ -194,7 +194,7 @@ const QuickstartCard = styled.div<{ $position: "left" | "right" }>`
 const CardPatternOverlay = styled.div<{ $position: "left" | "right" }>`
   position: absolute;
   left: 0;
-  top: ${({ $position }) => ($position === "left" ? "142px" : "121px")};
+  top: ${({ $position }) => ($position === "left" ? "120px" : "96px")};
   width: 100%;
   max-width: 600px;
   height: 24px;
