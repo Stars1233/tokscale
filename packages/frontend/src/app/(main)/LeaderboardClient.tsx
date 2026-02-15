@@ -678,6 +678,7 @@ interface LeaderboardClientProps {
   initialData: LeaderboardData;
   currentUser: { id: string; username: string; displayName: string | null; avatarUrl: string | null } | null;
   initialSortBy: 'tokens' | 'cost';
+  initialUserRank: LeaderboardUser | null;
 }
 
 function isValidLeaderboardData(data: unknown): data is LeaderboardData {
@@ -758,7 +759,7 @@ const LeaderboardRow = memo(function LeaderboardRow({
   );
 });
 
-export default function LeaderboardClient({ initialData, currentUser, initialSortBy }: LeaderboardClientProps) {
+export default function LeaderboardClient({ initialData, currentUser, initialSortBy, initialUserRank }: LeaderboardClientProps) {
   const router = useRouter();
   const [data, setData] = useState<LeaderboardData>(initialData);
   const [isLoading, setIsLoading] = useState(false);
@@ -766,7 +767,7 @@ export default function LeaderboardClient({ initialData, currentUser, initialSor
   const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
   const [period, setPeriod] = useState<Period>(initialData.period);
   const [page, setPage] = useState(initialData.pagination.page);
-  const [currentUserRank, setCurrentUserRank] = useState<LeaderboardUser | null>(null);
+  const [currentUserRank, setCurrentUserRank] = useState<LeaderboardUser | null>(initialUserRank);
   const [currentUserRankError, setCurrentUserRankError] = useState(false);
 
   const { leaderboardSortBy, setLeaderboardSort, mounted } = useSettings();
@@ -778,10 +779,17 @@ export default function LeaderboardClient({ initialData, currentUser, initialSor
   const prevPageRef = useRef(initialData.pagination.page);
   const prevSortByRef = useRef(initialSortBy);
 
+  const isFirstRankFetch = useRef(true);
+
   useEffect(() => {
     if (!currentUser) {
       setCurrentUserRank(null);
       setCurrentUserRankError(false);
+      return;
+    }
+
+    if (isFirstRankFetch.current) {
+      isFirstRankFetch.current = false;
       return;
     }
 

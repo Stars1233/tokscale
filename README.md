@@ -6,7 +6,7 @@
 
 </div>
 
-> A high-performance CLI tool and visualization dashboard for tracking AI coding assistant token usage and costs across multiple platforms.
+> A high-performance CLI tool and visualization dashboard for tracking token usage and costs across multiple AI coding agents.
 
 <div align="center">
 
