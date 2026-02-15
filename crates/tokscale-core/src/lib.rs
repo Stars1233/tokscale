@@ -57,6 +57,46 @@ pub fn normalize_model_for_grouping(model_id: &str) -> String {
     name
 }
 
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+pub enum GroupBy {
+    Model,
+    ClientModel,
+    ClientProviderModel,
+}
+
+impl Default for GroupBy {
+    fn default() -> Self {
+        GroupBy::ClientModel
+    }
+}
+
+impl std::fmt::Display for GroupBy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GroupBy::Model => write!(f, "model"),
+            GroupBy::ClientModel => write!(f, "client,model"),
+            GroupBy::ClientProviderModel => write!(f, "client,provider,model"),
+        }
+    }
+}
+
+impl std::str::FromStr for GroupBy {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let normalized: String = s.split(',').map(|p| p.trim()).collect::<Vec<_>>().join(",");
+        match normalized.to_lowercase().as_str() {
+            "model" => Ok(GroupBy::Model),
+            "client,model" | "client-model" => Ok(GroupBy::ClientModel),
+            "client,provider,model" | "client-provider-model" => Ok(GroupBy::ClientProviderModel),
+            _ => Err(format!(
+                "Invalid group-by value: '{}'. Valid options: model, client,model, client,provider,model",
+                s
+            )),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default, serde::Serialize)]
 pub struct TokenBreakdown {
     pub input: i64,
@@ -182,11 +222,13 @@ pub struct ReportOptions {
     pub since: Option<String>,
     pub until: Option<String>,
     pub year: Option<String>,
+    pub group_by: GroupBy,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ModelUsage {
     pub source: String,
+    pub merged_clients: Option<String>,
     pub model: String,
     pub provider: String,
     pub input: i64,
@@ -489,12 +531,24 @@ pub async fn get_model_report(options: ReportOptions) -> Result<ModelReport, Str
     let filtered = filter_messages_for_report(all_messages, &options);
 
     let mut model_map: HashMap<String, ModelUsage> = HashMap::new();
+    let group_by = &options.group_by;
 
     for msg in filtered {
         let normalized = normalize_model_for_grouping(&msg.model_id);
-        let key = format!("{}:{}", msg.source, normalized);
+        let key = match group_by {
+            GroupBy::Model => normalized.clone(),
+            GroupBy::ClientModel => format!("{}:{}", msg.source, normalized),
+            GroupBy::ClientProviderModel => {
+                format!("{}:{}:{}", msg.source, msg.provider_id, normalized)
+            }
+        };
         let entry = model_map.entry(key).or_insert_with(|| ModelUsage {
             source: msg.source.clone(),
+            merged_clients: if *group_by == GroupBy::Model {
+                Some(msg.source.clone())
+            } else {
+                None
+            },
             model: normalized.clone(),
             provider: msg.provider_id.clone(),
             input: 0,
@@ -506,8 +560,22 @@ pub async fn get_model_report(options: ReportOptions) -> Result<ModelReport, Str
             cost: 0.0,
         });
 
-        if !entry.provider.split(", ").any(|p| p == msg.provider_id) {
-            entry.provider = format!("{}, {}", entry.provider, msg.provider_id);
+        if *group_by == GroupBy::Model {
+            if !entry.source.split(", ").any(|s| s == msg.source) {
+                entry.source = format!("{}, {}", entry.source, msg.source);
+            }
+
+            if let Some(merged_clients) = &mut entry.merged_clients {
+                if !merged_clients.split(", ").any(|s| s == msg.source) {
+                    *merged_clients = format!("{}, {}", merged_clients, msg.source);
+                }
+            }
+        }
+
+        if *group_by != GroupBy::ClientProviderModel {
+            if !entry.provider.split(", ").any(|p| p == msg.provider_id) {
+                entry.provider = format!("{}, {}", entry.provider, msg.provider_id);
+            }
         }
 
         entry.input += msg.tokens.input;
@@ -924,7 +992,8 @@ pub fn parsed_to_unified(msg: &ParsedMessage, cost: f64) -> UnifiedMessage {
 
 #[cfg(test)]
 mod tests {
-    use super::normalize_model_for_grouping;
+    use super::{normalize_model_for_grouping, GroupBy};
+    use std::str::FromStr;
 
     #[test]
     fn test_normalize_model_for_grouping() {
@@ -989,5 +1058,54 @@ mod tests {
             normalize_model_for_grouping("claude-opus-4.5-20251101"),
             "claude-opus-4-5"
         );
+    }
+
+    #[test]
+    fn test_group_by_from_str_valid_values() {
+        assert_eq!(GroupBy::from_str("model").unwrap(), GroupBy::Model);
+        assert_eq!(
+            GroupBy::from_str("client,model").unwrap(),
+            GroupBy::ClientModel
+        );
+        assert_eq!(
+            GroupBy::from_str("client-model").unwrap(),
+            GroupBy::ClientModel
+        );
+        assert_eq!(
+            GroupBy::from_str("client,provider,model").unwrap(),
+            GroupBy::ClientProviderModel
+        );
+        assert_eq!(
+            GroupBy::from_str("client-provider-model").unwrap(),
+            GroupBy::ClientProviderModel
+        );
+        assert!(GroupBy::from_str("unknown").is_err());
+    }
+
+    #[test]
+    fn test_group_by_default_is_client_model() {
+        assert_eq!(GroupBy::default(), GroupBy::ClientModel);
+    }
+
+    #[test]
+    fn test_group_by_display_round_trips_with_from_str() {
+        let variants = [
+            GroupBy::Model,
+            GroupBy::ClientModel,
+            GroupBy::ClientProviderModel,
+        ];
+
+        for variant in variants {
+            let rendered = variant.to_string();
+            let parsed = GroupBy::from_str(&rendered).unwrap();
+            assert_eq!(parsed, variant);
+        }
+    }
+
+    #[test]
+    fn test_group_by_from_str_whitespace_handling() {
+        assert_eq!(GroupBy::from_str("client, model").unwrap(), GroupBy::ClientModel);
+        assert_eq!(GroupBy::from_str(" model ").unwrap(), GroupBy::Model);
+        assert_eq!(GroupBy::from_str("client , provider , model").unwrap(), GroupBy::ClientProviderModel);
     }
 }
