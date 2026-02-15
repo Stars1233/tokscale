@@ -688,3 +688,784 @@ impl App {
         self.terminal_width < 60
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tui::data::{ModelUsage, TokenBreakdown};
+
+    #[test]
+    fn test_tab_all() {
+        let tabs = Tab::all();
+        assert_eq!(tabs.len(), 4);
+        assert_eq!(tabs[0], Tab::Overview);
+        assert_eq!(tabs[1], Tab::Models);
+        assert_eq!(tabs[2], Tab::Daily);
+        assert_eq!(tabs[3], Tab::Stats);
+    }
+
+    #[test]
+    fn test_tab_next() {
+        assert_eq!(Tab::Overview.next(), Tab::Models);
+        assert_eq!(Tab::Models.next(), Tab::Daily);
+        assert_eq!(Tab::Daily.next(), Tab::Stats);
+        assert_eq!(Tab::Stats.next(), Tab::Overview);
+    }
+
+    #[test]
+    fn test_tab_prev() {
+        assert_eq!(Tab::Overview.prev(), Tab::Stats);
+        assert_eq!(Tab::Models.prev(), Tab::Overview);
+        assert_eq!(Tab::Daily.prev(), Tab::Models);
+        assert_eq!(Tab::Stats.prev(), Tab::Daily);
+    }
+
+    #[test]
+    fn test_tab_as_str() {
+        assert_eq!(Tab::Overview.as_str(), "Overview");
+        assert_eq!(Tab::Models.as_str(), "Models");
+        assert_eq!(Tab::Daily.as_str(), "Daily");
+        assert_eq!(Tab::Stats.as_str(), "Stats");
+    }
+
+    #[test]
+    fn test_tab_short_name() {
+        assert_eq!(Tab::Overview.short_name(), "Ovw");
+        assert_eq!(Tab::Models.short_name(), "Mod");
+        assert_eq!(Tab::Daily.short_name(), "Day");
+        assert_eq!(Tab::Stats.short_name(), "Sta");
+    }
+
+    #[test]
+    fn test_reset_selection() {
+        let config = TuiConfig {
+            theme: "blue".to_string(),
+            refresh: 0,
+            sessions_path: None,
+            sources: None,
+            since: None,
+            until: None,
+            year: None,
+            initial_tab: None,
+        };
+        let mut app = App::new_with_cached_data(config, None).unwrap();
+
+        app.selected_index = 5;
+        app.scroll_offset = 3;
+        app.selected_graph_cell = Some((2, 4));
+
+        app.reset_selection();
+
+        assert_eq!(app.selected_index, 0);
+        assert_eq!(app.scroll_offset, 0);
+        assert_eq!(app.selected_graph_cell, None);
+    }
+
+    #[test]
+    fn test_move_selection_up() {
+        let config = TuiConfig {
+            theme: "blue".to_string(),
+            refresh: 0,
+            sessions_path: None,
+            sources: None,
+            since: None,
+            until: None,
+            year: None,
+            initial_tab: None,
+        };
+        let mut app = App::new_with_cached_data(config, None).unwrap();
+
+        // Add some mock data
+        app.data.models = vec![
+            ModelUsage {
+                model: "model1".to_string(),
+                provider: "provider1".to_string(),
+                source: "opencode".to_string(),
+                tokens: TokenBreakdown::default(),
+                cost: 0.0,
+                session_count: 1,
+            },
+            ModelUsage {
+                model: "model2".to_string(),
+                provider: "provider2".to_string(),
+                source: "opencode".to_string(),
+                tokens: TokenBreakdown::default(),
+                cost: 0.0,
+                session_count: 1,
+            },
+        ];
+
+        app.selected_index = 1;
+        app.move_selection_up();
+        assert_eq!(app.selected_index, 0);
+
+        // At top boundary - should not move
+        app.move_selection_up();
+        assert_eq!(app.selected_index, 0);
+    }
+
+    #[test]
+    fn test_move_selection_down() {
+        let config = TuiConfig {
+            theme: "blue".to_string(),
+            refresh: 0,
+            sessions_path: None,
+            sources: None,
+            since: None,
+            until: None,
+            year: None,
+            initial_tab: None,
+        };
+        let mut app = App::new_with_cached_data(config, None).unwrap();
+
+        // Add some mock data
+        app.data.models = vec![
+            ModelUsage {
+                model: "model1".to_string(),
+                provider: "provider1".to_string(),
+                source: "opencode".to_string(),
+                tokens: TokenBreakdown::default(),
+                cost: 0.0,
+                session_count: 1,
+            },
+            ModelUsage {
+                model: "model2".to_string(),
+                provider: "provider2".to_string(),
+                source: "opencode".to_string(),
+                tokens: TokenBreakdown::default(),
+                cost: 0.0,
+                session_count: 1,
+            },
+        ];
+
+        app.selected_index = 0;
+        app.move_selection_down();
+        assert_eq!(app.selected_index, 1);
+
+        // At bottom boundary - should not move
+        app.move_selection_down();
+        assert_eq!(app.selected_index, 1);
+    }
+
+    #[test]
+    fn test_clamp_selection() {
+        let config = TuiConfig {
+            theme: "blue".to_string(),
+            refresh: 0,
+            sessions_path: None,
+            sources: None,
+            since: None,
+            until: None,
+            year: None,
+            initial_tab: None,
+        };
+        let mut app = App::new_with_cached_data(config, None).unwrap();
+
+        // Add some mock data
+        app.data.models = vec![ModelUsage {
+            model: "model1".to_string(),
+            provider: "provider1".to_string(),
+            source: "opencode".to_string(),
+            tokens: TokenBreakdown::default(),
+            cost: 0.0,
+            session_count: 1,
+        }];
+
+        // Set selection beyond bounds
+        app.selected_index = 10;
+        app.clamp_selection();
+        assert_eq!(app.selected_index, 0);
+
+        // Empty data
+        app.data.models.clear();
+        app.selected_index = 5;
+        app.clamp_selection();
+        assert_eq!(app.selected_index, 0);
+        assert_eq!(app.scroll_offset, 0);
+    }
+
+    #[test]
+    fn test_set_sort() {
+        let config = TuiConfig {
+            theme: "blue".to_string(),
+            refresh: 0,
+            sessions_path: None,
+            sources: None,
+            since: None,
+            until: None,
+            year: None,
+            initial_tab: None,
+        };
+        let mut app = App::new_with_cached_data(config, None).unwrap();
+
+        // Initial state
+        assert_eq!(app.sort_field, SortField::Cost);
+        assert_eq!(app.sort_direction, SortDirection::Descending);
+
+        // Change to different field
+        app.set_sort(SortField::Tokens);
+        assert_eq!(app.sort_field, SortField::Tokens);
+        assert_eq!(app.sort_direction, SortDirection::Descending);
+
+        // Toggle same field
+        app.set_sort(SortField::Tokens);
+        assert_eq!(app.sort_field, SortField::Tokens);
+        assert_eq!(app.sort_direction, SortDirection::Ascending);
+
+        // Toggle again
+        app.set_sort(SortField::Tokens);
+        assert_eq!(app.sort_field, SortField::Tokens);
+        assert_eq!(app.sort_direction, SortDirection::Descending);
+    }
+
+    #[test]
+    fn test_should_quit() {
+        let config = TuiConfig {
+            theme: "blue".to_string(),
+            refresh: 0,
+            sessions_path: None,
+            sources: None,
+            since: None,
+            until: None,
+            year: None,
+            initial_tab: None,
+        };
+        let app = App::new_with_cached_data(config, None).unwrap();
+
+        assert_eq!(app.should_quit, false);
+    }
+
+    // ── Helper ──────────────────────────────────────────────────────
+
+    fn make_app() -> App {
+        let config = TuiConfig {
+            theme: "blue".to_string(),
+            refresh: 0,
+            sessions_path: None,
+            sources: None,
+            since: None,
+            until: None,
+            year: None,
+            initial_tab: None,
+        };
+        App::new_with_cached_data(config, None).unwrap()
+    }
+
+    fn make_app_with_models(n: usize) -> App {
+        let mut app = make_app();
+        app.data.models = (0..n)
+            .map(|i| ModelUsage {
+                model: format!("model{}", i),
+                provider: "provider".to_string(),
+                source: "opencode".to_string(),
+                tokens: TokenBreakdown::default(),
+                cost: 0.0,
+                session_count: 1,
+            })
+            .collect();
+        app
+    }
+
+    fn key(code: KeyCode) -> KeyEvent {
+        KeyEvent::new(code, KeyModifiers::NONE)
+    }
+
+    fn key_with_mod(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
+        KeyEvent::new(code, modifiers)
+    }
+
+    // ── handle_key_event: quit ──────────────────────────────────────
+
+    #[test]
+    fn test_handle_key_quit_q() {
+        let mut app = make_app();
+        let quit = app.handle_key_event(key(KeyCode::Char('q')));
+        assert!(quit);
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_handle_key_quit_ctrl_c() {
+        let mut app = make_app();
+        let quit = app.handle_key_event(key_with_mod(KeyCode::Char('c'), KeyModifiers::CONTROL));
+        assert!(quit);
+        assert!(app.should_quit);
+    }
+
+    // ── handle_key_event: tab switching ─────────────────────────────
+
+    #[test]
+    fn test_handle_key_tab_switch() {
+        let mut app = make_app();
+        assert_eq!(app.current_tab, Tab::Overview);
+
+        app.handle_key_event(key(KeyCode::Tab));
+        assert_eq!(app.current_tab, Tab::Models);
+
+        app.handle_key_event(key(KeyCode::Tab));
+        assert_eq!(app.current_tab, Tab::Daily);
+
+        app.handle_key_event(key(KeyCode::Tab));
+        assert_eq!(app.current_tab, Tab::Stats);
+
+        app.handle_key_event(key(KeyCode::Tab));
+        assert_eq!(app.current_tab, Tab::Overview);
+    }
+
+    #[test]
+    fn test_handle_key_backtab_switch() {
+        let mut app = make_app();
+        assert_eq!(app.current_tab, Tab::Overview);
+
+        app.handle_key_event(key(KeyCode::BackTab));
+        assert_eq!(app.current_tab, Tab::Stats);
+
+        app.handle_key_event(key(KeyCode::BackTab));
+        assert_eq!(app.current_tab, Tab::Daily);
+    }
+
+    #[test]
+    fn test_handle_key_left_right_switch() {
+        let mut app = make_app();
+        app.handle_key_event(key(KeyCode::Right));
+        assert_eq!(app.current_tab, Tab::Models);
+
+        app.handle_key_event(key(KeyCode::Left));
+        assert_eq!(app.current_tab, Tab::Overview);
+    }
+
+    #[test]
+    fn test_handle_key_tab_resets_selection() {
+        let mut app = make_app_with_models(5);
+        app.selected_index = 3;
+        app.scroll_offset = 1;
+        app.selected_graph_cell = Some((2, 4));
+
+        app.handle_key_event(key(KeyCode::Tab));
+        assert_eq!(app.selected_index, 0);
+        assert_eq!(app.scroll_offset, 0);
+        assert_eq!(app.selected_graph_cell, None);
+    }
+
+    // ── handle_key_event: sort ──────────────────────────────────────
+
+    #[test]
+    fn test_handle_key_sort_cost() {
+        let mut app = make_app();
+        app.handle_key_event(key(KeyCode::Char('c')));
+        assert_eq!(app.sort_field, SortField::Cost);
+        assert_eq!(app.sort_direction, SortDirection::Ascending);
+    }
+
+    #[test]
+    fn test_handle_key_sort_tokens() {
+        let mut app = make_app();
+        app.handle_key_event(key(KeyCode::Char('t')));
+        assert_eq!(app.sort_field, SortField::Tokens);
+        assert_eq!(app.sort_direction, SortDirection::Descending);
+    }
+
+    #[test]
+    fn test_handle_key_sort_date() {
+        let mut app = make_app();
+        app.handle_key_event(key(KeyCode::Char('d')));
+        assert_eq!(app.sort_field, SortField::Date);
+        assert_eq!(app.sort_direction, SortDirection::Descending);
+    }
+
+    #[test]
+    fn test_handle_key_sort_toggle_direction() {
+        let mut app = make_app();
+        app.handle_key_event(key(KeyCode::Char('t')));
+        assert_eq!(app.sort_direction, SortDirection::Descending);
+
+        app.handle_key_event(key(KeyCode::Char('t')));
+        assert_eq!(app.sort_direction, SortDirection::Ascending);
+
+        app.handle_key_event(key(KeyCode::Char('t')));
+        assert_eq!(app.sort_direction, SortDirection::Descending);
+    }
+
+    // ── handle_key_event: source toggle ─────────────────────────────
+
+    #[test]
+    #[ignore] // triggers load_data() which requires network + filesystem I/O
+    fn test_handle_key_source_toggle_1_9() {
+        let mut app = make_app();
+        let initial_count = app.enabled_sources.len();
+        assert!(initial_count > 1);
+
+        app.handle_key_event(key(KeyCode::Char('1')));
+        assert_eq!(app.enabled_sources.len(), initial_count - 1);
+        assert!(!app.enabled_sources.contains(&Source::OpenCode));
+
+        app.handle_key_event(key(KeyCode::Char('1')));
+        assert!(app.enabled_sources.contains(&Source::OpenCode));
+    }
+
+    #[test]
+    #[ignore] // triggers load_data() which requires network + filesystem I/O
+    fn test_handle_key_source_toggle_prevents_empty() {
+        let mut app = make_app();
+        app.enabled_sources.clear();
+        app.enabled_sources.insert(Source::OpenCode);
+
+        app.handle_key_event(key(KeyCode::Char('1')));
+        assert_eq!(app.enabled_sources.len(), 1);
+        assert!(app.enabled_sources.contains(&Source::OpenCode));
+    }
+
+    // ── handle_key_event: navigation ────────────────────────────────
+
+    #[test]
+    fn test_handle_key_navigation_up_down() {
+        let mut app = make_app_with_models(5);
+        assert_eq!(app.selected_index, 0);
+
+        app.handle_key_event(key(KeyCode::Down));
+        assert_eq!(app.selected_index, 1);
+
+        app.handle_key_event(key(KeyCode::Down));
+        assert_eq!(app.selected_index, 2);
+
+        app.handle_key_event(key(KeyCode::Up));
+        assert_eq!(app.selected_index, 1);
+
+        app.handle_key_event(key(KeyCode::Up));
+        assert_eq!(app.selected_index, 0);
+
+        app.handle_key_event(key(KeyCode::Up));
+        assert_eq!(app.selected_index, 0);
+    }
+
+    #[test]
+    fn test_handle_key_navigation_boundary() {
+        let mut app = make_app_with_models(3);
+        app.handle_key_event(key(KeyCode::Down));
+        app.handle_key_event(key(KeyCode::Down));
+        assert_eq!(app.selected_index, 2);
+
+        app.handle_key_event(key(KeyCode::Down));
+        assert_eq!(app.selected_index, 2);
+    }
+
+    // ── handle_key_event: theme ─────────────────────────────────────
+
+    #[test]
+    fn test_handle_key_theme_cycle() {
+        let mut app = make_app();
+        let initial_theme = app.theme.name;
+
+        app.handle_key_event(key(KeyCode::Char('p')));
+        assert_ne!(app.theme.name, initial_theme);
+
+        for _ in 0..8 {
+            app.handle_key_event(key(KeyCode::Char('p')));
+        }
+        assert_eq!(app.theme.name, initial_theme);
+    }
+
+    // ── handle_key_event: export ────────────────────────────────────
+
+    #[test]
+    fn test_handle_key_export() {
+        let mut app = make_app();
+        app.handle_key_event(key(KeyCode::Char('e')));
+        assert!(app.status_message.is_some());
+        let msg = app.status_message.as_ref().unwrap();
+        assert!(
+            msg.contains("Exported to") || msg.contains("Export failed"),
+            "unexpected status: {}",
+            msg
+        );
+    }
+
+    // ── handle_key_event: refresh ───────────────────────────────────
+
+    #[test]
+    #[ignore] // triggers load_data() which requires network + filesystem I/O
+    fn test_handle_key_refresh() {
+        let mut app = make_app();
+        std::thread::sleep(Duration::from_millis(5));
+        app.handle_key_event(key(KeyCode::Char('r')));
+        assert!(app.status_message.is_some());
+    }
+
+    // ── handle_key_event: misc keys ─────────────────────────────────
+
+    #[test]
+    fn test_handle_key_esc_clears_graph_selection() {
+        let mut app = make_app();
+        app.selected_graph_cell = Some((1, 2));
+
+        app.handle_key_event(key(KeyCode::Esc));
+        assert_eq!(app.selected_graph_cell, None);
+    }
+
+    #[test]
+    fn test_handle_key_enter_on_stats() {
+        let mut app = make_app();
+        app.current_tab = Tab::Stats;
+        app.selected_graph_cell = Some((1, 2));
+
+        app.handle_key_event(key(KeyCode::Enter));
+        assert!(app.status_message.is_some());
+    }
+
+    #[test]
+    fn test_handle_key_unrecognized_returns_false() {
+        let mut app = make_app();
+        let result = app.handle_key_event(key(KeyCode::F(12)));
+        assert!(!result);
+        assert!(!app.should_quit);
+    }
+
+    #[test]
+    fn test_handle_key_auto_refresh_toggle() {
+        let mut app = make_app();
+        let initial = app.auto_refresh;
+        app.handle_key_event(key_with_mod(KeyCode::Char('R'), KeyModifiers::SHIFT));
+        assert_ne!(app.auto_refresh, initial);
+    }
+
+    #[test]
+    fn test_handle_key_increase_decrease_refresh() {
+        let mut app = make_app();
+        let initial_interval = app.auto_refresh_interval;
+
+        app.handle_key_event(key(KeyCode::Char('+')));
+        assert!(app.auto_refresh_interval > initial_interval);
+
+        let after_increase = app.auto_refresh_interval;
+        app.handle_key_event(key(KeyCode::Char('-')));
+        assert!(app.auto_refresh_interval < after_increase);
+    }
+
+    // ── handle_mouse_event ──────────────────────────────────────────
+
+    #[test]
+    fn test_handle_mouse_left_click() {
+        let mut app = make_app();
+        app.add_click_area(Rect::new(0, 0, 10, 2), ClickAction::Tab(Tab::Models));
+
+        let event = MouseEvent {
+            kind: MouseEventKind::Down(MouseButton::Left),
+            column: 5,
+            row: 1,
+            modifiers: KeyModifiers::NONE,
+        };
+        app.handle_mouse_event(event);
+        assert_eq!(app.current_tab, Tab::Models);
+    }
+
+    #[test]
+    #[ignore] // triggers load_data() via toggle_source
+    fn test_handle_mouse_click_source() {
+        let mut app = make_app();
+        app.add_click_area(Rect::new(0, 0, 10, 2), ClickAction::Source(Source::Claude));
+        let initial_has = app.enabled_sources.contains(&Source::Claude);
+
+        let event = MouseEvent {
+            kind: MouseEventKind::Down(MouseButton::Left),
+            column: 5,
+            row: 1,
+            modifiers: KeyModifiers::NONE,
+        };
+        app.handle_mouse_event(event);
+        assert_ne!(app.enabled_sources.contains(&Source::Claude), initial_has);
+    }
+
+    #[test]
+    fn test_handle_mouse_click_sort() {
+        let mut app = make_app();
+        app.add_click_area(Rect::new(0, 0, 10, 2), ClickAction::Sort(SortField::Tokens));
+
+        let event = MouseEvent {
+            kind: MouseEventKind::Down(MouseButton::Left),
+            column: 5,
+            row: 1,
+            modifiers: KeyModifiers::NONE,
+        };
+        app.handle_mouse_event(event);
+        assert_eq!(app.sort_field, SortField::Tokens);
+    }
+
+    #[test]
+    fn test_handle_mouse_click_graph_cell() {
+        let mut app = make_app();
+        app.add_click_area(
+            Rect::new(10, 5, 3, 3),
+            ClickAction::GraphCell { week: 2, day: 3 },
+        );
+
+        let event = MouseEvent {
+            kind: MouseEventKind::Down(MouseButton::Left),
+            column: 11,
+            row: 6,
+            modifiers: KeyModifiers::NONE,
+        };
+        app.handle_mouse_event(event);
+        assert_eq!(app.selected_graph_cell, Some((2, 3)));
+    }
+
+    #[test]
+    fn test_handle_mouse_click_outside_areas() {
+        let mut app = make_app();
+        app.add_click_area(Rect::new(0, 0, 5, 5), ClickAction::Tab(Tab::Stats));
+
+        let event = MouseEvent {
+            kind: MouseEventKind::Down(MouseButton::Left),
+            column: 50,
+            row: 50,
+            modifiers: KeyModifiers::NONE,
+        };
+        app.handle_mouse_event(event);
+        assert_eq!(app.current_tab, Tab::Overview);
+    }
+
+    #[test]
+    fn test_handle_mouse_scroll_up() {
+        let mut app = make_app_with_models(5);
+        app.selected_index = 2;
+
+        let event = MouseEvent {
+            kind: MouseEventKind::ScrollUp,
+            column: 5,
+            row: 5,
+            modifiers: KeyModifiers::NONE,
+        };
+        app.handle_mouse_event(event);
+        assert_eq!(app.selected_index, 2);
+    }
+
+    #[test]
+    fn test_handle_mouse_scroll_down() {
+        let mut app = make_app_with_models(5);
+        app.selected_index = 2;
+
+        let event = MouseEvent {
+            kind: MouseEventKind::ScrollDown,
+            column: 5,
+            row: 5,
+            modifiers: KeyModifiers::NONE,
+        };
+        app.handle_mouse_event(event);
+        assert_eq!(app.selected_index, 2);
+    }
+
+    // ── handle_resize ───────────────────────────────────────────────
+
+    #[test]
+    fn test_handle_resize() {
+        let mut app = make_app();
+        assert_eq!(app.terminal_width, 80);
+        assert_eq!(app.terminal_height, 24);
+
+        app.handle_resize(120, 40);
+        assert_eq!(app.terminal_width, 120);
+        assert_eq!(app.terminal_height, 40);
+        assert_eq!(app.max_visible_items, 30);
+    }
+
+    #[test]
+    fn test_handle_resize_small_terminal() {
+        let mut app = make_app();
+        app.handle_resize(40, 12);
+        assert_eq!(app.terminal_width, 40);
+        assert_eq!(app.terminal_height, 12);
+        assert_eq!(app.max_visible_items, 2);
+    }
+
+    #[test]
+    fn test_handle_resize_clamps_selection() {
+        let mut app = make_app_with_models(5);
+        app.selected_index = 4;
+        app.scroll_offset = 3;
+        app.max_visible_items = 20;
+
+        app.handle_resize(80, 24);
+        assert!(app.selected_index <= 4);
+    }
+
+    // ── on_tick ─────────────────────────────────────────────────────
+
+    #[test]
+    fn test_on_tick_increments_frame() {
+        let mut app = make_app();
+        assert_eq!(app.spinner_frame, 0);
+
+        app.on_tick();
+        assert_eq!(app.spinner_frame, 1);
+
+        app.on_tick();
+        assert_eq!(app.spinner_frame, 2);
+    }
+
+    #[test]
+    fn test_on_tick_wraps_spinner_frame() {
+        let mut app = make_app();
+        app.spinner_frame = 19;
+        app.on_tick();
+        assert_eq!(app.spinner_frame, 0);
+    }
+
+    #[test]
+    fn test_on_tick_clears_expired_status() {
+        let mut app = make_app();
+        app.set_status("test message");
+        assert!(app.status_message.is_some());
+
+        app.status_message_time = Some(Instant::now() - Duration::from_secs(5));
+        app.auto_refresh = false;
+
+        app.on_tick();
+        assert!(app.status_message.is_none());
+        assert!(app.status_message_time.is_none());
+    }
+
+    #[test]
+    fn test_on_tick_keeps_fresh_status() {
+        let mut app = make_app();
+        app.auto_refresh = false;
+        app.set_status("fresh message");
+
+        app.on_tick();
+        assert!(app.status_message.is_some());
+        assert_eq!(app.status_message.as_ref().unwrap(), "fresh message");
+    }
+
+    // ── click area management ───────────────────────────────────────
+
+    #[test]
+    fn test_clear_click_areas() {
+        let mut app = make_app();
+        app.add_click_area(Rect::new(0, 0, 10, 10), ClickAction::Tab(Tab::Models));
+        app.add_click_area(Rect::new(10, 0, 10, 10), ClickAction::Tab(Tab::Daily));
+        assert_eq!(app.click_areas.len(), 2);
+
+        app.clear_click_areas();
+        assert_eq!(app.click_areas.len(), 0);
+    }
+
+    // ── narrow detection ────────────────────────────────────────────
+
+    #[test]
+    fn test_is_narrow() {
+        let mut app = make_app();
+        app.terminal_width = 79;
+        assert!(app.is_narrow());
+
+        app.terminal_width = 80;
+        assert!(!app.is_narrow());
+    }
+
+    #[test]
+    fn test_is_very_narrow() {
+        let mut app = make_app();
+        app.terminal_width = 59;
+        assert!(app.is_very_narrow());
+
+        app.terminal_width = 60;
+        assert!(!app.is_very_narrow());
+    }
+}

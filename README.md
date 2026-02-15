@@ -17,6 +17,7 @@
 [![GitHub Stars](https://img.shields.io/github/stars/junhoyeo/tokscale?color=0073FF&labelColor=black&style=flat-square)](https://github.com/junhoyeo/tokscale/stargazers)
 [![GitHub Issues](https://img.shields.io/github/issues/junhoyeo/tokscale?color=0073FF&labelColor=black&style=flat-square)](https://github.com/junhoyeo/tokscale/issues)
 [![License](https://img.shields.io/badge/license-MIT-white?labelColor=black&style=flat-square)](https://github.com/junhoyeo/tokscale/blob/master/LICENSE)
+![Coverage](https://github.com/junhoyeo/tokscale/blob/main/.github/badges/coverage.svg?raw=true)
 
 [🇺🇸 English](README.md) | [🇰🇷 한국어](README.ko.md) | [🇯🇵 日本語](README.ja.md) | [🇨🇳 简体中文](README.zh-cn.md)
 
@@ -93,6 +94,10 @@ In the age of AI-assisted development, **tokens are the new energy**. They power
 - [Wrapped 2025](#wrapped-2025)
   - [Command](#command)
   - [What's Included](#whats-included)
+- [Code Coverage](#code-coverage)
+  - [Running Coverage Locally](#running-coverage-locally)
+  - [Coverage Reports](#coverage-reports)
+  - [Coverage Goals](#coverage-goals)
 - [Development](#development)
   - [Prerequisites](#prerequisites-1)
   - [How to Run](#how-to-run)
@@ -661,6 +666,42 @@ The generated image includes:
 - **Contribution Graph** - A visual heatmap of your yearly activity
 
 The generated PNG is optimized for sharing on social media. Share your coding journey with the community!
+
+## Code Coverage
+
+This project maintains automated code coverage tracking. Coverage reports are automatically generated on every PR and push to main.
+
+**Current Coverage:** 22.11% (baseline established)
+
+### Running Coverage Locally
+
+```bash
+# Install cargo-tarpaulin (if not already installed)
+cargo install cargo-tarpaulin
+
+# Generate HTML coverage report
+cargo tarpaulin --workspace --out Html --output-dir target/coverage
+
+# Open the report
+open target/coverage/tarpaulin-report.html  # macOS
+xdg-open target/coverage/tarpaulin-report.html  # Linux
+```
+
+### Coverage Reports
+
+- **HTML Report:** Generated at `target/coverage/tarpaulin-report.html`
+- **Coverage Badge:** Automatically updated on every push to main via GitHub Actions
+- **CI Integration:** Coverage runs automatically on all PRs via GitHub Actions
+
+### Coverage Goals
+
+| Component | Current | Target |
+|-----------|---------|--------|
+| Core Library | ~70% | 80% |
+| Session Parsers | ~70% | 80% |
+| CLI Commands | ~14% | 50% |
+| TUI (ratatui) | 0% | 30% |
+| **Overall** | **22.11%** | **25%** |
 
 ## Development
 

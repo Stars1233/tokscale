@@ -313,3 +313,271 @@ pub fn whoami() -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serial_test::serial;
+    use std::env;
+    use tempfile::TempDir;
+
+    #[test]
+    #[serial]
+    fn test_get_api_base_url_default() {
+        unsafe {
+            env::remove_var("TOKSCALE_API_URL");
+        }
+        assert_eq!(get_api_base_url(), "https://tokscale.ai");
+    }
+
+    #[test]
+    #[serial]
+    fn test_get_api_base_url_custom() {
+        unsafe {
+            env::set_var("TOKSCALE_API_URL", "https://custom.api.url");
+        }
+        assert_eq!(get_api_base_url(), "https://custom.api.url");
+        unsafe {
+            env::remove_var("TOKSCALE_API_URL");
+        }
+    }
+
+    #[test]
+    fn test_credentials_serialization() {
+        let creds = Credentials {
+            token: "test_token_123".to_string(),
+            username: "testuser".to_string(),
+            avatar_url: Some("https://example.com/avatar.png".to_string()),
+            created_at: "2024-01-01T00:00:00Z".to_string(),
+        };
+
+        let json = serde_json::to_string(&creds).unwrap();
+        let deserialized: Credentials = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.token, creds.token);
+        assert_eq!(deserialized.username, creds.username);
+        assert_eq!(deserialized.avatar_url, creds.avatar_url);
+        assert_eq!(deserialized.created_at, creds.created_at);
+    }
+
+    #[test]
+    fn test_credentials_serialization_without_avatar() {
+        let creds = Credentials {
+            token: "test_token_456".to_string(),
+            username: "testuser2".to_string(),
+            avatar_url: None,
+            created_at: "2024-01-02T00:00:00Z".to_string(),
+        };
+
+        let json = serde_json::to_string(&creds).unwrap();
+        let deserialized: Credentials = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.token, creds.token);
+        assert_eq!(deserialized.username, creds.username);
+        assert_eq!(deserialized.avatar_url, None);
+        assert_eq!(deserialized.created_at, creds.created_at);
+
+        assert!(!json.contains("avatarUrl"));
+    }
+
+    #[test]
+    #[serial]
+    fn test_get_credentials_path() {
+        let temp_dir = TempDir::new().unwrap();
+        unsafe {
+            env::set_var("HOME", temp_dir.path());
+        }
+
+        let path = get_credentials_path().unwrap();
+        let expected = temp_dir.path().join(".config/tokscale/credentials.json");
+
+        assert_eq!(path, expected);
+
+        unsafe {
+            env::remove_var("HOME");
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_save_credentials() {
+        let temp_dir = TempDir::new().unwrap();
+        unsafe {
+            env::set_var("HOME", temp_dir.path());
+        }
+
+        let creds = Credentials {
+            token: "save_test_token".to_string(),
+            username: "saveuser".to_string(),
+            avatar_url: Some("https://example.com/save.png".to_string()),
+            created_at: "2024-01-03T00:00:00Z".to_string(),
+        };
+
+        save_credentials(&creds).unwrap();
+
+        let path = get_credentials_path().unwrap();
+        assert!(path.exists());
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let metadata = fs::metadata(&path).unwrap();
+            let permissions = metadata.permissions();
+            assert_eq!(permissions.mode() & 0o777, 0o600);
+        }
+
+        let content = fs::read_to_string(&path).unwrap();
+        let loaded: Credentials = serde_json::from_str(&content).unwrap();
+        assert_eq!(loaded.token, creds.token);
+        assert_eq!(loaded.username, creds.username);
+
+        unsafe {
+            env::remove_var("HOME");
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_load_credentials() {
+        let temp_dir = TempDir::new().unwrap();
+        unsafe {
+            env::set_var("HOME", temp_dir.path());
+        }
+
+        let creds = Credentials {
+            token: "load_test_token".to_string(),
+            username: "loaduser".to_string(),
+            avatar_url: None,
+            created_at: "2024-01-04T00:00:00Z".to_string(),
+        };
+
+        save_credentials(&creds).unwrap();
+
+        let loaded = load_credentials().unwrap();
+
+        assert_eq!(loaded.token, creds.token);
+        assert_eq!(loaded.username, creds.username);
+        assert_eq!(loaded.avatar_url, creds.avatar_url);
+        assert_eq!(loaded.created_at, creds.created_at);
+
+        unsafe {
+            env::remove_var("HOME");
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_load_credentials_nonexistent() {
+        let temp_dir = TempDir::new().unwrap();
+        unsafe {
+            env::set_var("HOME", temp_dir.path());
+        }
+
+        let loaded = load_credentials();
+        assert!(loaded.is_none());
+
+        unsafe {
+            env::remove_var("HOME");
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_clear_credentials() {
+        let temp_dir = TempDir::new().unwrap();
+        unsafe {
+            env::set_var("HOME", temp_dir.path());
+        }
+
+        let creds = Credentials {
+            token: "clear_test_token".to_string(),
+            username: "clearuser".to_string(),
+            avatar_url: None,
+            created_at: "2024-01-05T00:00:00Z".to_string(),
+        };
+
+        save_credentials(&creds).unwrap();
+        let path = get_credentials_path().unwrap();
+        assert!(path.exists());
+
+        let cleared = clear_credentials().unwrap();
+        assert!(cleared);
+        assert!(!path.exists());
+
+        unsafe {
+            env::remove_var("HOME");
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_clear_credentials_nonexistent() {
+        let temp_dir = TempDir::new().unwrap();
+        unsafe {
+            env::set_var("HOME", temp_dir.path());
+        }
+
+        let cleared = clear_credentials().unwrap();
+        assert!(!cleared);
+
+        unsafe {
+            env::remove_var("HOME");
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_ensure_config_dir() {
+        let temp_dir = TempDir::new().unwrap();
+        unsafe {
+            env::set_var("HOME", temp_dir.path());
+        }
+
+        let config_dir = temp_dir.path().join(".config/tokscale");
+        assert!(!config_dir.exists());
+
+        ensure_config_dir().unwrap();
+
+        assert!(config_dir.exists());
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let metadata = fs::metadata(&config_dir).unwrap();
+            let permissions = metadata.permissions();
+            assert_eq!(permissions.mode() & 0o777, 0o700);
+        }
+
+        unsafe {
+            env::remove_var("HOME");
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_save_and_load_roundtrip() {
+        let temp_dir = TempDir::new().unwrap();
+        unsafe {
+            env::set_var("HOME", temp_dir.path());
+        }
+
+        let original = Credentials {
+            token: "roundtrip_token".to_string(),
+            username: "roundtripuser".to_string(),
+            avatar_url: Some("https://example.com/roundtrip.png".to_string()),
+            created_at: "2024-01-06T12:34:56Z".to_string(),
+        };
+
+        save_credentials(&original).unwrap();
+        let loaded = load_credentials().unwrap();
+
+        assert_eq!(loaded.token, original.token);
+        assert_eq!(loaded.username, original.username);
+        assert_eq!(loaded.avatar_url, original.avatar_url);
+        assert_eq!(loaded.created_at, original.created_at);
+
+        unsafe {
+            env::remove_var("HOME");
+        }
+    }
+}

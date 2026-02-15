@@ -402,3 +402,540 @@ fn calculate_intensities(contributions: &mut [DailyContribution]) {
         };
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::{DateTime, Utc};
+
+    // Helper function to create mock UnifiedMessage
+    fn mock_unified_message(
+        date: &str,
+        tokens: i64,
+        cost: f64,
+        model: &str,
+        source: &str,
+    ) -> UnifiedMessage {
+        // Parse date string to timestamp
+        let datetime = format!("{}T00:00:00Z", date)
+            .parse::<DateTime<Utc>>()
+            .unwrap();
+        let timestamp = datetime.timestamp_millis();
+
+        UnifiedMessage {
+            source: source.to_string(),
+            model_id: model.to_string(),
+            provider_id: "test-provider".to_string(),
+            session_id: "test-session".to_string(),
+            timestamp,
+            date: date.to_string(),
+            tokens: TokenBreakdown {
+                input: tokens / 2,
+                output: tokens / 2,
+                cache_read: 0,
+                cache_write: 0,
+                reasoning: 0,
+            },
+            cost,
+            agent: None,
+            dedup_key: None,
+        }
+    }
+
+    #[test]
+    fn test_aggregate_by_date_empty() {
+        let messages = Vec::new();
+        let result = aggregate_by_date(messages);
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn test_aggregate_by_date_single_message() {
+        let messages = vec![mock_unified_message(
+            "2024-01-01",
+            1000,
+            0.05,
+            "claude-3-5-sonnet",
+            "opencode",
+        )];
+
+        let result = aggregate_by_date(messages);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].date, "2024-01-01");
+        assert_eq!(result[0].totals.tokens, 1000);
+        assert_eq!(result[0].totals.cost, 0.05);
+        assert_eq!(result[0].totals.messages, 1);
+    }
+
+    #[test]
+    fn test_aggregate_by_date_multiple_dates() {
+        let messages = vec![
+            mock_unified_message("2024-01-01", 1000, 0.05, "claude-3-5-sonnet", "opencode"),
+            mock_unified_message("2024-01-02", 2000, 0.10, "gpt-4", "claude"),
+            mock_unified_message("2024-01-03", 1500, 0.08, "claude-3-5-sonnet", "opencode"),
+        ];
+
+        let result = aggregate_by_date(messages);
+        assert_eq!(result.len(), 3);
+
+        // Verify sorted by date
+        assert_eq!(result[0].date, "2024-01-01");
+        assert_eq!(result[1].date, "2024-01-02");
+        assert_eq!(result[2].date, "2024-01-03");
+
+        // Verify totals
+        assert_eq!(result[0].totals.tokens, 1000);
+        assert_eq!(result[1].totals.tokens, 2000);
+        assert_eq!(result[2].totals.tokens, 1500);
+    }
+
+    #[test]
+    fn test_aggregate_by_date_same_date_aggregation() {
+        let messages = vec![
+            mock_unified_message("2024-01-01", 1000, 0.05, "claude-3-5-sonnet", "opencode"),
+            mock_unified_message("2024-01-01", 2000, 0.10, "gpt-4", "claude"),
+            mock_unified_message("2024-01-01", 1500, 0.08, "claude-3-5-sonnet", "opencode"),
+        ];
+
+        let result = aggregate_by_date(messages);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].date, "2024-01-01");
+        assert_eq!(result[0].totals.tokens, 4500);
+        assert!((result[0].totals.cost - 0.23).abs() < 0.0001);
+        assert_eq!(result[0].totals.messages, 3);
+    }
+
+    #[test]
+    fn test_aggregate_by_date_token_breakdown() {
+        let mut msg =
+            mock_unified_message("2024-01-01", 1000, 0.05, "claude-3-5-sonnet", "opencode");
+        msg.tokens = TokenBreakdown {
+            input: 600,
+            output: 300,
+            cache_read: 50,
+            cache_write: 40,
+            reasoning: 10,
+        };
+
+        let result = aggregate_by_date(vec![msg]);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].token_breakdown.input, 600);
+        assert_eq!(result[0].token_breakdown.output, 300);
+        assert_eq!(result[0].token_breakdown.cache_read, 50);
+        assert_eq!(result[0].token_breakdown.cache_write, 40);
+        assert_eq!(result[0].token_breakdown.reasoning, 10);
+    }
+
+    #[test]
+    fn test_calculate_summary_empty() {
+        let contributions = Vec::new();
+        let summary = calculate_summary(&contributions);
+
+        assert_eq!(summary.total_tokens, 0);
+        assert_eq!(summary.total_cost, 0.0);
+        assert_eq!(summary.total_days, 0);
+        assert_eq!(summary.active_days, 0);
+        assert_eq!(summary.average_per_day, 0.0);
+        assert_eq!(summary.max_cost_in_single_day, 0.0);
+    }
+
+    #[test]
+    fn test_calculate_summary_single_day() {
+        let messages = vec![mock_unified_message(
+            "2024-01-01",
+            1000,
+            0.05,
+            "claude-3-5-sonnet",
+            "opencode",
+        )];
+        let contributions = aggregate_by_date(messages);
+        let summary = calculate_summary(&contributions);
+
+        assert_eq!(summary.total_tokens, 1000);
+        assert_eq!(summary.total_cost, 0.05);
+        assert_eq!(summary.total_days, 1);
+        assert_eq!(summary.active_days, 1);
+        assert_eq!(summary.average_per_day, 0.05);
+        assert_eq!(summary.max_cost_in_single_day, 0.05);
+    }
+
+    #[test]
+    fn test_calculate_summary_multiple_days() {
+        let messages = vec![
+            mock_unified_message("2024-01-01", 1000, 0.05, "claude-3-5-sonnet", "opencode"),
+            mock_unified_message("2024-01-02", 2000, 0.10, "gpt-4", "claude"),
+            mock_unified_message("2024-01-03", 1500, 0.08, "claude-3-5-sonnet", "opencode"),
+        ];
+        let contributions = aggregate_by_date(messages);
+        let summary = calculate_summary(&contributions);
+
+        assert_eq!(summary.total_tokens, 4500);
+        assert!((summary.total_cost - 0.23).abs() < 0.0001);
+        assert_eq!(summary.total_days, 3);
+        assert_eq!(summary.active_days, 3);
+        assert!((summary.average_per_day - 0.23 / 3.0).abs() < 0.0001);
+        assert!((summary.max_cost_in_single_day - 0.10).abs() < 0.0001);
+    }
+
+    #[test]
+    fn test_calculate_summary_with_zero_token_days() {
+        let contributions = vec![
+            DailyContribution {
+                date: "2024-01-01".to_string(),
+                totals: DailyTotals {
+                    tokens: 1000,
+                    cost: 0.05,
+                    messages: 1,
+                },
+                intensity: 0,
+                token_breakdown: TokenBreakdown::default(),
+                sources: Vec::new(),
+            },
+            DailyContribution {
+                date: "2024-01-02".to_string(),
+                totals: DailyTotals {
+                    tokens: 0,
+                    cost: 0.0,
+                    messages: 0,
+                },
+                intensity: 0,
+                token_breakdown: TokenBreakdown::default(),
+                sources: Vec::new(),
+            },
+        ];
+
+        let summary = calculate_summary(&contributions);
+        assert_eq!(summary.total_days, 2);
+        assert_eq!(summary.active_days, 1);
+        assert!((summary.average_per_day - 0.05).abs() < 0.0001);
+    }
+
+    #[test]
+    fn test_calculate_years_empty() {
+        let contributions = Vec::new();
+        let years = calculate_years(&contributions);
+        assert_eq!(years.len(), 0);
+    }
+
+    #[test]
+    fn test_calculate_years_single_year() {
+        let messages = vec![
+            mock_unified_message("2024-01-01", 1000, 0.05, "claude-3-5-sonnet", "opencode"),
+            mock_unified_message("2024-06-15", 2000, 0.10, "gpt-4", "claude"),
+            mock_unified_message("2024-12-31", 1500, 0.08, "claude-3-5-sonnet", "opencode"),
+        ];
+        let contributions = aggregate_by_date(messages);
+        let years = calculate_years(&contributions);
+
+        assert_eq!(years.len(), 1);
+        assert_eq!(years[0].year, "2024");
+        assert_eq!(years[0].total_tokens, 4500);
+        assert!((years[0].total_cost - 0.23).abs() < 0.0001);
+        assert_eq!(years[0].range_start, "2024-01-01");
+        assert_eq!(years[0].range_end, "2024-12-31");
+    }
+
+    #[test]
+    fn test_calculate_years_multiple_years() {
+        let messages = vec![
+            mock_unified_message("2023-12-31", 1000, 0.05, "claude-3-5-sonnet", "opencode"),
+            mock_unified_message("2024-01-01", 2000, 0.10, "gpt-4", "claude"),
+            mock_unified_message("2024-06-15", 1500, 0.08, "claude-3-5-sonnet", "opencode"),
+            mock_unified_message("2025-01-01", 3000, 0.15, "gpt-4", "claude"),
+        ];
+        let contributions = aggregate_by_date(messages);
+        let years = calculate_years(&contributions);
+
+        assert_eq!(years.len(), 3);
+
+        // Verify sorted by year
+        assert_eq!(years[0].year, "2023");
+        assert_eq!(years[1].year, "2024");
+        assert_eq!(years[2].year, "2025");
+
+        // Verify 2024 aggregation
+        assert_eq!(years[1].total_tokens, 3500);
+        assert!((years[1].total_cost - 0.18).abs() < 0.0001);
+        assert_eq!(years[1].range_start, "2024-01-01");
+        assert_eq!(years[1].range_end, "2024-06-15");
+    }
+
+    #[test]
+    fn test_calculate_years_year_boundary() {
+        let messages = vec![
+            mock_unified_message("2024-12-31", 1000, 0.05, "claude-3-5-sonnet", "opencode"),
+            mock_unified_message("2025-01-01", 2000, 0.10, "gpt-4", "claude"),
+        ];
+        let contributions = aggregate_by_date(messages);
+        let years = calculate_years(&contributions);
+
+        assert_eq!(years.len(), 2);
+        assert_eq!(years[0].year, "2024");
+        assert_eq!(years[0].total_tokens, 1000);
+        assert_eq!(years[1].year, "2025");
+        assert_eq!(years[1].total_tokens, 2000);
+    }
+
+    #[test]
+    fn test_calculate_years_invalid_date() {
+        let contributions = vec![DailyContribution {
+            date: "abc".to_string(), // Invalid date (less than 4 chars)
+            totals: DailyTotals {
+                tokens: 1000,
+                cost: 0.05,
+                messages: 1,
+            },
+            intensity: 0,
+            token_breakdown: TokenBreakdown::default(),
+            sources: Vec::new(),
+        }];
+
+        let years = calculate_years(&contributions);
+        assert_eq!(years.len(), 0); // Should skip invalid dates
+    }
+
+    #[test]
+    fn test_generate_graph_result_empty() {
+        let contributions = Vec::new();
+        let result = generate_graph_result(contributions, 100);
+
+        assert_eq!(result.contributions.len(), 0);
+        assert_eq!(result.summary.total_tokens, 0);
+        assert_eq!(result.years.len(), 0);
+        assert_eq!(result.meta.processing_time_ms, 100);
+        assert_eq!(result.meta.date_range_start, "");
+        assert_eq!(result.meta.date_range_end, "");
+    }
+
+    #[test]
+    fn test_generate_graph_result_with_data() {
+        let messages = vec![
+            mock_unified_message("2024-01-01", 1000, 0.05, "claude-3-5-sonnet", "opencode"),
+            mock_unified_message("2024-01-02", 2000, 0.10, "gpt-4", "claude"),
+        ];
+        let contributions = aggregate_by_date(messages);
+        let result = generate_graph_result(contributions, 150);
+
+        assert_eq!(result.contributions.len(), 2);
+        assert_eq!(result.summary.total_tokens, 3000);
+        assert_eq!(result.years.len(), 1);
+        assert_eq!(result.meta.processing_time_ms, 150);
+        assert_eq!(result.meta.date_range_start, "2024-01-01");
+        assert_eq!(result.meta.date_range_end, "2024-01-02");
+        assert_eq!(result.meta.version, env!("CARGO_PKG_VERSION"));
+    }
+
+    #[test]
+    fn test_calculate_intensities_empty() {
+        let mut contributions = Vec::new();
+        calculate_intensities(&mut contributions);
+        assert_eq!(contributions.len(), 0);
+    }
+
+    #[test]
+    fn test_calculate_intensities_zero_cost() {
+        let mut contributions = vec![
+            DailyContribution {
+                date: "2024-01-01".to_string(),
+                totals: DailyTotals {
+                    tokens: 1000,
+                    cost: 0.0,
+                    messages: 1,
+                },
+                intensity: 0,
+                token_breakdown: TokenBreakdown::default(),
+                sources: Vec::new(),
+            },
+            DailyContribution {
+                date: "2024-01-02".to_string(),
+                totals: DailyTotals {
+                    tokens: 2000,
+                    cost: 0.0,
+                    messages: 1,
+                },
+                intensity: 0,
+                token_breakdown: TokenBreakdown::default(),
+                sources: Vec::new(),
+            },
+        ];
+
+        calculate_intensities(&mut contributions);
+        assert_eq!(contributions[0].intensity, 0);
+        assert_eq!(contributions[1].intensity, 0);
+    }
+
+    #[test]
+    fn test_calculate_intensities_levels() {
+        let mut contributions = vec![
+            DailyContribution {
+                date: "2024-01-01".to_string(),
+                totals: DailyTotals {
+                    tokens: 1000,
+                    cost: 1.0, // 100% of max
+                    messages: 1,
+                },
+                intensity: 0,
+                token_breakdown: TokenBreakdown::default(),
+                sources: Vec::new(),
+            },
+            DailyContribution {
+                date: "2024-01-02".to_string(),
+                totals: DailyTotals {
+                    tokens: 800,
+                    cost: 0.8, // 80% of max (>= 0.75)
+                    messages: 1,
+                },
+                intensity: 0,
+                token_breakdown: TokenBreakdown::default(),
+                sources: Vec::new(),
+            },
+            DailyContribution {
+                date: "2024-01-03".to_string(),
+                totals: DailyTotals {
+                    tokens: 600,
+                    cost: 0.6, // 60% of max (>= 0.5)
+                    messages: 1,
+                },
+                intensity: 0,
+                token_breakdown: TokenBreakdown::default(),
+                sources: Vec::new(),
+            },
+            DailyContribution {
+                date: "2024-01-04".to_string(),
+                totals: DailyTotals {
+                    tokens: 300,
+                    cost: 0.3, // 30% of max (>= 0.25)
+                    messages: 1,
+                },
+                intensity: 0,
+                token_breakdown: TokenBreakdown::default(),
+                sources: Vec::new(),
+            },
+            DailyContribution {
+                date: "2024-01-05".to_string(),
+                totals: DailyTotals {
+                    tokens: 100,
+                    cost: 0.1, // 10% of max (> 0.0)
+                    messages: 1,
+                },
+                intensity: 0,
+                token_breakdown: TokenBreakdown::default(),
+                sources: Vec::new(),
+            },
+        ];
+
+        calculate_intensities(&mut contributions);
+
+        assert_eq!(contributions[0].intensity, 4); // 100%
+        assert_eq!(contributions[1].intensity, 4); // 80%
+        assert_eq!(contributions[2].intensity, 3); // 60%
+        assert_eq!(contributions[3].intensity, 2); // 30%
+        assert_eq!(contributions[4].intensity, 1); // 10%
+    }
+
+    #[test]
+    fn test_calculate_intensities_boundary_values() {
+        let mut contributions = vec![
+            DailyContribution {
+                date: "2024-01-01".to_string(),
+                totals: DailyTotals {
+                    tokens: 1000,
+                    cost: 1.0,
+                    messages: 1,
+                },
+                intensity: 0,
+                token_breakdown: TokenBreakdown::default(),
+                sources: Vec::new(),
+            },
+            DailyContribution {
+                date: "2024-01-02".to_string(),
+                totals: DailyTotals {
+                    tokens: 750,
+                    cost: 0.75, // Exactly 0.75 (should be level 4)
+                    messages: 1,
+                },
+                intensity: 0,
+                token_breakdown: TokenBreakdown::default(),
+                sources: Vec::new(),
+            },
+            DailyContribution {
+                date: "2024-01-03".to_string(),
+                totals: DailyTotals {
+                    tokens: 500,
+                    cost: 0.5, // Exactly 0.5 (should be level 3)
+                    messages: 1,
+                },
+                intensity: 0,
+                token_breakdown: TokenBreakdown::default(),
+                sources: Vec::new(),
+            },
+            DailyContribution {
+                date: "2024-01-04".to_string(),
+                totals: DailyTotals {
+                    tokens: 250,
+                    cost: 0.25, // Exactly 0.25 (should be level 2)
+                    messages: 1,
+                },
+                intensity: 0,
+                token_breakdown: TokenBreakdown::default(),
+                sources: Vec::new(),
+            },
+        ];
+
+        calculate_intensities(&mut contributions);
+
+        assert_eq!(contributions[0].intensity, 4);
+        assert_eq!(contributions[1].intensity, 4); // >= 0.75
+        assert_eq!(contributions[2].intensity, 3); // >= 0.5
+        assert_eq!(contributions[3].intensity, 2); // >= 0.25
+    }
+
+    #[test]
+    fn test_aggregate_by_date_preserves_sources() {
+        let messages = vec![
+            mock_unified_message("2024-01-01", 1000, 0.05, "claude-3-5-sonnet", "opencode"),
+            mock_unified_message("2024-01-01", 2000, 0.10, "gpt-4", "claude"),
+        ];
+
+        let result = aggregate_by_date(messages);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].sources.len(), 2);
+
+        // Verify both sources are present
+        let source_names: Vec<&str> = result[0]
+            .sources
+            .iter()
+            .map(|s| s.source.as_str())
+            .collect();
+        assert!(source_names.contains(&"opencode"));
+        assert!(source_names.contains(&"claude"));
+    }
+
+    #[test]
+    fn test_aggregate_by_date_large_dataset() {
+        // Test with 100 messages across 10 days
+        let mut messages = Vec::new();
+        for day in 1..=10 {
+            for _msg in 0..10 {
+                let date = format!("2024-01-{:02}", day);
+                messages.push(mock_unified_message(
+                    &date,
+                    1000,
+                    0.05,
+                    "claude-3-5-sonnet",
+                    "opencode",
+                ));
+            }
+        }
+
+        let result = aggregate_by_date(messages);
+        assert_eq!(result.len(), 10);
+
+        // Each day should have 10 messages aggregated
+        for contribution in &result {
+            assert_eq!(contribution.totals.messages, 10);
+            assert_eq!(contribution.totals.tokens, 10000);
+            assert!((contribution.totals.cost - 0.5).abs() < 0.0001);
+        }
+    }
+}
