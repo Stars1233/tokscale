@@ -73,7 +73,7 @@ export function QuickstartSection() {
                   <GradientAccent />
                 </CommandInputArea>
                 <CopyBtn onClick={tui.copy}>
-                  <CopyBtnText>{tui.copied ? "Copied" : "Copy"}</CopyBtnText>
+                  <CopyBtnText>{tui.copied ? "Copied!" : "Copy"}</CopyBtnText>
                 </CopyBtn>
               </CommandBox>
             </CardContent>
@@ -103,7 +103,7 @@ export function QuickstartSection() {
                   <GradientAccent />
                 </CommandInputArea>
                 <CopyBtn onClick={submit.copy}>
-                  <CopyBtnText>{submit.copied ? "Copied" : "Copy"}</CopyBtnText>
+                  <CopyBtnText>{submit.copied ? "Copied!" : "Copy"}</CopyBtnText>
                 </CopyBtn>
               </CommandBox>
             </CardContent>
