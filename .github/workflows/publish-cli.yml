@@ -351,6 +351,8 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: true
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Download bumped package.json files
         uses: actions/download-artifact@v4
