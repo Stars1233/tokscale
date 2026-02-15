@@ -47,13 +47,52 @@ jobs:
             --timeout 300 \
             --verbose
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+      - name: Generate coverage JSON
+        run: |
+          cargo tarpaulin \
+            --workspace \
+            --out Json \
+            --output-dir ./coverage \
+            --timeout 300
+
+      - name: Extract coverage percentage
+        id: coverage
+        run: |
+          COVERAGE=$(cat ./coverage/tarpaulin.json | jq -r '.files | to_entries | map(.value.covered / .value.coverable * 100) | add / length')
+          COVERAGE_INT=$(printf "%.0f" $COVERAGE)
+          echo "percentage=$COVERAGE" >> $GITHUB_OUTPUT
+          echo "percentage_int=$COVERAGE_INT" >> $GITHUB_OUTPUT
+          echo "Coverage: $COVERAGE%"
+          
+          # Determine badge color
+          if [ $COVERAGE_INT -gt 80 ]; then
+            echo "color=green" >> $GITHUB_OUTPUT
+          elif [ $COVERAGE_INT -gt 60 ]; then
+            echo "color=yellow" >> $GITHUB_OUTPUT
+          elif [ $COVERAGE_INT -gt 40 ]; then
+            echo "color=orange" >> $GITHUB_OUTPUT
+          else
+            echo "color=red" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create badges directory
+        run: mkdir -p .github/badges
+
+      - name: Generate coverage badge
+        uses: emibcn/badge-action@v2.0.3
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/cobertura.xml
-          fail_ci_if_error: true
-          verbose: true
+          label: 'coverage'
+          status: ${{ steps.coverage.outputs.percentage_int }}%
+          color: ${{ steps.coverage.outputs.color }}
+          path: .github/badges/coverage.svg
+
+      - name: Commit coverage badge
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .github/badges/coverage.svg
+          git diff --quiet && git diff --staged --quiet || (git commit -m "ci: update coverage badge [skip ci]" && git push)
 
       - name: Upload coverage artifacts
         uses: actions/upload-artifact@v4

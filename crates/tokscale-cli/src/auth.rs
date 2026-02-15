@@ -322,6 +322,7 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
+    #[serial]
     fn test_get_api_base_url_default() {
         unsafe {
             env::remove_var("TOKSCALE_API_URL");

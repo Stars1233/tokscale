@@ -17,7 +17,7 @@
 [![GitHub Stars](https://img.shields.io/github/stars/junhoyeo/tokscale?color=0073FF&labelColor=black&style=flat-square)](https://github.com/junhoyeo/tokscale/stargazers)
 [![GitHub Issues](https://img.shields.io/github/issues/junhoyeo/tokscale?color=0073FF&labelColor=black&style=flat-square)](https://github.com/junhoyeo/tokscale/issues)
 [![License](https://img.shields.io/badge/license-MIT-white?labelColor=black&style=flat-square)](https://github.com/junhoyeo/tokscale/blob/master/LICENSE)
-[![codecov](https://codecov.io/gh/junhoyeo/tokscale/branch/main/graph/badge.svg)](https://codecov.io/gh/junhoyeo/tokscale)
+![Coverage](https://github.com/junhoyeo/tokscale/blob/main/.github/badges/coverage.svg?raw=true)
 
 [🇺🇸 English](README.md) | [🇰🇷 한국어](README.ko.md) | [🇯🇵 日本語](README.ja.md) | [🇨🇳 简体中文](README.zh-cn.md)
 
@@ -690,7 +690,7 @@ xdg-open target/coverage/tarpaulin-report.html  # Linux
 ### Coverage Reports
 
 - **HTML Report:** Generated at `target/coverage/tarpaulin-report.html`
-- **Codecov:** View detailed reports at [codecov.io/gh/junhoyeo/tokscale](https://codecov.io/gh/junhoyeo/tokscale)
+- **Coverage Badge:** Automatically updated on every push to main via GitHub Actions
 - **CI Integration:** Coverage runs automatically on all PRs via GitHub Actions
 
 ### Coverage Goals
