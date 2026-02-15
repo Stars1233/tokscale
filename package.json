@@ -5,13 +5,14 @@
   "description": "Token Usage Leaderboard - The Kardashev Scale for AI Devs",
   "type": "module",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "crates/tokscale-napi"
   ],
   "scripts": {
     "postinstall": "if [ -z \"$VERCEL\" ]; then bun run build:core; else echo 'Skipping core build on Vercel'; fi",
     "build": "bun run build:core && bun run build:cli",
     "build:cli": "bun run --cwd packages/cli build",
-    "build:core": "bun run --cwd packages/core build",
+    "build:core": "bun run --cwd crates/tokscale-napi build",
     "cli": "./scripts/cli.sh",
     "dev:frontend": "bun run --cwd packages/frontend dev",
     "dev:benchmarks": "bun run --cwd packages/benchmarks run"

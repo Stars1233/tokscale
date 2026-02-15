@@ -17,7 +17,6 @@
     "@primer/octicons-react": "^19.21.1",
     "@primer/primitives": "^11.3.1",
     "@primer/react": "^38.3.0",
-    "@tanstack/react-virtual": "^3.13.18",
     "@vercel/analytics": "^1.6.1",
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.38.3",
@@ -29,7 +28,7 @@
     "react-dom": "19.2.0",
     "react-is": "^19.2.0",
     "react-toastify": "^11.0.5",
-    "styled-components": "^6.1.19",
+    "styled-components": "6.1.19",
     "styled-reset": "^5.0.0",
     "zod": "^3.24.1"
   },

@@ -71,12 +71,12 @@ In the age of AI-assisted development, **tokens are the new energy**. They power
   - [Quick Start](#quick-start)
   - [Prerequisites](#prerequisites)
   - [Development Setup](#development-setup)
-  - [Building the Native Module](#building-the-native-module)
 - [Usage](#usage)
   - [Basic Commands](#basic-commands)
   - [TUI Features](#tui-features)
   - [Filtering by Platform](#filtering-by-platform)
   - [Date Filtering](#date-filtering)
+  - [Model Grouping](#model-grouping)
   - [Pricing Lookup](#pricing-lookup)
   - [Social](#social)
   - [Cursor IDE Commands](#cursor-ide-commands)
@@ -118,7 +118,7 @@ In the age of AI-assisted development, **tokens are the new energy**. They power
 - **Multi-platform support** - Track usage across OpenCode, Claude Code, Codex CLI, Cursor IDE, Gemini CLI, Amp, Droid, OpenClaw, and Pi
 - **Real-time pricing** - Fetches current pricing from LiteLLM with 1-hour disk cache; automatic OpenRouter fallback for new models
 - **Detailed breakdowns** - Input, output, cache read/write, and reasoning token tracking
-- **Native Rust core** - All parsing and aggregation done in Rust for 10x faster processing
+- **100% Rust CLI** - Entire CLI written in Rust for maximum performance and minimal dependencies
 - **Web visualization** - Interactive contribution graph with 2D and 3D views
 - **Flexible filtering** - Filter by platform, date range, or year
 - **Export to JSON** - Generate data for external visualization tools
@@ -143,13 +143,13 @@ That's it! This gives you the full interactive TUI experience with zero setup.
 
 > **Requires [Bun](https://bun.sh/)**: The interactive TUI uses OpenTUI's native Zig modules for zero-flicker rendering, which requires the Bun runtime.
 
-> **Package Structure**: `tokscale` is an alias package (like [`swc`](https://www.npmjs.com/package/swc)) that installs `@tokscale/cli`. Both install the same CLI with the native Rust core (`@tokscale/core`) included.
+> **Package Structure**: `tokscale` is an alias package (like [`swc`](https://www.npmjs.com/package/swc)) that installs `@tokscale/cli`. The CLI is a pure Rust binary distributed via platform-specific npm packages.
 
 
 ### Prerequisites
 
 - [Bun](https://bun.sh/) (required)
-- (Optional) Rust toolchain for building native module from source
+- (Optional) Rust toolchain for building the CLI from source
 
 ### Development Setup
 
@@ -171,17 +171,6 @@ bun run cli
 ```
 
 > **Note**: `bun run cli` is for local development. When installed via `bunx tokscale`, the command runs directly. The Usage section below shows the installed binary commands.
-
-### Building the Native Module
-
-The native Rust module is **required** for CLI operation. It provides ~10x faster processing through parallel file scanning and SIMD JSON parsing:
-
-```bash
-# Build the native core (run from repository root)
-bun run build:core
-```
-
-> **Note**: Native binaries are pre-built and included when you install via `bunx tokscale@latest`. Building from source is only needed for local development.
 
 ## Usage
 
@@ -230,6 +219,26 @@ The interactive TUI mode provides:
 - **Themes**: Green, Halloween, Teal, Blue, Pink, Purple, Orange, Monochrome, YlGnBu
 - **Settings Persistence**: Preferences saved to `~/.config/tokscale/settings.json` (see [Configuration](#configuration))
 
+### Launching TUI with Filters
+
+You can launch the TUI with pre-applied filters using the explicit `tui` command:
+
+```bash
+# Launch TUI with only OpenCode data
+tokscale tui --opencode
+
+# Launch TUI with last week's data
+tokscale tui --week
+
+# Combine multiple filters
+tokscale tui --opencode --claude --month
+
+# Launch TUI with custom date range
+tokscale tui --since 2024-01-01 --until 2024-12-31
+```
+
+All source filters (`--opencode`, `--claude`, `--codex`, `--gemini`, `--cursor`, `--amp`, `--droid`, `--openclaw`) and date filters (`--today`, `--week`, `--month`, `--since`, `--until`, `--year`) are supported.
+
 ### Filtering by Platform
 
 ```bash
@@ -261,7 +270,7 @@ tokscale --openclaw
 tokscale --pi
 
 # Combine filters
-tokscale --opencode --claude
+tokscale --opencode --claude --pi
 ```
 
 ### Date Filtering
@@ -287,6 +296,29 @@ tokscale monthly --month --benchmark
 
 > **Note**: Date filters use your local timezone. Both `--since` and `--until` are inclusive.
 
+### Model Grouping
+
+Control how models are grouped in `--light` and `--json` output using the `--group-by` flag:
+
+```bash
+# Group by model only (merge across clients/providers)
+tokscale models --light --group-by model
+
+# Group by client + model (default)
+tokscale models --light --group-by client,model
+
+# Group by client + provider + model (most detailed)
+tokscale models --light --group-by client,provider,model
+```
+
+| Strategy | Columns | Description |
+|----------|---------|-------------|
+| `model` | Clients, Providers, Model | Merges usage across all clients and providers for each model |
+| `client,model` | Client, Provider, Model, Resolved, Input, Output, Cache, Total, Cost | Default. Shows per-client model breakdown |
+| `client,provider,model` | Client, Provider, Model, Resolved, Input, Output, Cache, Total, Cost | Most granular. Separates by provider within each client |
+
+> **Note**: Models with different date suffixes (e.g., `claude-sonnet-4-20250514` vs `claude-sonnet-4-20250415`) or version separators (`3.5` vs `3-5`) are automatically normalized and consolidated during aggregation.
+
 ### Pricing Lookup
 
 Look up real-time pricing for any model:
@@ -300,6 +332,10 @@ tokscale pricing "grok-code"
 # Force specific provider source
 tokscale pricing "grok-code" --provider openrouter
 tokscale pricing "claude-3-5-sonnet" --provider litellm
+
+# Output as JSON (for scripting)
+tokscale pricing "claude-3-5-sonnet-20241022" --json
+tokscale pricing "grok-code" --provider openrouter --json
 ```
 
 **Lookup Strategy:**
@@ -398,6 +434,8 @@ When you log out, tokscale keeps your cached usage history by moving it to `curs
 
 ### Example Output (`--light` version)
 
+The `--light` table displays columns based on your `--group-by` strategy. The default (`client,model`) shows: **Client**, **Provider**, **Model**, **Resolved** (normalized model name used for pricing), **Input**, **Output**, **Cache Write**, **Cache Read**, **Total**, and **Cost**.
+
 <img alt="CLI Light" src="./.github/assets/cli-light.png" />
 
 ### Configuration
@@ -418,6 +456,32 @@ Tokscale stores settings in `~/.config/tokscale/settings.json`:
 | `autoRefreshEnabled` | boolean | `false` | Enable auto-refresh in TUI |
 | `autoRefreshMs` | number | `60000` | Auto-refresh interval (30000-3600000ms) |
 | `nativeTimeoutMs` | number | `300000` | Maximum time for native subprocess processing (5000-3600000ms) |
+
+### Advanced Configuration
+
+For advanced customization (colors and display names), create `~/.tokscale` with TOML format:
+
+```toml
+# Custom colors (hex format)
+[colors.providers]
+anthropic = "#DA7756"
+openai = "#10B981"
+
+[colors.sources]
+opencode = "#22c55e"
+claude = "#DA7756"
+
+# Custom display names
+[display_names.providers]
+anthropic = "Anthropic"
+openai = "OpenAI"
+github-copilot = "GitHub Copilot"
+
+[display_names.sources]
+openclaw = "OpenClaw"  # Default shows "🦞 OpenClaw", override to remove emoji
+```
+
+**Display Names**: By default, OpenClaw shows as "🦞 OpenClaw". Use the `display_names` section to customize how providers and sources appear in the TUI.
 
 ### Environment Variables
 
@@ -457,11 +521,26 @@ Tokscale automatically scans this directory structure:
 export TOKSCALE_HEADLESS_DIR="$HOME/my-custom-logs"
 ```
 
-**Recommended (automatic capture):**
+**Command Options:**
 
-| Tool | Command Example |
-|------|-----------------|
-| **Codex CLI** | `tokscale headless codex exec -m gpt-5 "implement feature"` |
+```bash
+# Basic usage (auto-adds --json for codex)
+tokscale headless codex exec -m gpt-5 "implement feature"
+
+# Custom output path
+tokscale headless codex exec -m gpt-5 "prompt" --output /tmp/output.jsonl
+
+# Override format (json or jsonl)
+tokscale headless codex exec -m gpt-5 "prompt" --format json
+
+# Disable auto-flags (don't add --json automatically)
+tokscale headless codex exec --json "prompt" --no-auto-flags
+```
+
+**Options:**
+- `--output <file>` - Write captured output to specific file path
+- `--format <json|jsonl>` - Override output format (default: jsonl)
+- `--no-auto-flags` - Do not automatically add `--json` flag to codex command
 
 **Manual redirect (optional):**
 
@@ -603,8 +682,8 @@ cargo --version
 After following the [Development Setup](#development-setup), you can:
 
 ```bash
-# Build native module (optional but recommended)
-bun run build:core
+# Build the Rust CLI (optional - only needed for local development)
+cargo build --release -p tokscale-cli
 
 # Run in development mode (launches TUI)
 cd packages/cli && bun src/cli.ts
@@ -621,40 +700,21 @@ cd packages/cli && bun src/cli.ts --light
 | Script | Description |
 |--------|-------------|
 | `bun run cli` | Run CLI in development mode (TUI with Bun) |
-| `bun run build:core` | Build native Rust module (release) |
 | `bun run build:cli` | Build CLI TypeScript to dist/ |
-| `bun run build` | Build both core and CLI |
 | `bun run dev:frontend` | Run frontend development server |
+| `cargo build -p tokscale-cli` | Build Rust CLI binary |
 
 **Package-specific scripts** (from within package directories):
 - `packages/cli`: `bun run dev`, `bun run tui`
-- `packages/core`: `bun run build:debug`, `bun run test`, `bun run bench`
+- `crates/tokscale-cli`: `cargo build`, `cargo test`, `cargo bench`
 
 **Note**: This project uses **Bun** as the package manager and runtime. TUI requires Bun due to OpenTUI's native modules.
 
 ### Testing
 
 ```bash
-# Test native module (Rust)
-cd packages/core
-bun run test:rust      # Cargo tests
-bun run test           # Node.js integration tests
-bun run test:all       # Both
-```
-
-### Native Module Development
-
-```bash
-cd packages/core
-
-# Build in debug mode (faster compilation)
-bun run build:debug
-
-# Build in release mode (optimized)
-bun run build
-
-# Run Rust benchmarks
-bun run bench
+# Test Rust workspace
+cargo test --workspace
 ```
 
 ### Graph Command Options
@@ -696,20 +756,20 @@ tokscale graph --output packages/frontend/public/my-data.json
 
 ### Performance
 
-The native Rust module provides significant performance improvements:
+The Rust CLI provides significant performance improvements:
 
-| Operation | TypeScript | Rust Native | Speedup |
-|-----------|------------|-------------|---------|
-| File Discovery | ~500ms | ~50ms | **10x** |
-| JSON Parsing | ~800ms | ~100ms | **8x** |
-| Aggregation | ~200ms | ~25ms | **8x** |
-| **Total** | **~1.5s** | **~175ms** | **~8.5x** |
+| Operation | Pure Rust | Speedup vs JS |
+|-----------|-----------|---------------|
+| File Discovery | ~50ms | **10x** |
+| JSON Parsing | ~100ms | **8x** |
+| Aggregation | ~25ms | **8x** |
+| **Total** | **~175ms** | **~8.5x** |
 
 *Benchmarks for ~1000 session files, 100k messages*
 
 #### Memory Optimization
 
-The native module also provides ~45% memory reduction through:
+The Rust implementation provides ~45% memory reduction through:
 
 - Streaming JSON parsing (no full file buffering)
 - Zero-copy string handling
@@ -722,14 +782,14 @@ The native module also provides ~45% memory reduction through:
 cd packages/benchmarks && bun run generate
 
 # Run Rust benchmarks
-cd packages/core && bun run bench
+cd crates/tokscale-cli && cargo bench
 ```
 
 </details>
 
 ## Supported Platforms
 
-### Native Module Targets
+### Binary Targets
 
 | Platform | Architecture | Status |
 |----------|--------------|--------|
@@ -965,7 +1025,7 @@ Contributions are welcome! Please follow these steps:
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
-4. Run tests (`cd packages/core && bun run test:all`)
+4. Run tests (`cargo test --workspace`)
 5. Commit your changes (`git commit -m 'Add amazing feature'`)
 6. Push to the branch (`git push origin feature/amazing-feature`)
 7. Open a Pull Request
@@ -983,7 +1043,6 @@ Contributions are welcome! Please follow these steps:
 - [OpenTUI](https://github.com/sst/opentui) for zero-flicker terminal UI framework
 - [Solid.js](https://www.solidjs.com/) for reactive rendering
 - [LiteLLM](https://github.com/BerriAI/litellm) for pricing data
-- [napi-rs](https://napi.rs/) for Rust/Node.js bindings
 - [github-contributions-canvas](https://github.com/sallar/github-contributions-canvas) for 2D graph reference
 
 ## License
