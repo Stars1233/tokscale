@@ -84,7 +84,8 @@ impl std::str::FromStr for GroupBy {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
+        let normalized: String = s.split(',').map(|p| p.trim()).collect::<Vec<_>>().join(",");
+        match normalized.to_lowercase().as_str() {
             "model" => Ok(GroupBy::Model),
             "client,model" | "client-model" => Ok(GroupBy::ClientModel),
             "client,provider,model" | "client-provider-model" => Ok(GroupBy::ClientProviderModel),
@@ -1099,5 +1100,12 @@ mod tests {
             let parsed = GroupBy::from_str(&rendered).unwrap();
             assert_eq!(parsed, variant);
         }
+    }
+
+    #[test]
+    fn test_group_by_from_str_whitespace_handling() {
+        assert_eq!(GroupBy::from_str("client, model").unwrap(), GroupBy::ClientModel);
+        assert_eq!(GroupBy::from_str(" model ").unwrap(), GroupBy::Model);
+        assert_eq!(GroupBy::from_str("client , provider , model").unwrap(), GroupBy::ClientProviderModel);
     }
 }

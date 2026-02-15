@@ -90,7 +90,7 @@ struct Cli {
         long,
         value_name = "STRATEGY",
         default_value = "client,model",
-        help = "Grouping strategy: model, client,model, client,provider,model"
+        help = "Grouping strategy for --light and --json output: model, client,model, client,provider,model"
     )]
     group_by: String,
 
@@ -142,7 +142,7 @@ enum Commands {
             long,
             value_name = "STRATEGY",
             default_value = "client,model",
-            help = "Grouping strategy: model, client,model, client,provider,model"
+            help = "Grouping strategy for --light and --json output: model, client,model, client,provider,model"
         )]
         group_by: String,
         #[arg(long, help = "Disable spinner")]
