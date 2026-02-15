@@ -44,7 +44,7 @@
 
 | 로고 | 클라이언트 | 데이터 위치 | 지원 여부 |
 |------|----------|---------------|-----------|
-| <img width="48px" src=".github/assets/client-opencode.png" alt="OpenCode" /> | [OpenCode](https://github.com/sst/opencode) | `~/.local/share/opencode/storage/message/` | ✅ 지원 |
+| <img width="48px" src=".github/assets/client-opencode.png" alt="OpenCode" /> | [OpenCode](https://github.com/sst/opencode) | `~/.local/share/opencode/opencode.db` (1.2+) 또는 `~/.local/share/opencode/storage/message/` | ✅ 지원 |
 | <img width="48px" src=".github/assets/client-claude.jpg" alt="Claude" /> | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | `~/.claude/projects/` | ✅ 지원 |
 | <img width="48px" src=".github/assets/client-openclaw.jpg" alt="OpenClaw" /> | [OpenClaw](https://openclaw.ai/) | `~/.openclaw/agents/` (+ 레거시: `.clawdbot`, `.moltbot`, `.moldbot`) | ✅ 지원 |
 | <img width="48px" src=".github/assets/client-openai.jpg" alt="Codex" /> | [Codex CLI](https://github.com/openai/codex) | `~/.codex/sessions/` | ✅ 지원 |
@@ -817,9 +817,11 @@ OpenCode는 내장 세션 정리가 없습니다. `~/.local/share/opencode/stora
 
 ### OpenCode
 
-위치: `~/.local/share/opencode/storage/message/{sessionId}/*.json`
+위치: `~/.local/share/opencode/opencode.db` (v1.2+) 또는 `storage/message/{sessionId}/*.json` (레거시)
 
-각 메시지 파일 포함 내용:
+OpenCode 1.2+는 세션을 SQLite에 저장합니다. Tokscale은 SQLite를 먼저 읽고, 이전 버전의 경우 레거시 JSON 파일로 폴백합니다.
+
+각 메시지 포함 내용:
 ```json
 {
   "id": "msg_xxx",

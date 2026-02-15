@@ -44,7 +44,7 @@
 
 | 图标 | 客户端 | 数据位置 | 支持状态 |
 |------|----------|---------------|-----------|
-| <img width="48px" src=".github/assets/client-opencode.png" alt="OpenCode" /> | [OpenCode](https://github.com/sst/opencode) | `~/.local/share/opencode/storage/message/` | ✅ 支持 |
+| <img width="48px" src=".github/assets/client-opencode.png" alt="OpenCode" /> | [OpenCode](https://github.com/sst/opencode) | `~/.local/share/opencode/opencode.db` (1.2+) 或 `~/.local/share/opencode/storage/message/` | ✅ 支持 |
 | <img width="48px" src=".github/assets/client-claude.jpg" alt="Claude" /> | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | `~/.claude/projects/` | ✅ 支持 |
 | <img width="48px" src=".github/assets/client-openclaw.jpg" alt="OpenClaw" /> | [OpenClaw](https://openclaw.ai/) | `~/.openclaw/agents/` (+ 旧版: `.clawdbot`, `.moltbot`, `.moldbot`) | ✅ 支持 |
 | <img width="48px" src=".github/assets/client-openai.jpg" alt="Codex" /> | [Codex CLI](https://github.com/openai/codex) | `~/.codex/sessions/` | ✅ 支持 |
@@ -818,9 +818,11 @@ OpenCode 没有内置会话清理。`~/.local/share/opencode/storage/` 中的会
 
 ### OpenCode
 
-位置：`~/.local/share/opencode/storage/message/{sessionId}/*.json`
+位置：`~/.local/share/opencode/opencode.db` (v1.2+) 或 `storage/message/{sessionId}/*.json` (旧版)
 
-每个消息文件包含：
+OpenCode 1.2+ 将会话存储在 SQLite 中。Tokscale 优先从 SQLite 读取，旧版本则回退到旧版 JSON 文件。
+
+每个消息包含：
 ```json
 {
   "id": "msg_xxx",

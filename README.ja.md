@@ -44,7 +44,7 @@
 
 | ロゴ | クライアント | データ場所 | サポート |
 |------|----------|---------------|-----------|
-| <img width="48px" src=".github/assets/client-opencode.png" alt="OpenCode" /> | [OpenCode](https://github.com/sst/opencode) | `~/.local/share/opencode/storage/message/` | ✅ 対応 |
+| <img width="48px" src=".github/assets/client-opencode.png" alt="OpenCode" /> | [OpenCode](https://github.com/sst/opencode) | `~/.local/share/opencode/opencode.db` (1.2+) または `~/.local/share/opencode/storage/message/` | ✅ 対応 |
 | <img width="48px" src=".github/assets/client-claude.jpg" alt="Claude" /> | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | `~/.claude/projects/` | ✅ 対応 |
 | <img width="48px" src=".github/assets/client-openclaw.jpg" alt="OpenClaw" /> | [OpenClaw](https://openclaw.ai/) | `~/.openclaw/agents/` (+ レガシー: `.clawdbot`, `.moltbot`, `.moldbot`) | ✅ 対応 |
 | <img width="48px" src=".github/assets/client-openai.jpg" alt="Codex" /> | [Codex CLI](https://github.com/openai/codex) | `~/.codex/sessions/` | ✅ 対応 |
@@ -818,9 +818,11 @@ OpenCodeには組み込みのセッションクリーンアップがありませ
 
 ### OpenCode
 
-場所: `~/.local/share/opencode/storage/message/{sessionId}/*.json`
+場所: `~/.local/share/opencode/opencode.db` (v1.2+) または `storage/message/{sessionId}/*.json` (レガシー)
 
-各メッセージファイルの内容：
+OpenCode 1.2+はセッションをSQLiteに保存します。TokscaleはまずSQLiteから読み取り、古いバージョンの場合はレガシーJSONファイルにフォールバックします。
+
+各メッセージの内容：
 ```json
 {
   "id": "msg_xxx",
