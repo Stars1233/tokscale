@@ -1708,3 +1708,906 @@ fn default_sources() -> Vec<String> {
         "pi".to_string(),
     ]
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ========== format_tokens_short tests ==========
+
+    #[test]
+    fn test_format_tokens_short_billions() {
+        assert_eq!(format_tokens_short(1_500_000_000), "1.50B");
+        assert_eq!(format_tokens_short(2_340_000_000), "2.34B");
+        assert_eq!(format_tokens_short(10_000_000_000), "10.00B");
+    }
+
+    #[test]
+    fn test_format_tokens_short_millions() {
+        assert_eq!(format_tokens_short(234_000_000), "234.00M");
+        assert_eq!(format_tokens_short(1_500_000), "1.50M");
+        assert_eq!(format_tokens_short(999_999_999), "1000.00M");
+    }
+
+    #[test]
+    fn test_format_tokens_short_thousands() {
+        assert_eq!(format_tokens_short(5_678), "5.7K");
+        assert_eq!(format_tokens_short(1_000), "1.0K");
+        assert_eq!(format_tokens_short(999_999), "1000.0K");
+    }
+
+    #[test]
+    fn test_format_tokens_short_small_numbers() {
+        assert_eq!(format_tokens_short(123), "123");
+        assert_eq!(format_tokens_short(0), "0");
+        assert_eq!(format_tokens_short(999), "999");
+    }
+
+    // ========== format_cost tests ==========
+
+    #[test]
+    fn test_format_cost_standard() {
+        assert_eq!(format_cost(12.34), "$12.34");
+        assert_eq!(format_cost(0.99), "$0.99");
+        assert_eq!(format_cost(100.00), "$100.00");
+    }
+
+    #[test]
+    fn test_format_cost_thousands() {
+        assert_eq!(format_cost(1234.56), "$1.23K");
+        assert_eq!(format_cost(5000.00), "$5.00K");
+        assert_eq!(format_cost(999.99), "$999.99");
+    }
+
+    #[test]
+    fn test_format_cost_zero() {
+        assert_eq!(format_cost(0.0), "$0.00");
+    }
+
+    // ========== format_number_with_commas_i64 tests ==========
+
+    #[test]
+    fn test_format_number_with_commas_i64_large() {
+        assert_eq!(format_number_with_commas_i64(1_234_567), "1,234,567");
+        assert_eq!(format_number_with_commas_i64(1_000_000_000), "1,000,000,000");
+    }
+
+    #[test]
+    fn test_format_number_with_commas_i64_small() {
+        assert_eq!(format_number_with_commas_i64(100), "100");
+        assert_eq!(format_number_with_commas_i64(999), "999");
+    }
+
+    #[test]
+    fn test_format_number_with_commas_i64_negative() {
+        assert_eq!(format_number_with_commas_i64(-1_234_567), "-1,234,567");
+        assert_eq!(format_number_with_commas_i64(-100), "-100");
+    }
+
+    #[test]
+    fn test_format_number_with_commas_i64_zero() {
+        assert_eq!(format_number_with_commas_i64(0), "0");
+    }
+
+    // ========== truncate_username tests ==========
+
+    #[test]
+    fn test_truncate_username_long() {
+        assert_eq!(
+            truncate_username("very_long_username", 10),
+            Some("very_long…".to_string())
+        );
+        assert_eq!(
+            truncate_username("abcdefghijklmnop", 8),
+            Some("abcdefg…".to_string())
+        );
+    }
+
+    #[test]
+    fn test_truncate_username_short() {
+        assert_eq!(truncate_username("short", 10), Some("short".to_string()));
+        assert_eq!(truncate_username("user", 4), Some("user".to_string()));
+    }
+
+    #[test]
+    fn test_truncate_username_empty() {
+        assert_eq!(truncate_username("", 10), None);
+    }
+
+    #[test]
+    fn test_truncate_username_edge_cases() {
+        assert_eq!(truncate_username("a", 1), Some("a".to_string()));
+        assert_eq!(truncate_username("ab", 1), Some("…".to_string()));
+    }
+
+    // ========== capitalize_word tests ==========
+
+    #[test]
+    fn test_capitalize_word_lowercase() {
+        assert_eq!(capitalize_word("hello"), "Hello");
+        assert_eq!(capitalize_word("world"), "World");
+    }
+
+    #[test]
+    fn test_capitalize_word_uppercase() {
+        assert_eq!(capitalize_word("WORLD"), "World");
+        assert_eq!(capitalize_word("HELLO"), "Hello");
+    }
+
+    #[test]
+    fn test_capitalize_word_mixed() {
+        assert_eq!(capitalize_word("hElLo"), "Hello");
+        assert_eq!(capitalize_word("WoRlD"), "World");
+    }
+
+    #[test]
+    fn test_capitalize_word_empty() {
+        assert_eq!(capitalize_word(""), "");
+    }
+
+    #[test]
+    fn test_capitalize_word_single_char() {
+        assert_eq!(capitalize_word("a"), "A");
+        assert_eq!(capitalize_word("Z"), "Z");
+    }
+
+    // ========== strip_date_suffix tests ==========
+
+    #[test]
+    fn test_strip_date_suffix_with_date() {
+        assert_eq!(
+            strip_date_suffix("claude-4-20250514".to_string()),
+            "claude-4"
+        );
+        assert_eq!(
+            strip_date_suffix("gpt-4-20240101".to_string()),
+            "gpt-4"
+        );
+    }
+
+    #[test]
+    fn test_strip_date_suffix_without_date() {
+        assert_eq!(strip_date_suffix("gpt-5".to_string()), "gpt-5");
+        assert_eq!(strip_date_suffix("claude-opus".to_string()), "claude-opus");
+    }
+
+    #[test]
+    fn test_strip_date_suffix_complex() {
+        assert_eq!(
+            strip_date_suffix("model-2024-01-15-123".to_string()),
+            "model-2024-01-15-123"
+        );
+    }
+
+    // ========== split_quality_suffix tests ==========
+
+    #[test]
+    fn test_split_quality_suffix_high() {
+        assert_eq!(
+            split_quality_suffix("model-high"),
+            ("model".to_string(), " High".to_string())
+        );
+        assert_eq!(
+            split_quality_suffix("gpt-4_high"),
+            ("gpt-4".to_string(), " High".to_string())
+        );
+    }
+
+    #[test]
+    fn test_split_quality_suffix_medium() {
+        assert_eq!(
+            split_quality_suffix("model-medium"),
+            ("model".to_string(), " Medium".to_string())
+        );
+    }
+
+    #[test]
+    fn test_split_quality_suffix_low() {
+        assert_eq!(
+            split_quality_suffix("model-low"),
+            ("model".to_string(), " Low".to_string())
+        );
+    }
+
+    #[test]
+    fn test_split_quality_suffix_none() {
+        assert_eq!(
+            split_quality_suffix("model"),
+            ("model".to_string(), String::new())
+        );
+        assert_eq!(
+            split_quality_suffix("gpt-4"),
+            ("gpt-4".to_string(), String::new())
+        );
+    }
+
+    // ========== format_model_name tests ==========
+
+    #[test]
+    fn test_format_model_name_claude() {
+        assert_eq!(
+            format_model_name("claude-sonnet-4-20250514"),
+            "Claude Sonnet 4"
+        );
+        assert_eq!(
+            format_model_name("claude-3-5-sonnet-20241022"),
+            "Claude 3.5 Sonnet"
+        );
+        assert_eq!(
+            format_model_name("claude-3-opus-20240229"),
+            "Claude 3 Opus"
+        );
+    }
+
+    #[test]
+    fn test_format_model_name_gpt() {
+        assert_eq!(format_model_name("gpt-4o"), "GPT-4o");
+        assert_eq!(format_model_name("gpt-4o-mini"), "GPT-4o Mini");
+        assert_eq!(format_model_name("gpt-5"), "GPT-5");
+    }
+
+    #[test]
+    fn test_format_model_name_gemini() {
+        assert_eq!(format_model_name("gemini-2.5-pro"), "Gemini 2.5 Pro");
+        assert_eq!(format_model_name("gemini-1.5-flash"), "Gemini 1.5 Flash");
+    }
+
+    #[test]
+    fn test_format_model_name_with_quality_suffix() {
+        assert_eq!(format_model_name("gpt-4-high"), "GPT-4 High");
+        assert_eq!(format_model_name("claude-opus-low"), "Claude opus Low");
+    }
+
+    // ========== get_provider_from_model tests ==========
+
+    #[test]
+    fn test_get_provider_from_model_anthropic() {
+        assert_eq!(get_provider_from_model("claude-3-opus"), Some("anthropic"));
+        assert_eq!(get_provider_from_model("sonnet-4"), Some("anthropic"));
+        assert_eq!(get_provider_from_model("haiku-3.5"), Some("anthropic"));
+    }
+
+    #[test]
+    fn test_get_provider_from_model_openai() {
+        assert_eq!(get_provider_from_model("gpt-4"), Some("openai"));
+        assert_eq!(get_provider_from_model("o1-preview"), Some("openai"));
+        assert_eq!(get_provider_from_model("codex-001"), Some("openai"));
+    }
+
+    #[test]
+    fn test_get_provider_from_model_google() {
+        assert_eq!(get_provider_from_model("gemini-pro"), Some("google"));
+        assert_eq!(get_provider_from_model("gemini-2.5-flash"), Some("google"));
+    }
+
+    #[test]
+    fn test_get_provider_from_model_xai() {
+        assert_eq!(get_provider_from_model("grok-3"), Some("xai"));
+        assert_eq!(get_provider_from_model("grok-code"), Some("xai"));
+    }
+
+    #[test]
+    fn test_get_provider_from_model_zai() {
+        assert_eq!(get_provider_from_model("glm-4.7"), Some("zai"));
+        assert_eq!(get_provider_from_model("pickle-model"), Some("zai"));
+    }
+
+    #[test]
+    fn test_get_provider_from_model_unknown() {
+        assert_eq!(get_provider_from_model("unknown-model"), None);
+        assert_eq!(get_provider_from_model("random-123"), None);
+    }
+
+    // ========== calculate_intensity tests ==========
+
+    #[test]
+    fn test_calculate_intensity_grade4() {
+        assert_eq!(calculate_intensity(100.0, 100.0), 4);
+        assert_eq!(calculate_intensity(75.0, 100.0), 4);
+        assert_eq!(calculate_intensity(80.0, 100.0), 4);
+    }
+
+    #[test]
+    fn test_calculate_intensity_grade3() {
+        assert_eq!(calculate_intensity(50.0, 100.0), 3);
+        assert_eq!(calculate_intensity(60.0, 100.0), 3);
+        assert_eq!(calculate_intensity(74.9, 100.0), 3);
+    }
+
+    #[test]
+    fn test_calculate_intensity_grade2() {
+        assert_eq!(calculate_intensity(25.0, 100.0), 2);
+        assert_eq!(calculate_intensity(30.0, 100.0), 2);
+        assert_eq!(calculate_intensity(49.9, 100.0), 2);
+    }
+
+    #[test]
+    fn test_calculate_intensity_grade1() {
+        assert_eq!(calculate_intensity(10.0, 100.0), 1);
+        assert_eq!(calculate_intensity(24.9, 100.0), 1);
+        assert_eq!(calculate_intensity(0.1, 100.0), 1);
+    }
+
+    #[test]
+    fn test_calculate_intensity_grade0() {
+        assert_eq!(calculate_intensity(0.0, 100.0), 0);
+        assert_eq!(calculate_intensity(0.0, 0.0), 0);
+    }
+
+    // ========== calculate_streaks tests ==========
+
+    #[test]
+    fn test_calculate_streaks_consecutive() {
+        let dates = vec![
+            "2024-01-01".to_string(),
+            "2024-01-02".to_string(),
+            "2024-01-03".to_string(),
+            "2024-01-04".to_string(),
+        ];
+        let (_current, longest) = calculate_streaks(&dates);
+        assert_eq!(longest, 4);
+    }
+
+    #[test]
+    fn test_calculate_streaks_with_gaps() {
+        let dates = vec![
+            "2024-01-01".to_string(),
+            "2024-01-02".to_string(),
+            "2024-01-05".to_string(),
+            "2024-01-06".to_string(),
+            "2024-01-07".to_string(),
+        ];
+        let (_current, longest) = calculate_streaks(&dates);
+        assert_eq!(longest, 3);
+    }
+
+    #[test]
+    fn test_calculate_streaks_empty() {
+        let dates: Vec<String> = vec![];
+        let (current, longest) = calculate_streaks(&dates);
+        assert_eq!(current, 0);
+        assert_eq!(longest, 0);
+    }
+
+    #[test]
+    fn test_calculate_streaks_single_day() {
+        let dates = vec!["2024-01-01".to_string()];
+        let (_current, longest) = calculate_streaks(&dates);
+        assert_eq!(longest, 1);
+    }
+
+    // ========== date_diff_days tests ==========
+
+    #[test]
+    fn test_date_diff_days_forward() {
+        assert_eq!(date_diff_days("2024-01-01", "2024-01-10"), 9);
+        assert_eq!(date_diff_days("2024-01-01", "2024-01-02"), 1);
+    }
+
+    #[test]
+    fn test_date_diff_days_backward() {
+        assert_eq!(date_diff_days("2024-01-10", "2024-01-01"), 9);
+        assert_eq!(date_diff_days("2024-01-02", "2024-01-01"), 1);
+    }
+
+    #[test]
+    fn test_date_diff_days_same_day() {
+        assert_eq!(date_diff_days("2024-01-01", "2024-01-01"), 0);
+    }
+
+    #[test]
+    fn test_date_diff_days_invalid() {
+        assert_eq!(date_diff_days("invalid", "2024-01-01"), 0);
+        assert_eq!(date_diff_days("2024-01-01", "invalid"), 0);
+        assert_eq!(date_diff_days("invalid", "invalid"), 0);
+    }
+
+    #[test]
+    fn test_date_diff_days_cross_month() {
+        assert_eq!(date_diff_days("2024-01-31", "2024-02-01"), 1);
+        assert_eq!(date_diff_days("2024-01-01", "2024-02-01"), 31);
+    }
+
+    // ========== source_display_name tests ==========
+
+    #[test]
+    fn test_source_display_name_opencode() {
+        assert_eq!(source_display_name("opencode"), Some("OpenCode"));
+    }
+
+    #[test]
+    fn test_source_display_name_claude() {
+        assert_eq!(source_display_name("claude"), Some("Claude Code"));
+    }
+
+    #[test]
+    fn test_source_display_name_codex() {
+        assert_eq!(source_display_name("codex"), Some("Codex CLI"));
+    }
+
+    #[test]
+    fn test_source_display_name_gemini() {
+        assert_eq!(source_display_name("gemini"), Some("Gemini CLI"));
+    }
+
+    #[test]
+    fn test_source_display_name_cursor() {
+        assert_eq!(source_display_name("cursor"), Some("Cursor IDE"));
+    }
+
+    #[test]
+    fn test_source_display_name_amp() {
+        assert_eq!(source_display_name("amp"), Some("Amp"));
+    }
+
+    #[test]
+    fn test_source_display_name_droid() {
+        assert_eq!(source_display_name("droid"), Some("Droid"));
+    }
+
+    #[test]
+    fn test_source_display_name_openclaw() {
+        assert_eq!(source_display_name("openclaw"), Some("OpenClaw"));
+    }
+
+    #[test]
+    fn test_source_display_name_pi() {
+        assert_eq!(source_display_name("pi"), Some("Pi"));
+    }
+
+    #[test]
+    fn test_source_display_name_unknown() {
+        assert_eq!(source_display_name("unknown"), None);
+        assert_eq!(source_display_name(""), None);
+        assert_eq!(source_display_name("Claude"), None); // case-sensitive
+    }
+
+    // ========== client_logo_url tests ==========
+
+    #[test]
+    fn test_client_logo_url_opencode() {
+        assert_eq!(
+            client_logo_url("OpenCode"),
+            Some("https://tokscale.ai/assets/logos/opencode.png")
+        );
+    }
+
+    #[test]
+    fn test_client_logo_url_claude_code() {
+        assert_eq!(
+            client_logo_url("Claude Code"),
+            Some("https://tokscale.ai/assets/logos/claude.jpg")
+        );
+    }
+
+    #[test]
+    fn test_client_logo_url_codex_cli() {
+        assert_eq!(
+            client_logo_url("Codex CLI"),
+            Some("https://tokscale.ai/assets/logos/openai.jpg")
+        );
+    }
+
+    #[test]
+    fn test_client_logo_url_gemini_cli() {
+        assert_eq!(
+            client_logo_url("Gemini CLI"),
+            Some("https://tokscale.ai/assets/logos/gemini.png")
+        );
+    }
+
+    #[test]
+    fn test_client_logo_url_cursor_ide() {
+        assert_eq!(
+            client_logo_url("Cursor IDE"),
+            Some("https://tokscale.ai/assets/logos/cursor.jpg")
+        );
+    }
+
+    #[test]
+    fn test_client_logo_url_amp() {
+        assert_eq!(
+            client_logo_url("Amp"),
+            Some("https://tokscale.ai/assets/logos/amp.png")
+        );
+    }
+
+    #[test]
+    fn test_client_logo_url_droid() {
+        assert_eq!(
+            client_logo_url("Droid"),
+            Some("https://tokscale.ai/assets/logos/droid.png")
+        );
+    }
+
+    #[test]
+    fn test_client_logo_url_openclaw() {
+        assert_eq!(
+            client_logo_url("OpenClaw"),
+            Some("https://tokscale.ai/assets/logos/openclaw.png")
+        );
+    }
+
+    #[test]
+    fn test_client_logo_url_pi() {
+        assert_eq!(
+            client_logo_url("Pi"),
+            Some("https://tokscale.ai/assets/logos/pi.png")
+        );
+    }
+
+    #[test]
+    fn test_client_logo_url_unknown() {
+        assert_eq!(client_logo_url("Unknown"), None);
+        assert_eq!(client_logo_url(""), None);
+        assert_eq!(client_logo_url("opencode"), None); // case-sensitive: expects display name
+    }
+
+    // ========== provider_logo_url tests ==========
+
+    #[test]
+    fn test_provider_logo_url_anthropic() {
+        assert_eq!(
+            provider_logo_url("anthropic"),
+            Some("https://tokscale.ai/assets/logos/claude.jpg")
+        );
+    }
+
+    #[test]
+    fn test_provider_logo_url_openai() {
+        assert_eq!(
+            provider_logo_url("openai"),
+            Some("https://tokscale.ai/assets/logos/openai.jpg")
+        );
+    }
+
+    #[test]
+    fn test_provider_logo_url_google() {
+        assert_eq!(
+            provider_logo_url("google"),
+            Some("https://tokscale.ai/assets/logos/gemini.png")
+        );
+    }
+
+    #[test]
+    fn test_provider_logo_url_xai() {
+        assert_eq!(
+            provider_logo_url("xai"),
+            Some("https://tokscale.ai/assets/logos/grok.jpg")
+        );
+    }
+
+    #[test]
+    fn test_provider_logo_url_zai() {
+        assert_eq!(
+            provider_logo_url("zai"),
+            Some("https://tokscale.ai/assets/logos/zai.jpg")
+        );
+    }
+
+    #[test]
+    fn test_provider_logo_url_unknown() {
+        assert_eq!(provider_logo_url("unknown"), None);
+        assert_eq!(provider_logo_url(""), None);
+        assert_eq!(provider_logo_url("Anthropic"), None); // case-sensitive
+    }
+
+    // ========== capitalize_word edge case tests ==========
+
+    #[test]
+    fn test_capitalize_word_unicode() {
+        // Unicode chars that have uppercase variants
+        assert_eq!(capitalize_word("über"), "Über");
+        assert_eq!(capitalize_word("état"), "État");
+    }
+
+    #[test]
+    fn test_capitalize_word_numbers() {
+        assert_eq!(capitalize_word("123abc"), "123abc");
+        assert_eq!(capitalize_word("42"), "42");
+    }
+
+    #[test]
+    fn test_capitalize_word_with_hyphens() {
+        // capitalize_word only handles a single word, hyphens stay
+        assert_eq!(capitalize_word("hello-world"), "Hello-world");
+    }
+
+    #[test]
+    fn test_capitalize_word_all_lowercase_long() {
+        assert_eq!(capitalize_word("abcdefghij"), "Abcdefghij");
+    }
+
+    // ========== format_number_with_commas_i64 edge case tests ==========
+
+    #[test]
+    fn test_format_number_with_commas_i64_single_digit() {
+        assert_eq!(format_number_with_commas_i64(1), "1");
+        assert_eq!(format_number_with_commas_i64(9), "9");
+    }
+
+    #[test]
+    fn test_format_number_with_commas_i64_exact_thousands() {
+        assert_eq!(format_number_with_commas_i64(1_000), "1,000");
+        assert_eq!(format_number_with_commas_i64(1_000_000), "1,000,000");
+    }
+
+    #[test]
+    fn test_format_number_with_commas_i64_large_negative() {
+        assert_eq!(
+            format_number_with_commas_i64(-1_000_000_000),
+            "-1,000,000,000"
+        );
+    }
+
+    #[test]
+    fn test_format_number_with_commas_i64_max_value() {
+        // i64::MAX = 9_223_372_036_854_775_807
+        let result = format_number_with_commas_i64(i64::MAX);
+        assert_eq!(result, "9,223,372,036,854,775,807");
+    }
+
+    #[test]
+    fn test_format_number_with_commas_i64_large_negative_max() {
+        let result = format_number_with_commas_i64(-9_223_372_036_854_775_807);
+        assert_eq!(result, "-9,223,372,036,854,775,807");
+    }
+
+    #[test]
+    fn test_format_number_with_commas_i64_boundary_999() {
+        assert_eq!(format_number_with_commas_i64(999), "999");
+        assert_eq!(format_number_with_commas_i64(1000), "1,000");
+    }
+
+    // ========== format_cost edge case tests ==========
+
+    #[test]
+    fn test_format_cost_very_large() {
+        assert_eq!(format_cost(1_000_000.0), "$1000.00K");
+        assert_eq!(format_cost(50_000.0), "$50.00K");
+    }
+
+    #[test]
+    fn test_format_cost_very_small() {
+        assert_eq!(format_cost(0.001), "$0.00");
+        assert_eq!(format_cost(0.005), "$0.01"); // rounds up
+        assert_eq!(format_cost(0.01), "$0.01");
+    }
+
+    #[test]
+    fn test_format_cost_negative() {
+        // Negative costs produce negative dollar string
+        assert_eq!(format_cost(-5.50), "$-5.50");
+    }
+
+    #[test]
+    fn test_format_cost_boundary_at_1000() {
+        assert_eq!(format_cost(999.99), "$999.99");
+        assert_eq!(format_cost(1000.0), "$1.00K");
+        assert_eq!(format_cost(1000.01), "$1.00K");
+    }
+
+    #[test]
+    fn test_format_cost_fractional_thousands() {
+        assert_eq!(format_cost(1500.0), "$1.50K");
+        assert_eq!(format_cost(2999.99), "$3.00K");
+    }
+
+    // ========== get_provider_from_model edge case tests ==========
+
+    #[test]
+    fn test_get_provider_from_model_case_insensitive() {
+        assert_eq!(get_provider_from_model("CLAUDE-3-OPUS"), Some("anthropic"));
+        assert_eq!(get_provider_from_model("GPT-4"), Some("openai"));
+        assert_eq!(get_provider_from_model("Gemini-Pro"), Some("google"));
+        assert_eq!(get_provider_from_model("GROK-3"), Some("xai"));
+        assert_eq!(get_provider_from_model("GLM-4.7"), Some("zai"));
+    }
+
+    #[test]
+    fn test_get_provider_from_model_partial_matches() {
+        // "opus" alone triggers anthropic
+        assert_eq!(get_provider_from_model("opus-4"), Some("anthropic"));
+        // "o1" triggers openai
+        assert_eq!(get_provider_from_model("o1-mini"), Some("openai"));
+        // "o3" triggers openai
+        assert_eq!(get_provider_from_model("o3-mini"), Some("openai"));
+    }
+
+    #[test]
+    fn test_get_provider_from_model_model_with_provider_prefix() {
+        assert_eq!(
+            get_provider_from_model("anthropic/claude-sonnet-4"),
+            Some("anthropic")
+        );
+        assert_eq!(
+            get_provider_from_model("openai/gpt-4o"),
+            Some("openai")
+        );
+    }
+
+    #[test]
+    fn test_get_provider_from_model_empty_string() {
+        assert_eq!(get_provider_from_model(""), None);
+    }
+
+    #[test]
+    fn test_get_provider_from_model_pickle() {
+        // "pickle" maps to zai
+        assert_eq!(get_provider_from_model("big-pickle"), Some("zai"));
+        assert_eq!(get_provider_from_model("pickle-3"), Some("zai"));
+    }
+
+    // ========== calculate_intensity edge case tests ==========
+
+    #[test]
+    fn test_calculate_intensity_zero_max_cost() {
+        assert_eq!(calculate_intensity(50.0, 0.0), 0);
+    }
+
+    #[test]
+    fn test_calculate_intensity_zero_cost() {
+        assert_eq!(calculate_intensity(0.0, 100.0), 0);
+    }
+
+    #[test]
+    fn test_calculate_intensity_both_zero() {
+        assert_eq!(calculate_intensity(0.0, 0.0), 0);
+    }
+
+    #[test]
+    fn test_calculate_intensity_equal_cost_max() {
+        // ratio = 1.0, which is >= 0.75 → intensity 4
+        assert_eq!(calculate_intensity(100.0, 100.0), 4);
+    }
+
+    #[test]
+    fn test_calculate_intensity_exact_boundary_075() {
+        assert_eq!(calculate_intensity(75.0, 100.0), 4);
+    }
+
+    #[test]
+    fn test_calculate_intensity_exact_boundary_050() {
+        assert_eq!(calculate_intensity(50.0, 100.0), 3);
+    }
+
+    #[test]
+    fn test_calculate_intensity_exact_boundary_025() {
+        assert_eq!(calculate_intensity(25.0, 100.0), 2);
+    }
+
+    #[test]
+    fn test_calculate_intensity_just_below_025() {
+        assert_eq!(calculate_intensity(24.99, 100.0), 1);
+    }
+
+    #[test]
+    fn test_calculate_intensity_cost_exceeds_max() {
+        // ratio > 1.0, still >= 0.75 → intensity 4
+        assert_eq!(calculate_intensity(200.0, 100.0), 4);
+    }
+
+    #[test]
+    fn test_calculate_intensity_tiny_fraction() {
+        assert_eq!(calculate_intensity(0.001, 100.0), 1);
+    }
+
+    // ========== date_diff_days edge case tests ==========
+
+    #[test]
+    fn test_date_diff_days_cross_year() {
+        assert_eq!(date_diff_days("2023-12-31", "2024-01-01"), 1);
+        assert_eq!(date_diff_days("2023-01-01", "2024-01-01"), 365);
+    }
+
+    #[test]
+    fn test_date_diff_days_leap_year() {
+        // 2024 is a leap year
+        assert_eq!(date_diff_days("2024-02-28", "2024-02-29"), 1);
+        assert_eq!(date_diff_days("2024-02-28", "2024-03-01"), 2);
+    }
+
+    #[test]
+    fn test_date_diff_days_large_gap() {
+        assert_eq!(date_diff_days("2020-01-01", "2025-01-01"), 1827);
+    }
+
+    #[test]
+    fn test_date_diff_days_partial_invalid() {
+        assert_eq!(date_diff_days("2024-13-01", "2024-01-01"), 0); // month 13 invalid
+        assert_eq!(date_diff_days("2024-01-01", "not-a-date"), 0);
+    }
+
+    #[test]
+    fn test_date_diff_days_empty_strings() {
+        assert_eq!(date_diff_days("", ""), 0);
+        assert_eq!(date_diff_days("", "2024-01-01"), 0);
+    }
+
+    // ========== calculate_streaks comprehensive tests ==========
+
+    #[test]
+    fn test_calculate_streaks_no_consecutive_dates() {
+        let dates = vec![
+            "2024-01-01".to_string(),
+            "2024-01-03".to_string(),
+            "2024-01-05".to_string(),
+            "2024-01-07".to_string(),
+        ];
+        let (_current, longest) = calculate_streaks(&dates);
+        assert_eq!(longest, 1); // each date is isolated
+    }
+
+    #[test]
+    fn test_calculate_streaks_multiple_separate_streaks() {
+        let dates = vec![
+            "2024-01-01".to_string(),
+            "2024-01-02".to_string(),
+            "2024-01-03".to_string(), // streak of 3
+            "2024-01-10".to_string(),
+            "2024-01-11".to_string(),
+            "2024-01-12".to_string(),
+            "2024-01-13".to_string(),
+            "2024-01-14".to_string(), // streak of 5 — longest
+            "2024-01-20".to_string(),
+            "2024-01-21".to_string(), // streak of 2
+        ];
+        let (_current, longest) = calculate_streaks(&dates);
+        assert_eq!(longest, 5);
+    }
+
+    #[test]
+    fn test_calculate_streaks_longest_at_beginning() {
+        let dates = vec![
+            "2024-01-01".to_string(),
+            "2024-01-02".to_string(),
+            "2024-01-03".to_string(),
+            "2024-01-04".to_string(), // streak of 4
+            "2024-01-10".to_string(),
+            "2024-01-11".to_string(), // streak of 2
+        ];
+        let (_current, longest) = calculate_streaks(&dates);
+        assert_eq!(longest, 4);
+    }
+
+    #[test]
+    fn test_calculate_streaks_all_consecutive() {
+        let dates = vec![
+            "2024-01-01".to_string(),
+            "2024-01-02".to_string(),
+            "2024-01-03".to_string(),
+            "2024-01-04".to_string(),
+            "2024-01-05".to_string(),
+            "2024-01-06".to_string(),
+            "2024-01-07".to_string(),
+        ];
+        let (_current, longest) = calculate_streaks(&dates);
+        assert_eq!(longest, 7);
+    }
+
+    #[test]
+    fn test_calculate_streaks_two_dates_consecutive() {
+        let dates = vec!["2024-06-15".to_string(), "2024-06-16".to_string()];
+        let (_current, longest) = calculate_streaks(&dates);
+        assert_eq!(longest, 2);
+    }
+
+    #[test]
+    fn test_calculate_streaks_two_dates_gap() {
+        let dates = vec!["2024-06-15".to_string(), "2024-06-20".to_string()];
+        let (_current, longest) = calculate_streaks(&dates);
+        assert_eq!(longest, 1);
+    }
+
+    #[test]
+    fn test_calculate_streaks_cross_month_boundary() {
+        let dates = vec![
+            "2024-01-30".to_string(),
+            "2024-01-31".to_string(),
+            "2024-02-01".to_string(),
+            "2024-02-02".to_string(),
+        ];
+        let (_current, longest) = calculate_streaks(&dates);
+        assert_eq!(longest, 4);
+    }
+}

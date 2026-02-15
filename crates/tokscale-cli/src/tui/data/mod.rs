@@ -645,3 +645,139 @@ fn calculate_streaks(daily: &[DailyUsage]) -> (u32, u32) {
 
     (current_streak, longest_streak)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_source_all() {
+        let sources = Source::all();
+        assert_eq!(sources.len(), 9);
+        assert_eq!(sources[0], Source::OpenCode);
+        assert_eq!(sources[1], Source::Claude);
+        assert_eq!(sources[2], Source::Codex);
+        assert_eq!(sources[3], Source::Cursor);
+        assert_eq!(sources[4], Source::Gemini);
+        assert_eq!(sources[5], Source::Amp);
+        assert_eq!(sources[6], Source::Droid);
+        assert_eq!(sources[7], Source::OpenClaw);
+        assert_eq!(sources[8], Source::Pi);
+    }
+
+    #[test]
+    fn test_source_as_str() {
+        assert_eq!(Source::OpenCode.as_str(), "OpenCode");
+        assert_eq!(Source::Claude.as_str(), "Claude");
+        assert_eq!(Source::Codex.as_str(), "Codex");
+        assert_eq!(Source::Cursor.as_str(), "Cursor");
+        assert_eq!(Source::Gemini.as_str(), "Gemini");
+        assert_eq!(Source::Amp.as_str(), "Amp");
+        assert_eq!(Source::Droid.as_str(), "Droid");
+        assert_eq!(Source::OpenClaw.as_str(), "OpenClaw");
+        assert_eq!(Source::Pi.as_str(), "Pi");
+    }
+
+    #[test]
+    fn test_source_key() {
+        assert_eq!(Source::OpenCode.key(), '1');
+        assert_eq!(Source::Claude.key(), '2');
+        assert_eq!(Source::Codex.key(), '3');
+        assert_eq!(Source::Cursor.key(), '4');
+        assert_eq!(Source::Gemini.key(), '5');
+        assert_eq!(Source::Amp.key(), '6');
+        assert_eq!(Source::Droid.key(), '7');
+        assert_eq!(Source::OpenClaw.key(), '8');
+        assert_eq!(Source::Pi.key(), '9');
+    }
+
+    #[test]
+    fn test_source_from_key() {
+        assert_eq!(Source::from_key('1'), Some(Source::OpenCode));
+        assert_eq!(Source::from_key('2'), Some(Source::Claude));
+        assert_eq!(Source::from_key('3'), Some(Source::Codex));
+        assert_eq!(Source::from_key('4'), Some(Source::Cursor));
+        assert_eq!(Source::from_key('5'), Some(Source::Gemini));
+        assert_eq!(Source::from_key('6'), Some(Source::Amp));
+        assert_eq!(Source::from_key('7'), Some(Source::Droid));
+        assert_eq!(Source::from_key('8'), Some(Source::OpenClaw));
+        assert_eq!(Source::from_key('9'), Some(Source::Pi));
+        assert_eq!(Source::from_key('0'), None);
+        assert_eq!(Source::from_key('a'), None);
+    }
+
+    #[test]
+    fn test_token_breakdown_total() {
+        let breakdown = TokenBreakdown {
+            input: 100,
+            output: 200,
+            cache_read: 50,
+            cache_write: 25,
+            reasoning: 10,
+        };
+        assert_eq!(breakdown.total(), 385);
+    }
+
+    #[test]
+    fn test_token_breakdown_total_with_overflow() {
+        let breakdown = TokenBreakdown {
+            input: u64::MAX,
+            output: 1,
+            cache_read: 0,
+            cache_write: 0,
+            reasoning: 0,
+        };
+        // saturating_add should prevent overflow
+        assert_eq!(breakdown.total(), u64::MAX);
+    }
+
+    #[test]
+    fn test_token_breakdown_default() {
+        let breakdown = TokenBreakdown::default();
+        assert_eq!(breakdown.input, 0);
+        assert_eq!(breakdown.output, 0);
+        assert_eq!(breakdown.cache_read, 0);
+        assert_eq!(breakdown.cache_write, 0);
+        assert_eq!(breakdown.reasoning, 0);
+        assert_eq!(breakdown.total(), 0);
+    }
+
+    #[test]
+    fn test_data_loader_new() {
+        let loader = DataLoader::new(None);
+        assert!(loader._sessions_path.is_none());
+        assert!(loader.since.is_none());
+        assert!(loader.until.is_none());
+        assert!(loader.year.is_none());
+    }
+
+    #[test]
+    fn test_data_loader_with_filters() {
+        let loader = DataLoader::with_filters(
+            Some(PathBuf::from("/tmp/sessions")),
+            Some("2024-01-01".to_string()),
+            Some("2024-12-31".to_string()),
+            Some("2024".to_string()),
+        );
+        
+        assert_eq!(loader._sessions_path, Some(PathBuf::from("/tmp/sessions")));
+        assert_eq!(loader.since, Some("2024-01-01".to_string()));
+        assert_eq!(loader.until, Some("2024-12-31".to_string()));
+        assert_eq!(loader.year, Some("2024".to_string()));
+    }
+
+    #[test]
+    fn test_parse_date() {
+        assert_eq!(
+            parse_date("2024-01-15"),
+            Some(NaiveDate::from_ymd_opt(2024, 1, 15).unwrap())
+        );
+        assert_eq!(
+            parse_date("2024-12-31"),
+            Some(NaiveDate::from_ymd_opt(2024, 12, 31).unwrap())
+        );
+        assert_eq!(parse_date("invalid"), None);
+        assert_eq!(parse_date("2024-13-01"), None);
+        assert_eq!(parse_date(""), None);
+    }
+}

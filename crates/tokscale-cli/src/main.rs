@@ -3076,3 +3076,394 @@ fn run_headless_command(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_source_filter_all_false() {
+        let flags = SourceFlags {
+            opencode: false,
+            claude: false,
+            codex: false,
+            gemini: false,
+            cursor: false,
+            amp: false,
+            droid: false,
+            openclaw: false,
+            pi: false,
+        };
+        assert_eq!(build_source_filter(flags), None);
+    }
+
+    #[test]
+    fn test_build_source_filter_single_source() {
+        let flags = SourceFlags {
+            opencode: true,
+            claude: false,
+            codex: false,
+            gemini: false,
+            cursor: false,
+            amp: false,
+            droid: false,
+            openclaw: false,
+            pi: false,
+        };
+        assert_eq!(
+            build_source_filter(flags),
+            Some(vec!["opencode".to_string()])
+        );
+    }
+
+    #[test]
+    fn test_build_source_filter_multiple_sources() {
+        let flags = SourceFlags {
+            opencode: true,
+            claude: true,
+            codex: false,
+            gemini: false,
+            cursor: false,
+            amp: false,
+            droid: false,
+            openclaw: false,
+            pi: true,
+        };
+        assert_eq!(
+            build_source_filter(flags),
+            Some(vec![
+                "opencode".to_string(),
+                "claude".to_string(),
+                "pi".to_string()
+            ])
+        );
+    }
+
+    #[test]
+    fn test_build_source_filter_all_sources() {
+        let flags = SourceFlags {
+            opencode: true,
+            claude: true,
+            codex: true,
+            gemini: true,
+            cursor: true,
+            amp: true,
+            droid: true,
+            openclaw: true,
+            pi: true,
+        };
+        let result = build_source_filter(flags);
+        assert!(result.is_some());
+        let sources = result.unwrap();
+        assert_eq!(sources.len(), 9);
+        assert!(sources.contains(&"opencode".to_string()));
+        assert!(sources.contains(&"claude".to_string()));
+        assert!(sources.contains(&"codex".to_string()));
+        assert!(sources.contains(&"gemini".to_string()));
+        assert!(sources.contains(&"cursor".to_string()));
+        assert!(sources.contains(&"amp".to_string()));
+        assert!(sources.contains(&"droid".to_string()));
+        assert!(sources.contains(&"openclaw".to_string()));
+        assert!(sources.contains(&"pi".to_string()));
+    }
+
+    #[test]
+    fn test_build_date_filter_custom_range() {
+        let (since, until) = build_date_filter(
+            false,
+            false,
+            false,
+            Some("2024-01-01".to_string()),
+            Some("2024-12-31".to_string()),
+        );
+        assert_eq!(since, Some("2024-01-01".to_string()));
+        assert_eq!(until, Some("2024-12-31".to_string()));
+    }
+
+    #[test]
+    fn test_build_date_filter_no_filters() {
+        let (since, until) = build_date_filter(false, false, false, None, None);
+        assert_eq!(since, None);
+        assert_eq!(until, None);
+    }
+
+    #[test]
+    fn test_normalize_year_filter_with_year() {
+        let year = normalize_year_filter(false, false, false, Some("2024".to_string()));
+        assert_eq!(year, Some("2024".to_string()));
+    }
+
+    #[test]
+    fn test_normalize_year_filter_with_today() {
+        let year = normalize_year_filter(true, false, false, Some("2024".to_string()));
+        assert_eq!(year, None);
+    }
+
+    #[test]
+    fn test_normalize_year_filter_with_week() {
+        let year = normalize_year_filter(false, true, false, Some("2024".to_string()));
+        assert_eq!(year, None);
+    }
+
+    #[test]
+    fn test_normalize_year_filter_with_month() {
+        let year = normalize_year_filter(false, false, true, Some("2024".to_string()));
+        assert_eq!(year, None);
+    }
+
+    #[test]
+    fn test_normalize_year_filter_no_year() {
+        let year = normalize_year_filter(false, false, false, None);
+        assert_eq!(year, None);
+    }
+
+    #[test]
+    fn test_format_tokens_with_commas_small() {
+        assert_eq!(format_tokens_with_commas(123), "123");
+    }
+
+    #[test]
+    fn test_format_tokens_with_commas_thousands() {
+        assert_eq!(format_tokens_with_commas(1234), "1,234");
+    }
+
+    #[test]
+    fn test_format_tokens_with_commas_millions() {
+        assert_eq!(format_tokens_with_commas(1234567), "1,234,567");
+    }
+
+    #[test]
+    fn test_format_tokens_with_commas_billions() {
+        assert_eq!(format_tokens_with_commas(1234567890), "1,234,567,890");
+    }
+
+    #[test]
+    fn test_format_tokens_with_commas_zero() {
+        assert_eq!(format_tokens_with_commas(0), "0");
+    }
+
+    #[test]
+    fn test_format_tokens_with_commas_negative() {
+        assert_eq!(format_tokens_with_commas(-1234567), "-1,234,567");
+    }
+
+    #[test]
+    fn test_format_currency_zero() {
+        assert_eq!(format_currency(0.0), "$0.00");
+    }
+
+    #[test]
+    fn test_format_currency_small() {
+        assert_eq!(format_currency(12.34), "$12.34");
+    }
+
+    #[test]
+    fn test_format_currency_large() {
+        assert_eq!(format_currency(1234.56), "$1234.56");
+    }
+
+    #[test]
+    fn test_format_currency_rounds() {
+        assert_eq!(format_currency(12.345), "$12.35");
+        assert_eq!(format_currency(12.344), "$12.34");
+    }
+
+    #[test]
+    fn test_capitalize_source_opencode() {
+        assert_eq!(capitalize_source("opencode"), "OpenCode");
+    }
+
+    #[test]
+    fn test_capitalize_source_claude() {
+        assert_eq!(capitalize_source("claude"), "Claude");
+    }
+
+    #[test]
+    fn test_capitalize_source_codex() {
+        assert_eq!(capitalize_source("codex"), "Codex");
+    }
+
+    #[test]
+    fn test_capitalize_source_cursor() {
+        assert_eq!(capitalize_source("cursor"), "Cursor");
+    }
+
+    #[test]
+    fn test_capitalize_source_gemini() {
+        assert_eq!(capitalize_source("gemini"), "Gemini");
+    }
+
+    #[test]
+    fn test_capitalize_source_amp() {
+        assert_eq!(capitalize_source("amp"), "Amp");
+    }
+
+    #[test]
+    fn test_capitalize_source_droid() {
+        assert_eq!(capitalize_source("droid"), "Droid");
+    }
+
+    #[test]
+    fn test_capitalize_source_openclaw() {
+        assert_eq!(capitalize_source("openclaw"), "openclaw");
+    }
+
+    #[test]
+    fn test_capitalize_source_pi() {
+        assert_eq!(capitalize_source("pi"), "Pi");
+    }
+
+    #[test]
+    fn test_capitalize_source_unknown() {
+        assert_eq!(capitalize_source("unknown"), "unknown");
+    }
+
+    #[test]
+    fn test_get_date_range_label_today() {
+        let label = get_date_range_label(true, false, false, &None, &None, &None);
+        assert_eq!(label, Some("Today".to_string()));
+    }
+
+    #[test]
+    fn test_get_date_range_label_week() {
+        let label = get_date_range_label(false, true, false, &None, &None, &None);
+        assert_eq!(label, Some("Last 7 days".to_string()));
+    }
+
+    #[test]
+    fn test_get_date_range_label_year() {
+        let label = get_date_range_label(
+            false,
+            false,
+            false,
+            &None,
+            &None,
+            &Some("2024".to_string()),
+        );
+        assert_eq!(label, Some("2024".to_string()));
+    }
+
+    #[test]
+    fn test_get_date_range_label_custom_since() {
+        let label = get_date_range_label(
+            false,
+            false,
+            false,
+            &Some("2024-01-01".to_string()),
+            &None,
+            &None,
+        );
+        assert_eq!(label, Some("from 2024-01-01".to_string()));
+    }
+
+    #[test]
+    fn test_get_date_range_label_custom_until() {
+        let label = get_date_range_label(
+            false,
+            false,
+            false,
+            &None,
+            &Some("2024-12-31".to_string()),
+            &None,
+        );
+        assert_eq!(label, Some("to 2024-12-31".to_string()));
+    }
+
+    #[test]
+    fn test_get_date_range_label_custom_range() {
+        let label = get_date_range_label(
+            false,
+            false,
+            false,
+            &Some("2024-01-01".to_string()),
+            &Some("2024-12-31".to_string()),
+            &None,
+        );
+        assert_eq!(label, Some("from 2024-01-01 to 2024-12-31".to_string()));
+    }
+
+    #[test]
+    fn test_get_date_range_label_none() {
+        let label = get_date_range_label(false, false, false, &None, &None, &None);
+        assert_eq!(label, None);
+    }
+
+    #[test]
+    fn test_light_spinner_frame_0() {
+        let frame = LightSpinner::frame(0);
+        assert!(frame.contains("■"));
+        assert!(frame.contains("⬝"));
+    }
+
+    #[test]
+    fn test_light_spinner_frame_1() {
+        let frame = LightSpinner::frame(1);
+        assert!(frame.contains("■"));
+        assert!(frame.contains("⬝"));
+    }
+
+    #[test]
+    fn test_light_spinner_frame_2() {
+        let frame = LightSpinner::frame(2);
+        assert!(frame.contains("■"));
+        assert!(frame.contains("⬝"));
+    }
+
+    #[test]
+    fn test_light_spinner_scanner_state_forward_start() {
+        let (position, forward) = LightSpinner::scanner_state(0);
+        assert_eq!(position, 0);
+        assert_eq!(forward, true);
+    }
+
+    #[test]
+    fn test_light_spinner_scanner_state_forward_mid() {
+        let (position, forward) = LightSpinner::scanner_state(4);
+        assert_eq!(position, 4);
+        assert_eq!(forward, true);
+    }
+
+    #[test]
+    fn test_light_spinner_scanner_state_forward_end() {
+        let (position, forward) = LightSpinner::scanner_state(7);
+        assert_eq!(position, 7);
+        assert_eq!(forward, true);
+    }
+
+    #[test]
+    fn test_light_spinner_scanner_state_hold_end() {
+        let (position, forward) = LightSpinner::scanner_state(8);
+        assert_eq!(position, 7);
+        assert_eq!(forward, true);
+    }
+
+    #[test]
+    fn test_light_spinner_scanner_state_backward_start() {
+        let (position, forward) = LightSpinner::scanner_state(17);
+        assert_eq!(position, 6);
+        assert_eq!(forward, false);
+    }
+
+    #[test]
+    fn test_light_spinner_scanner_state_backward_end() {
+        let (position, forward) = LightSpinner::scanner_state(23);
+        assert_eq!(position, 0);
+        assert_eq!(forward, false);
+    }
+
+    #[test]
+    fn test_light_spinner_scanner_state_hold_start() {
+        let (position, forward) = LightSpinner::scanner_state(24);
+        assert_eq!(position, 0);
+        assert_eq!(forward, false);
+    }
+
+    #[test]
+    fn test_light_spinner_scanner_state_cycle_wrap() {
+        // Total cycle = 8 + 9 + 7 + 30 = 54
+        let (position1, forward1) = LightSpinner::scanner_state(0);
+        let (position2, forward2) = LightSpinner::scanner_state(54);
+        assert_eq!(position1, position2);
+        assert_eq!(forward1, forward2);
+    }
+}

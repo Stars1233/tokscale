@@ -1099,3 +1099,320 @@ pub fn run_cursor_switch(name: &str) -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_extract_user_id_from_session_token_with_url_encoding() {
+        // Test URL-encoded separator (%3A%3A)
+        assert_eq!(
+            extract_user_id_from_session_token("user123%3A%3Atoken456"),
+            Some("user123".to_string())
+        );
+        assert_eq!(
+            extract_user_id_from_session_token("  user123%3A%3Atoken456  "),
+            Some("user123".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_user_id_from_session_token_with_double_colon() {
+        // Test plain :: separator
+        assert_eq!(
+            extract_user_id_from_session_token("user456::token789"),
+            Some("user456".to_string())
+        );
+        assert_eq!(
+            extract_user_id_from_session_token("  user456::token789  "),
+            Some("user456".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_user_id_from_session_token_invalid() {
+        // No separator
+        assert_eq!(extract_user_id_from_session_token("invalidtoken"), None);
+        // Empty user ID
+        assert_eq!(extract_user_id_from_session_token("%3A%3Atoken"), None);
+        assert_eq!(extract_user_id_from_session_token("::token"), None);
+        // Empty string
+        assert_eq!(extract_user_id_from_session_token(""), None);
+        // Whitespace only
+        assert_eq!(extract_user_id_from_session_token("   "), None);
+    }
+
+    #[test]
+    fn test_derive_account_id_with_user_id() {
+        // Should extract user ID when present
+        let account_id = derive_account_id("user123%3A%3Atoken456");
+        assert_eq!(account_id, "user123");
+
+        let account_id = derive_account_id("user456::token789");
+        assert_eq!(account_id, "user456");
+    }
+
+    #[test]
+    fn test_derive_account_id_without_user_id() {
+        // Should generate anon-{hash} when no user ID
+        let account_id = derive_account_id("randomtoken");
+        assert!(account_id.starts_with("anon-"));
+        assert_eq!(account_id.len(), 17); // "anon-" + 12 hex chars
+
+        // Same token should produce same hash
+        let account_id2 = derive_account_id("randomtoken");
+        assert_eq!(account_id, account_id2);
+
+        // Different tokens should produce different hashes
+        let account_id3 = derive_account_id("differenttoken");
+        assert_ne!(account_id, account_id3);
+    }
+
+    #[test]
+    fn test_sanitize_account_id_for_filename_basic() {
+        // Alphanumeric, dots, underscores, hyphens should be preserved
+        assert_eq!(
+            sanitize_account_id_for_filename("user123"),
+            "user123"
+        );
+        assert_eq!(
+            sanitize_account_id_for_filename("user.name_123-test"),
+            "user.name_123-test"
+        );
+    }
+
+    #[test]
+    fn test_sanitize_account_id_for_filename_unsafe_chars() {
+        // Unsafe characters should be replaced with hyphens
+        assert_eq!(
+            sanitize_account_id_for_filename("user@example.com"),
+            "user-example.com"
+        );
+        assert_eq!(
+            sanitize_account_id_for_filename("user/name\\test"),
+            "user-name-test"
+        );
+        assert_eq!(
+            sanitize_account_id_for_filename("user name"),
+            "user-name"
+        );
+    }
+
+    #[test]
+    fn test_sanitize_account_id_for_filename_edge_cases() {
+        // Uppercase should be lowercased
+        assert_eq!(
+            sanitize_account_id_for_filename("UserName123"),
+            "username123"
+        );
+
+        // Leading/trailing hyphens should be trimmed
+        assert_eq!(
+            sanitize_account_id_for_filename("---user---"),
+            "user"
+        );
+
+        // Empty after sanitization should return "account"
+        assert_eq!(
+            sanitize_account_id_for_filename("@@@"),
+            "account"
+        );
+        assert_eq!(
+            sanitize_account_id_for_filename(""),
+            "account"
+        );
+
+        // Whitespace only should return "account"
+        assert_eq!(
+            sanitize_account_id_for_filename("   "),
+            "account"
+        );
+    }
+
+    #[test]
+    fn test_sanitize_account_id_for_filename_length_limit() {
+        // Should truncate to 80 characters
+        let long_id = "a".repeat(100);
+        let sanitized = sanitize_account_id_for_filename(&long_id);
+        assert_eq!(sanitized.len(), 80);
+        assert_eq!(sanitized, "a".repeat(80));
+
+        // Should preserve exactly 80 characters
+        let exactly_80 = "b".repeat(80);
+        let sanitized = sanitize_account_id_for_filename(&exactly_80);
+        assert_eq!(sanitized.len(), 80);
+    }
+
+    #[test]
+    fn test_count_cursor_csv_rows_valid() {
+        // Valid CSV with header
+        let csv = "Date,Model,Tokens\n2024-01-01,gpt-4,100\n2024-01-02,gpt-4,200\n";
+        assert_eq!(count_cursor_csv_rows(csv), 2);
+
+        // Single row
+        let csv = "Date,Model,Tokens\n2024-01-01,gpt-4,100\n";
+        assert_eq!(count_cursor_csv_rows(csv), 1);
+    }
+
+    #[test]
+    fn test_count_cursor_csv_rows_empty() {
+        // Header only
+        let csv = "Date,Model,Tokens\n";
+        assert_eq!(count_cursor_csv_rows(csv), 0);
+
+        // Empty string
+        let csv = "";
+        assert_eq!(count_cursor_csv_rows(csv), 0);
+    }
+
+    #[test]
+    fn test_count_cursor_csv_rows_malformed() {
+        // CSV reader with flexible=true accepts rows with different column counts
+        // This test verifies the actual behavior: all parseable rows are counted
+        let csv = "Date,Model,Tokens\n2024-01-01,gpt-4,100\ninvalid,row\n2024-01-02,gpt-4,200\n";
+        assert_eq!(count_cursor_csv_rows(csv), 3);
+    }
+
+    #[test]
+    fn test_atomic_write_file_basic() -> Result<()> {
+        let temp_dir = TempDir::new()?;
+        let file_path = temp_dir.path().join("test.txt");
+        let contents = "Hello, world!";
+
+        atomic_write_file(&file_path, contents)?;
+
+        // Verify file was created and contains correct content
+        assert!(file_path.exists());
+        let read_contents = fs::read_to_string(&file_path)?;
+        assert_eq!(read_contents, contents);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_atomic_write_file_creates_parent_dirs() -> Result<()> {
+        let temp_dir = TempDir::new()?;
+        let nested_path = temp_dir.path().join("a").join("b").join("c").join("test.txt");
+        let contents = "Nested file";
+
+        atomic_write_file(&nested_path, contents)?;
+
+        // Verify parent directories were created
+        assert!(nested_path.exists());
+        let read_contents = fs::read_to_string(&nested_path)?;
+        assert_eq!(read_contents, contents);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_atomic_write_file_overwrites_existing() -> Result<()> {
+        let temp_dir = TempDir::new()?;
+        let file_path = temp_dir.path().join("test.txt");
+
+        // Write initial content
+        atomic_write_file(&file_path, "Initial")?;
+        assert_eq!(fs::read_to_string(&file_path)?, "Initial");
+
+        // Overwrite with new content
+        atomic_write_file(&file_path, "Updated")?;
+        assert_eq!(fs::read_to_string(&file_path)?, "Updated");
+
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_atomic_write_file_permissions() -> Result<()> {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp_dir = TempDir::new()?;
+        let file_path = temp_dir.path().join("test.txt");
+
+        atomic_write_file(&file_path, "Secret")?;
+
+        // Verify file has 0o600 permissions (owner read/write only)
+        let metadata = fs::metadata(&file_path)?;
+        let permissions = metadata.permissions();
+        assert_eq!(permissions.mode() & 0o777, 0o600);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_copy_dir_recursive_basic() -> Result<()> {
+        let temp_dir = TempDir::new()?;
+        let src = temp_dir.path().join("src");
+        let dst = temp_dir.path().join("dst");
+
+        // Create source directory structure
+        fs::create_dir_all(&src)?;
+        fs::write(src.join("file1.txt"), "Content 1")?;
+        fs::write(src.join("file2.txt"), "Content 2")?;
+
+        // Create destination directory
+        fs::create_dir_all(&dst)?;
+
+        // Copy recursively
+        copy_dir_recursive(&src, &dst)?;
+
+        // Verify files were copied
+        assert!(dst.join("file1.txt").exists());
+        assert!(dst.join("file2.txt").exists());
+        assert_eq!(fs::read_to_string(dst.join("file1.txt"))?, "Content 1");
+        assert_eq!(fs::read_to_string(dst.join("file2.txt"))?, "Content 2");
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_copy_dir_recursive_nested() -> Result<()> {
+        let temp_dir = TempDir::new()?;
+        let src = temp_dir.path().join("src");
+        let dst = temp_dir.path().join("dst");
+
+        // Create nested source directory structure
+        fs::create_dir_all(src.join("subdir1").join("subdir2"))?;
+        fs::write(src.join("root.txt"), "Root")?;
+        fs::write(src.join("subdir1").join("file1.txt"), "File 1")?;
+        fs::write(src.join("subdir1").join("subdir2").join("file2.txt"), "File 2")?;
+
+        // Create destination directory
+        fs::create_dir_all(&dst)?;
+
+        // Copy recursively
+        copy_dir_recursive(&src, &dst)?;
+
+        // Verify nested structure was copied
+        assert!(dst.join("root.txt").exists());
+        assert!(dst.join("subdir1").join("file1.txt").exists());
+        assert!(dst.join("subdir1").join("subdir2").join("file2.txt").exists());
+        assert_eq!(fs::read_to_string(dst.join("root.txt"))?, "Root");
+        assert_eq!(fs::read_to_string(dst.join("subdir1").join("file1.txt"))?, "File 1");
+        assert_eq!(fs::read_to_string(dst.join("subdir1").join("subdir2").join("file2.txt"))?, "File 2");
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_copy_dir_recursive_empty_dir() -> Result<()> {
+        let temp_dir = TempDir::new()?;
+        let src = temp_dir.path().join("src");
+        let dst = temp_dir.path().join("dst");
+
+        // Create empty source directory
+        fs::create_dir_all(&src)?;
+        fs::create_dir_all(&dst)?;
+
+        // Copy recursively (should succeed with no files)
+        copy_dir_recursive(&src, &dst)?;
+
+        // Verify destination exists but is empty
+        assert!(dst.exists());
+        assert_eq!(fs::read_dir(&dst)?.count(), 0);
+
+        Ok(())
+    }
+}
