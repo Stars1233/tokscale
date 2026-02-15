@@ -5,7 +5,7 @@ mod tui;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -1106,7 +1106,13 @@ fn run_models_report(
 
         let mut table = Table::new();
         table.load_preset(TABLE_PRESET);
-        table.set_content_arrangement(ContentArrangement::DynamicFullWidth);
+        let arrangement = if std::io::stdout().is_terminal() {
+            ContentArrangement::DynamicFullWidth
+        } else {
+            ContentArrangement::Dynamic
+        };
+        table.set_content_arrangement(arrangement);
+        table.enforce_styling();
         if compact {
             table.set_header(vec![
                 Cell::new("Client").fg(Color::Cyan),
@@ -1333,7 +1339,13 @@ fn run_monthly_report(
 
         let mut table = Table::new();
         table.load_preset(TABLE_PRESET);
-        table.set_content_arrangement(ContentArrangement::DynamicFullWidth);
+        let arrangement = if std::io::stdout().is_terminal() {
+            ContentArrangement::DynamicFullWidth
+        } else {
+            ContentArrangement::Dynamic
+        };
+        table.set_content_arrangement(arrangement);
+        table.enforce_styling();
         if compact {
             table.set_header(vec![
                 Cell::new("Month").fg(Color::Cyan),
