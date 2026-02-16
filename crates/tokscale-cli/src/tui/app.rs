@@ -130,6 +130,8 @@ pub struct App {
     pub spinner_frame: usize,
 
     pub background_loading: bool,
+
+    pub needs_reload: bool,
 }
 
 impl App {
@@ -212,26 +214,8 @@ impl App {
             click_areas: Vec::new(),
             spinner_frame: 0,
             background_loading: false,
+            needs_reload: false,
         })
-    }
-
-    pub fn load_data(&mut self) -> Result<()> {
-        self.data.loading = true;
-        let sources: Vec<Source> = self.enabled_sources.iter().copied().collect();
-        match self.data_loader.load(&sources) {
-            Ok(data) => {
-                self.data = data;
-                self.last_refresh = Instant::now();
-                self.clamp_selection();
-                self.set_status("Data loaded");
-            }
-            Err(e) => {
-                self.data.loading = false;
-                self.data.error = Some(e.to_string());
-                self.set_status(&format!("Error: {}", e));
-            }
-        }
-        Ok(())
     }
 
     pub fn set_background_loading(&mut self, loading: bool) {
@@ -260,7 +244,7 @@ impl App {
         }
 
         if self.auto_refresh && self.last_refresh.elapsed() >= self.auto_refresh_interval {
-            let _ = self.load_data();
+            self.needs_reload = true;
         }
     }
 
@@ -310,7 +294,7 @@ impl App {
                 self.cycle_theme();
             }
             KeyCode::Char('r') => {
-                let _ = self.load_data();
+                self.needs_reload = true;
             }
             KeyCode::Char('R') if key.modifiers.contains(KeyModifiers::SHIFT) => {
                 self.toggle_auto_refresh();
@@ -480,7 +464,7 @@ impl App {
                 self.enabled_sources.insert(source);
                 self.set_status(&format!("Enabled {}", source.as_str()));
             }
-            let _ = self.load_data();
+            self.needs_reload = true;
         }
     }
 
