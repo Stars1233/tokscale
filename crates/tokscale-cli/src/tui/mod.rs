@@ -17,7 +17,7 @@ use std::io;
 use std::sync::mpsc;
 use std::sync::mpsc::TryRecvError;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 #[cfg(unix)]
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -232,7 +232,6 @@ fn run_loop_with_background(
         if app.needs_reload && !app.background_loading {
             app.needs_reload = false;
             app.set_background_loading(true);
-            app.last_refresh = Instant::now();
 
             let tx = bg_tx.clone();
             let sources: Vec<Source> = app.enabled_sources.iter().copied().collect();

@@ -243,7 +243,10 @@ impl App {
             }
         }
 
-        if self.auto_refresh && self.last_refresh.elapsed() >= self.auto_refresh_interval {
+        if self.auto_refresh
+            && !self.background_loading
+            && self.last_refresh.elapsed() >= self.auto_refresh_interval
+        {
             self.needs_reload = true;
         }
     }
