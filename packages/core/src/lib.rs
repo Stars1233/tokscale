@@ -299,31 +299,29 @@ fn parse_all_messages_with_pricing(
         all_messages.extend(sqlite_messages);
     }
 
-    {
-        let opencode_messages: Vec<UnifiedMessage> = scan_result
-            .opencode_files
-            .par_iter()
-            .filter_map(|path| {
-                let mut msg = sessions::opencode::parse_opencode_file(path)?;
-                msg.cost = pricing.calculate_cost(
-                    &msg.model_id,
-                    msg.tokens.input,
-                    msg.tokens.output,
-                    msg.tokens.cache_read,
-                    msg.tokens.cache_write,
-                    msg.tokens.reasoning,
-                );
-                Some(msg)
-            })
-            .collect();
-        all_messages.extend(
-            opencode_messages
-                .into_iter()
-                .filter(|msg| {
-                    msg.dedup_key.as_ref().map_or(true, |key| opencode_seen.insert(key.clone()))
-                }),
-        );
-    }
+    let opencode_messages: Vec<UnifiedMessage> = scan_result
+        .opencode_files
+        .par_iter()
+        .filter_map(|path| {
+            let mut msg = sessions::opencode::parse_opencode_file(path)?;
+            msg.cost = pricing.calculate_cost(
+                &msg.model_id,
+                msg.tokens.input,
+                msg.tokens.output,
+                msg.tokens.cache_read,
+                msg.tokens.cache_write,
+                msg.tokens.reasoning,
+            );
+            Some(msg)
+        })
+        .collect();
+    all_messages.extend(
+        opencode_messages
+            .into_iter()
+            .filter(|msg| {
+                msg.dedup_key.as_ref().map_or(true, |key| opencode_seen.insert(key.clone()))
+            }),
+    );
 
     // Parse Claude files in parallel
     let claude_messages: Vec<UnifiedMessage> = scan_result
