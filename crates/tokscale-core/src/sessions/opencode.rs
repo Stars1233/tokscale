@@ -235,6 +235,7 @@ mod tests {
         assert_eq!(msg.agent, Some("OmO".to_string()));
     }
 
+    /// Verify negative token values are clamped to 0 (defense-in-depth for PR #147)
     #[test]
     fn test_negative_values_clamped_to_zero() {
         use std::io::Write;

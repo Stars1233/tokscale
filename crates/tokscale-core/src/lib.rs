@@ -289,6 +289,30 @@ fn parse_all_messages_with_pricing(
     let scan_result = scanner::scan_all_sources(home_dir, sources);
     let mut all_messages: Vec<UnifiedMessage> = Vec::new();
 
+    // Parse OpenCode: read both SQLite (1.2+) and legacy JSON, deduplicate by message ID
+    let mut opencode_seen: HashSet<String> = HashSet::new();
+
+    if let Some(db_path) = &scan_result.opencode_db {
+        let sqlite_messages: Vec<UnifiedMessage> = sessions::opencode::parse_opencode_sqlite(db_path)
+            .into_iter()
+            .map(|mut msg| {
+                msg.cost = pricing.calculate_cost(
+                    &msg.model_id,
+                    msg.tokens.input,
+                    msg.tokens.output,
+                    msg.tokens.cache_read,
+                    msg.tokens.cache_write,
+                    msg.tokens.reasoning,
+                );
+                if let Some(ref key) = msg.dedup_key {
+                    opencode_seen.insert(key.clone());
+                }
+                msg
+            })
+            .collect();
+        all_messages.extend(sqlite_messages);
+    }
+
     let opencode_messages: Vec<UnifiedMessage> = scan_result
         .opencode_files
         .par_iter()
@@ -305,7 +329,13 @@ fn parse_all_messages_with_pricing(
             Some(msg)
         })
         .collect();
-    all_messages.extend(opencode_messages);
+    all_messages.extend(
+        opencode_messages
+            .into_iter()
+            .filter(|msg| {
+                msg.dedup_key.as_ref().map_or(true, |key| opencode_seen.insert(key.clone()))
+            }),
+    );
 
     let claude_messages_raw: Vec<(String, UnifiedMessage)> = scan_result
         .claude_files
@@ -463,7 +493,7 @@ fn parse_all_messages_with_pricing(
         .openclaw_files
         .par_iter()
         .flat_map(|path| {
-            sessions::openclaw::parse_openclaw_index(path)
+            sessions::openclaw::parse_openclaw_transcript(path)
                 .into_iter()
                 .map(|mut msg| {
                     msg.cost = pricing.calculate_cost(
@@ -798,16 +828,48 @@ pub fn parse_local_sources(options: LocalParseOptions) -> Result<ParsedMessages,
 
     let mut messages: Vec<ParsedMessage> = Vec::new();
 
-    let opencode_msgs: Vec<ParsedMessage> = scan_result
-        .opencode_files
-        .par_iter()
-        .filter_map(|path| {
-            let msg = sessions::opencode::parse_opencode_file(path)?;
-            Some(unified_to_parsed(&msg))
-        })
-        .collect();
-    let opencode_count = opencode_msgs.len() as i32;
-    messages.extend(opencode_msgs);
+    // Parse OpenCode: read both SQLite (1.2+) and legacy JSON, deduplicate by message ID
+    let opencode_count: i32 = {
+        let mut seen: HashSet<String> = HashSet::new();
+        let mut count: i32 = 0;
+
+        if let Some(db_path) = &scan_result.opencode_db {
+            let sqlite_msgs: Vec<(String, ParsedMessage)> =
+                sessions::opencode::parse_opencode_sqlite(db_path)
+                    .into_iter()
+                    .map(|msg| {
+                        let key = msg.dedup_key.clone().unwrap_or_default();
+                        (key, unified_to_parsed(&msg))
+                    })
+                    .collect();
+            count += sqlite_msgs.len() as i32;
+            for (key, parsed) in sqlite_msgs {
+                if !key.is_empty() {
+                    seen.insert(key);
+                }
+                messages.push(parsed);
+            }
+        }
+
+        let json_msgs: Vec<(String, ParsedMessage)> = scan_result
+            .opencode_files
+            .par_iter()
+            .filter_map(|path| {
+                let msg = sessions::opencode::parse_opencode_file(path)?;
+                let key = msg.dedup_key.clone().unwrap_or_default();
+                Some((key, unified_to_parsed(&msg)))
+            })
+            .collect();
+        let deduped: Vec<ParsedMessage> = json_msgs
+            .into_iter()
+            .filter(|(key, _)| key.is_empty() || seen.insert(key.clone()))
+            .map(|(_, msg)| msg)
+            .collect();
+        count += deduped.len() as i32;
+        messages.extend(deduped);
+
+        count
+    };
 
     let claude_msgs_raw: Vec<(String, ParsedMessage)> = scan_result
         .claude_files
@@ -892,7 +954,7 @@ pub fn parse_local_sources(options: LocalParseOptions) -> Result<ParsedMessages,
         .openclaw_files
         .par_iter()
         .flat_map(|path| {
-            sessions::openclaw::parse_openclaw_index(path)
+            sessions::openclaw::parse_openclaw_transcript(path)
                 .into_iter()
                 .map(|msg| unified_to_parsed(&msg))
                 .collect::<Vec<_>>()
