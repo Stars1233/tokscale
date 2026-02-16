@@ -1,3 +1,4 @@
+use assert_cmd::cargo::cargo_bin_cmd;
 use assert_cmd::Command;
 use predicates::prelude::*;
 use std::fs;
@@ -92,7 +93,7 @@ fn create_empty_fixture_dir() -> TempDir {
 
 /// Build a Command pointing HOME at the given temp dir, with --no-spinner and --opencode flags.
 fn cmd_with_home(tmp: &Path) -> Command {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.env("HOME", tmp)
         .env("XDG_DATA_HOME", tmp.join(".local/share"));
     cmd
@@ -102,7 +103,7 @@ fn cmd_with_home(tmp: &Path) -> Command {
 
 #[test]
 fn test_help_command() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("--help")
         .assert()
         .success()
@@ -111,7 +112,7 @@ fn test_help_command() {
 
 #[test]
 fn test_help_short_flag() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("-h")
         .assert()
         .success()
@@ -120,7 +121,7 @@ fn test_help_short_flag() {
 
 #[test]
 fn test_version_flag() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("--version")
         .assert()
         .success()
@@ -129,7 +130,7 @@ fn test_version_flag() {
 
 #[test]
 fn test_models_command_help() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("models")
         .arg("--help")
         .assert()
@@ -139,7 +140,7 @@ fn test_models_command_help() {
 
 #[test]
 fn test_monthly_command_help() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("monthly")
         .arg("--help")
         .assert()
@@ -149,7 +150,7 @@ fn test_monthly_command_help() {
 
 #[test]
 fn test_pricing_command_help() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("pricing")
         .arg("--help")
         .assert()
@@ -159,7 +160,7 @@ fn test_pricing_command_help() {
 
 #[test]
 fn test_sources_command_help() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("sources")
         .arg("--help")
         .assert()
@@ -169,7 +170,7 @@ fn test_sources_command_help() {
 
 #[test]
 fn test_graph_command_help() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("graph")
         .arg("--help")
         .assert()
@@ -179,7 +180,7 @@ fn test_graph_command_help() {
 
 #[test]
 fn test_tui_command_help() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("tui")
         .arg("--help")
         .assert()
@@ -189,7 +190,7 @@ fn test_tui_command_help() {
 
 #[test]
 fn test_headless_command_help() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("headless")
         .arg("--help")
         .assert()
@@ -199,7 +200,7 @@ fn test_headless_command_help() {
 
 #[test]
 fn test_login_command_help() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("login")
         .arg("--help")
         .assert()
@@ -209,7 +210,7 @@ fn test_login_command_help() {
 
 #[test]
 fn test_logout_command_help() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("logout")
         .arg("--help")
         .assert()
@@ -219,7 +220,7 @@ fn test_logout_command_help() {
 
 #[test]
 fn test_whoami_command_help() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("whoami")
         .arg("--help")
         .assert()
@@ -229,31 +230,31 @@ fn test_whoami_command_help() {
 
 #[test]
 fn test_invalid_command() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("invalid-command").assert().failure();
 }
 
 #[test]
 fn test_invalid_subcommand() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("models").arg("invalid-flag").assert().failure();
 }
 
 #[test]
 fn test_pricing_command_missing_model() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("pricing").assert().failure();
 }
 
 #[test]
 fn test_headless_command_missing_source() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("headless").assert().failure();
 }
 
 #[test]
 fn test_headless_command_invalid_source() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("headless")
         .arg("invalid-source")
         .arg("test")
@@ -263,7 +264,7 @@ fn test_headless_command_invalid_source() {
 
 #[test]
 fn test_models_with_invalid_date_format() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("models")
         .arg("--light")
         .arg("--since")
@@ -274,7 +275,7 @@ fn test_models_with_invalid_date_format() {
 
 #[test]
 fn test_models_with_invalid_year() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("models")
         .arg("--light")
         .arg("--year")
@@ -285,7 +286,7 @@ fn test_models_with_invalid_year() {
 
 #[test]
 fn test_global_theme_flag() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("--theme")
         .arg("blue")
         .arg("--help")
@@ -295,7 +296,7 @@ fn test_global_theme_flag() {
 
 #[test]
 fn test_global_debug_flag() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("--debug").arg("--help").assert().success();
 }
 
@@ -731,7 +732,7 @@ fn test_models_json_with_group_by_model() {
 
 #[test]
 fn test_pricing_command_success() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.args(["pricing", "claude-sonnet-4-20250514", "--no-spinner"])
         .assert()
         .success()
@@ -742,8 +743,7 @@ fn test_pricing_command_success() {
 
 #[test]
 fn test_pricing_command_json() {
-    let output = Command::cargo_bin("tokscale")
-        .unwrap()
+    let output = cargo_bin_cmd!("tokscale")
         .args([
             "pricing",
             "claude-sonnet-4-20250514",
@@ -766,7 +766,7 @@ fn test_pricing_command_json() {
 
 #[test]
 fn test_pricing_command_with_provider() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.args([
         "pricing",
         "claude-sonnet-4-20250514",
@@ -780,7 +780,7 @@ fn test_pricing_command_with_provider() {
 
 #[test]
 fn test_pricing_command_invalid_provider() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.args([
         "pricing",
         "claude-sonnet-4-20250514",
@@ -796,7 +796,7 @@ fn test_pricing_command_invalid_provider() {
 
 #[test]
 fn test_sources_command() {
-    let mut cmd = Command::cargo_bin("tokscale").unwrap();
+    let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("sources")
         .assert()
         .success()
@@ -806,8 +806,7 @@ fn test_sources_command() {
 
 #[test]
 fn test_sources_json() {
-    let output = Command::cargo_bin("tokscale")
-        .unwrap()
+    let output = cargo_bin_cmd!("tokscale")
         .args(["sources", "--json"])
         .output()
         .unwrap();

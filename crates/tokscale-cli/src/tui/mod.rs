@@ -19,6 +19,13 @@ use std::sync::mpsc::TryRecvError;
 use std::thread;
 use std::time::Duration;
 
+#[cfg(unix)]
+use std::sync::atomic::{AtomicBool, Ordering};
+#[cfg(unix)]
+use std::sync::Arc;
+
+use std::panic;
+
 use anyhow::Result;
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
@@ -80,6 +87,12 @@ pub fn run(
     let cache_is_stale = cached_data.is_some() && is_cache_stale(&enabled_sources);
     let has_cached_data = cached_data.is_some();
 
+    let original_hook = panic::take_hook();
+    panic::set_hook(Box::new(move |info| {
+        restore_terminal_best_effort();
+        original_hook(info);
+    }));
+
     enable_raw_mode()?;
     let mut stdout = io::stdout();
 
@@ -106,12 +119,13 @@ pub fn run(
         }
     };
 
-    let (tx, rx) = mpsc::channel::<Result<UsageData>>();
+    let (bg_tx, bg_rx) = mpsc::channel::<Result<UsageData>>();
     let needs_background_load = !has_cached_data || cache_is_stale;
 
     if needs_background_load {
         app.set_background_loading(true);
 
+        let tx = bg_tx.clone();
         let bg_sources: Vec<Source> = enabled_sources.iter().copied().collect();
         let bg_since = since.clone();
         let bg_until = until.clone();
@@ -130,9 +144,24 @@ pub fn run(
         });
     }
 
+    #[cfg(unix)]
+    let sigcont_flag = {
+        let flag = Arc::new(AtomicBool::new(false));
+        let _ = signal_hook::flag::register(signal_hook::consts::SIGCONT, Arc::clone(&flag));
+        flag
+    };
+
     let mut events = EventHandler::new(Duration::from_millis(100));
 
-    let result = run_loop_with_background(&mut terminal, &mut app, &mut events, rx);
+    let result = run_loop_with_background(
+        &mut terminal,
+        &mut app,
+        &mut events,
+        bg_tx,
+        bg_rx,
+        #[cfg(unix)]
+        &sigcont_flag,
+    );
 
     restore_terminal(&mut terminal);
 
@@ -158,12 +187,25 @@ fn run_loop_with_background(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     app: &mut App,
     events: &mut EventHandler,
-    background_rx: mpsc::Receiver<Result<UsageData>>,
+    bg_tx: mpsc::Sender<Result<UsageData>>,
+    bg_rx: mpsc::Receiver<Result<UsageData>>,
+    #[cfg(unix)] sigcont_flag: &Arc<AtomicBool>,
 ) -> Result<()> {
     loop {
+        #[cfg(unix)]
+        if sigcont_flag.swap(false, Ordering::Relaxed) {
+            let _ = enable_raw_mode();
+            let _ = execute!(
+                terminal.backend_mut(),
+                EnterAlternateScreen,
+                EnableMouseCapture
+            );
+            let _ = terminal.clear();
+        }
+
         terminal.draw(|f| ui::render(f, app))?;
 
-        match background_rx.try_recv() {
+        match bg_rx.try_recv() {
             Ok(result) => {
                 app.set_background_loading(false);
                 match result {
@@ -178,17 +220,34 @@ fn run_loop_with_background(
                 }
             }
             Err(TryRecvError::Disconnected) => {
-                // Only treat as error if we were still waiting for data
-                // After data is received, disconnect is expected (thread completed)
                 if app.background_loading {
                     app.set_background_loading(false);
                     app.set_error(Some("Background thread disconnected".to_string()));
                     app.set_status("Error: Background thread disconnected");
                 }
             }
-            Err(TryRecvError::Empty) => {
-                // No data available yet, continue
-            }
+            Err(TryRecvError::Empty) => {}
+        }
+
+        if app.needs_reload && !app.background_loading {
+            app.needs_reload = false;
+            app.set_background_loading(true);
+
+            let tx = bg_tx.clone();
+            let sources: Vec<Source> = app.enabled_sources.iter().copied().collect();
+            let since = app.data_loader.since.clone();
+            let until = app.data_loader.until.clone();
+            let year = app.data_loader.year.clone();
+            let enabled_sources = app.enabled_sources.clone();
+
+            thread::spawn(move || {
+                let loader = DataLoader::with_filters(None, since, until, year);
+                let result = loader.load(&sources);
+                if let Ok(ref data) = result {
+                    save_cached_data(data, &enabled_sources);
+                }
+                let _ = tx.send(result);
+            });
         }
 
         match events.next()? {

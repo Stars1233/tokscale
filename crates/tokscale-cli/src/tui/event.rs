@@ -39,7 +39,12 @@ impl EventHandler {
                             break;
                         }
                     }
-                    _ => {}
+                    _ => {
+                        // Prevent event starvation from FocusGained/FocusLost bursts
+                        if event_tx.send(Event::Tick).is_err() {
+                            break;
+                        }
+                    }
                 }
             } else if event_tx.send(Event::Tick).is_err() {
                 break;

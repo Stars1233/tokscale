@@ -45,6 +45,8 @@ const RESELLER_PROVIDER_PREFIXES: &[&str] = &[
 
 const FUZZY_BLOCKLIST: &[&str] = &["auto", "mini", "chat", "base"];
 
+const MAX_LOOKUP_CACHE_ENTRIES: usize = 512;
+
 const MIN_FUZZY_MATCH_LEN: usize = 5;
 
 /// Minimum length for a model name candidate after prefix/suffix stripping.
@@ -140,6 +142,9 @@ impl PricingLookup {
         let result = self.lookup_with_source(model_id, None);
 
         if let Ok(mut cache) = self.lookup_cache.write() {
+            if cache.len() >= MAX_LOOKUP_CACHE_ENTRIES {
+                cache.clear();
+            }
             cache.insert(
                 model_id.to_string(),
                 result.as_ref().map(|r| CachedResult {
