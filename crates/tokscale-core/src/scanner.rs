@@ -24,6 +24,7 @@ pub enum SessionType {
 #[derive(Debug, Default)]
 pub struct ScanResult {
     pub opencode_files: Vec<PathBuf>,
+    pub opencode_db: Option<PathBuf>,
     pub claude_files: Vec<PathBuf>,
     pub codex_files: Vec<PathBuf>,
     pub gemini_files: Vec<PathBuf>,
@@ -187,9 +188,16 @@ pub fn scan_all_sources(home_dir: &str, sources: &[String]) -> ScanResult {
     let mut tasks: Vec<(SessionType, String, &str)> = Vec::new();
 
     if include_opencode {
-        // OpenCode: ~/.local/share/opencode/storage/message/*/*.json
         let xdg_data =
             std::env::var("XDG_DATA_HOME").unwrap_or_else(|_| format!("{}/.local/share", home_dir));
+
+        // OpenCode 1.2+: SQLite database at ~/.local/share/opencode/opencode.db
+        let opencode_db_path = PathBuf::from(format!("{}/opencode/opencode.db", xdg_data));
+        if opencode_db_path.exists() {
+            result.opencode_db = Some(opencode_db_path);
+        }
+
+        // OpenCode legacy: JSON files at ~/.local/share/opencode/storage/message/*/*.json
         let opencode_path = format!("{}/opencode/storage/message", xdg_data);
         tasks.push((SessionType::OpenCode, opencode_path, "*.json"));
     }
@@ -243,16 +251,19 @@ pub fn scan_all_sources(home_dir: &str, sources: &[String]) -> ScanResult {
     }
 
     if include_openclaw {
-        // Current path
+        // OpenClaw transcripts: ~/.openclaw/agents/**/*.jsonl
         let openclaw_path = format!("{}/.openclaw/agents", home_dir);
-        tasks.push((SessionType::OpenClaw, openclaw_path, "sessions.json"));
+        tasks.push((SessionType::OpenClaw, openclaw_path, "*.jsonl"));
+
         // Legacy paths (Clawd -> Moltbot -> OpenClaw rebrand history)
         let clawdbot_path = format!("{}/.clawdbot/agents", home_dir);
-        tasks.push((SessionType::OpenClaw, clawdbot_path, "sessions.json"));
+        tasks.push((SessionType::OpenClaw, clawdbot_path, "*.jsonl"));
+
         let moltbot_path = format!("{}/.moltbot/agents", home_dir);
-        tasks.push((SessionType::OpenClaw, moltbot_path, "sessions.json"));
+        tasks.push((SessionType::OpenClaw, moltbot_path, "*.jsonl"));
+
         let moldbot_path = format!("{}/.moldbot/agents", home_dir);
-        tasks.push((SessionType::OpenClaw, moldbot_path, "sessions.json"));
+        tasks.push((SessionType::OpenClaw, moldbot_path, "*.jsonl"));
     }
 
     if include_pi {
@@ -307,6 +318,7 @@ mod tests {
     fn test_scan_result_total_files() {
         let result = ScanResult {
             opencode_files: vec![PathBuf::from("a.json"), PathBuf::from("b.json")],
+            opencode_db: None,
             claude_files: vec![PathBuf::from("c.jsonl")],
             codex_files: vec![],
             gemini_files: vec![PathBuf::from("d.json")],
@@ -323,6 +335,7 @@ mod tests {
     fn test_scan_result_all_files() {
         let result = ScanResult {
             opencode_files: vec![PathBuf::from("a.json")],
+            opencode_db: None,
             claude_files: vec![PathBuf::from("b.jsonl")],
             codex_files: vec![PathBuf::from("c.jsonl")],
             gemini_files: vec![PathBuf::from("d.json")],
@@ -480,6 +493,26 @@ mod tests {
         file.write_all(b"{}").unwrap();
     }
 
+    fn setup_mock_pi_dir(base: &std::path::Path) {
+        let pi_path = base.join(".pi/agent/sessions/--test--");
+        fs::create_dir_all(&pi_path).unwrap();
+        let mut file = File::create(pi_path.join("1733011200000_pi_ses_001.jsonl")).unwrap();
+        file.write_all(b"{}").unwrap();
+    }
+
+    fn setup_mock_openclaw_dir(base: &std::path::Path) {
+        // Mirror real OpenClaw layout: ~/.openclaw/agents/<agentId>/sessions/*.jsonl
+        let openclaw_sessions = base.join(".openclaw/agents/main/sessions");
+        fs::create_dir_all(&openclaw_sessions).unwrap();
+
+        let mut transcript = File::create(openclaw_sessions.join("session-abc.jsonl")).unwrap();
+        transcript.write_all(b"{}").unwrap();
+
+        // Even if an index exists, we should count JSONL transcripts (not sessions.json only)
+        let mut index = File::create(openclaw_sessions.join("sessions.json")).unwrap();
+        index.write_all(b"{}").unwrap();
+    }
+
     #[test]
     #[serial]
     fn test_headless_roots_default() {
@@ -554,6 +587,17 @@ mod tests {
         let result = scan_all_sources(home.to_str().unwrap(), &["gemini".to_string()]);
         assert_eq!(result.gemini_files.len(), 1);
         assert!(result.opencode_files.is_empty());
+    }
+
+    #[test]
+    fn test_scan_all_sources_openclaw_jsonl_only() {
+        let dir = TempDir::new().unwrap();
+        let home = dir.path();
+        setup_mock_openclaw_dir(home);
+
+        let result = scan_all_sources(home.to_str().unwrap(), &["openclaw".to_string()]);
+        assert_eq!(result.openclaw_files.len(), 1);
+        assert!(result.openclaw_files[0].ends_with("session-abc.jsonl"));
     }
 
     #[test]

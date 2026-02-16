@@ -20,6 +20,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
   bump-versions:
@@ -389,6 +390,8 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: true
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Download bumped package.json files
         uses: actions/download-artifact@v4
@@ -412,77 +415,41 @@ jobs:
           
           echo "✅ Successfully published and committed version $NEW_VERSION"
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.1.38
+
       - name: Create tag and GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           NEW_VERSION="${{ needs.bump-versions.outputs.version }}"
           
-          # Create and push tag
-          git tag "v$NEW_VERSION"
-          git push origin "v$NEW_VERSION"
-          echo "🏷️ Created tag v$NEW_VERSION"
-          
-          # Get previous tag
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          if [ -z "$PREV_TAG" ]; then
-            echo "⚠️ No previous tag found, skipping release notes generation"
-            gh release create "v$NEW_VERSION" \
+          if git rev-parse "v$NEW_VERSION" >/dev/null 2>&1; then
+            echo "🏷️ Tag v$NEW_VERSION already exists"
+          else
+            git tag "v$NEW_VERSION"
+            git push origin "v$NEW_VERSION"
+            echo "🏷️ Created tag v$NEW_VERSION"
+          fi
+
+          NOTES_FILE=$(mktemp)
+          bun scripts/generate-release-notes.ts "$NEW_VERSION" > "$NOTES_FILE"
+
+          if gh release view "v$NEW_VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "v$NEW_VERSION" \
+              --repo "$GITHUB_REPOSITORY" \
               --title "v$NEW_VERSION" \
-              --notes "First release"
-            exit 0
-          fi
-          echo "📋 Previous tag: $PREV_TAG"
-          
-          # Get merged PRs between tags
-          PREV_DATE=$(git log -1 --format=%cI "$PREV_TAG")
-          echo "📅 Finding PRs merged after: $PREV_DATE"
-          
-          PRS=$(gh pr list --state merged --base main --limit 100 \
-            --json number,title,author,mergedAt \
-            --jq --arg date "$PREV_DATE" \
-            '[.[] | select(.mergedAt > $date)] | sort_by(.mergedAt) | .[] | "* \(.title) by @\(.author.login) in https://github.com/${{ github.repository }}/pull/\(.number)"' \
-            | grep -v "chore: bump version" || echo "")
-          
-          if [ -z "$PRS" ]; then
-            PRS="* No notable changes"
+              --notes-file "$NOTES_FILE"
+            echo "♻️ Updated existing GitHub release v$NEW_VERSION"
+          else
+            gh release create "v$NEW_VERSION" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "v$NEW_VERSION" \
+              --notes-file "$NOTES_FILE"
+            echo "🎉 Created GitHub release: https://github.com/${{ github.repository }}/releases/tag/v$NEW_VERSION"
           fi
           
-          # Get new contributors
-          NEW_CONTRIBUTORS=$(gh pr list --state merged --base main --limit 100 \
-            --json number,author,mergedAt \
-            --jq --arg date "$PREV_DATE" \
-            '[.[] | select(.mergedAt > $date)] | [.[].author.login] | unique | .[]' \
-            | while read -r user; do
-                # Check if this is their first contribution
-                FIRST_PR=$(gh pr list --state merged --author "$user" --limit 1 --json number,mergedAt --jq '.[0].mergedAt')
-                if [ "$(echo "$FIRST_PR" | cut -d'T' -f1)" \> "$(echo "$PREV_DATE" | cut -d'T' -f1)" ] 2>/dev/null; then
-                  FIRST_NUM=$(gh pr list --state merged --author "$user" --limit 1 --json number --jq '.[0].number')
-                  echo "* @$user made their first contribution in https://github.com/${{ github.repository }}/pull/$FIRST_NUM"
-                fi
-              done || echo "")
-          
-          # Build release notes
-          NOTES=$(printf '%s\n' \
-            '<div align="center">' \
-            '' \
-            '[![Tokscale](https://github.com/junhoyeo/tokscale/raw/main/.github/assets/hero.png)](https://github.com/junhoyeo/tokscale)' \
-            '' \
-            "# \`tokscale@v$NEW_VERSION\` is here!" \
-            '</div>' \
-            '' \
-            '## What\'"'"'s Changed' \
-            "$PRS")
-          
-          if [ -n "$NEW_CONTRIBUTORS" ]; then
-            NOTES=$(printf '%s\n' "$NOTES" '' '## New Contributors' "$NEW_CONTRIBUTORS")
-          fi
-          
-          NOTES=$(printf '%s\n' "$NOTES" '' "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...v$NEW_VERSION")
-          
-          # Create release
-          gh release create "v$NEW_VERSION" \
-            --title "v$NEW_VERSION" \
-            --notes "$NOTES"
-          
-          echo "🎉 Created GitHub release: https://github.com/${{ github.repository }}/releases/tag/v$NEW_VERSION"
+          rm -f "$NOTES_FILE"
