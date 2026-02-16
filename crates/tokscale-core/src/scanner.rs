@@ -568,6 +568,18 @@ mod tests {
     }
 
     #[test]
+    fn test_scan_all_sources_pi() {
+        let dir = TempDir::new().unwrap();
+        let home = dir.path();
+        setup_mock_pi_dir(home);
+
+        let result = scan_all_sources(home.to_str().unwrap(), &["pi".to_string()]);
+        assert_eq!(result.pi_files.len(), 1);
+        assert!(result.opencode_files.is_empty());
+        assert!(result.claude_files.is_empty());
+    }
+
+    #[test]
     fn test_scan_all_sources_claude() {
         let dir = TempDir::new().unwrap();
         let home = dir.path();
