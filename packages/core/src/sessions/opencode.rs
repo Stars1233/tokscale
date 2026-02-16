@@ -68,7 +68,14 @@ pub fn parse_opencode_file(path: &Path) -> Option<UnifiedMessage> {
 
     let session_id = msg.session_id.unwrap_or_else(|| "unknown".to_string());
 
-    Some(UnifiedMessage::new_with_agent(
+    // Use message ID from JSON or derive from filename for deduplication
+    let dedup_key = msg.id.or_else(|| {
+        path.file_stem()
+            .and_then(|s| s.to_str())
+            .map(|s| s.to_string())
+    });
+
+    let mut unified = UnifiedMessage::new_with_agent(
         "opencode",
         model_id,
         msg.provider_id.unwrap_or_else(|| "unknown".to_string()),
@@ -83,7 +90,9 @@ pub fn parse_opencode_file(path: &Path) -> Option<UnifiedMessage> {
         },
         msg.cost.unwrap_or(0.0).max(0.0),
         agent,
-    ))
+    );
+    unified.dedup_key = dedup_key;
+    Some(unified)
 }
 
 pub fn parse_opencode_sqlite(db_path: &Path) -> Vec<UnifiedMessage> {
@@ -96,7 +105,7 @@ pub fn parse_opencode_sqlite(db_path: &Path) -> Vec<UnifiedMessage> {
     };
 
     let query = r#"
-        SELECT m.session_id, m.data
+        SELECT m.id, m.session_id, m.data
         FROM message m
         WHERE json_extract(m.data, '$.role') = 'assistant'
           AND json_extract(m.data, '$.tokens') IS NOT NULL
@@ -108,9 +117,10 @@ pub fn parse_opencode_sqlite(db_path: &Path) -> Vec<UnifiedMessage> {
     };
 
     let rows = match stmt.query_map([], |row| {
-        let session_id: String = row.get(0)?;
-        let data_json: String = row.get(1)?;
-        Ok((session_id, data_json))
+        let id: String = row.get(0)?;
+        let session_id: String = row.get(1)?;
+        let data_json: String = row.get(2)?;
+        Ok((id, session_id, data_json))
     }) {
         Ok(r) => r,
         Err(_) => return Vec::new(),
@@ -119,7 +129,7 @@ pub fn parse_opencode_sqlite(db_path: &Path) -> Vec<UnifiedMessage> {
     let mut messages = Vec::new();
 
     for row_result in rows {
-        let (session_id, data_json) = match row_result {
+        let (id, session_id, data_json) = match row_result {
             Ok(r) => r,
             Err(_) => continue,
         };
@@ -147,7 +157,7 @@ pub fn parse_opencode_sqlite(db_path: &Path) -> Vec<UnifiedMessage> {
         let agent_or_mode = msg.mode.or(msg.agent);
         let agent = agent_or_mode.map(|a| normalize_agent_name(&a));
 
-        messages.push(UnifiedMessage::new_with_agent(
+        let mut unified = UnifiedMessage::new_with_agent(
             "opencode",
             model_id,
             msg.provider_id.unwrap_or_else(|| "unknown".to_string()),
@@ -162,7 +172,9 @@ pub fn parse_opencode_sqlite(db_path: &Path) -> Vec<UnifiedMessage> {
             },
             msg.cost.unwrap_or(0.0).max(0.0),
             agent,
-        ));
+        );
+        unified.dedup_key = Some(id);
+        messages.push(unified);
     }
 
     messages
