@@ -17,6 +17,18 @@ import { TABS, ALL_SOURCES, type TUIOptions, type TabType, type SortType, type S
 export type AppProps = TUIOptions;
 
 const PALETTE_NAMES = getPaletteNames();
+const SOURCE_HOTKEYS: Record<string, SourceType> = {
+  "1": "opencode",
+  "2": "claude",
+  "3": "codex",
+  "4": "cursor",
+  "5": "gemini",
+  "6": "amp",
+  "7": "droid",
+  "8": "openclaw",
+  "9": "pi",
+  "0": "kimi",
+};
 
 function cycleTabForward(current: TabType): TabType {
   const idx = TABS.indexOf(current);
@@ -282,15 +294,13 @@ export function App(props: AppProps) {
       return;
     }
 
-    if (key.name === "1") { handleSourceToggle("opencode"); return; }
-    if (key.name === "2") { handleSourceToggle("claude"); return; }
-    if (key.name === "3") { handleSourceToggle("codex"); return; }
-    if (key.name === "4") { handleSourceToggle("cursor"); return; }
-    if (key.name === "5") { handleSourceToggle("gemini"); return; }
-    if (key.name === "6") { handleSourceToggle("amp"); return; }
-    if (key.name === "7") { handleSourceToggle("droid"); return; }
-    if (key.name === "8") { handleSourceToggle("openclaw"); return; }
-    if (key.name === "9") { handleSourceToggle("pi"); return; }
+    if (!key.meta && !key.ctrl) {
+      const source = SOURCE_HOTKEYS[key.name];
+      if (source) {
+        handleSourceToggle(source);
+        return;
+      }
+    }
 
     if (key.name === "up") {
       if (activeTab() === "overview") {
