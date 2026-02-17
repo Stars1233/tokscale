@@ -68,6 +68,7 @@ pub struct ParsedMessages {
     pub droid_count: i32,
     pub openclaw_count: i32,
     pub pi_count: i32,
+    pub kimi_count: i32,
     pub processing_time_ms: u32,
 }
 
@@ -300,6 +301,7 @@ pub fn parse_local_sources(options: LocalParseOptions) -> napi::Result<ParsedMes
             "droid".to_string(),
             "openclaw".to_string(),
             "pi".to_string(),
+            "kimi".to_string(),
         ]
     });
 
@@ -508,6 +510,20 @@ pub fn parse_local_sources(options: LocalParseOptions) -> napi::Result<ParsedMes
     let pi_count = pi_msgs.len() as i32;
     messages.extend(pi_msgs);
 
+    // Parse Kimi wire.jsonl files in parallel
+    let kimi_msgs: Vec<ParsedMessage> = scan_result
+        .kimi_files
+        .par_iter()
+        .flat_map(|path| {
+            sessions::kimi::parse_kimi_file(path)
+                .into_iter()
+                .map(|msg| unified_to_parsed(&msg))
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    let kimi_count = kimi_msgs.len() as i32;
+    messages.extend(kimi_msgs);
+
     // Apply date filters
     let filtered = filter_parsed_messages(messages, &options);
 
@@ -521,6 +537,7 @@ pub fn parse_local_sources(options: LocalParseOptions) -> napi::Result<ParsedMes
         droid_count,
         openclaw_count,
         pi_count,
+        kimi_count,
         processing_time_ms: start.elapsed().as_millis() as u32,
     })
 }
