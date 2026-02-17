@@ -53,6 +53,7 @@
 | <img width="48px" src=".github/assets/client-amp.png" alt="Amp" /> | [Amp (AmpCode)](https://ampcode.com/) | `~/.local/share/amp/threads/` | ✅ 支持 |
 | <img width="48px" src=".github/assets/client-droid.png" alt="Droid" /> | [Droid (Factory Droid)](https://factory.ai/) | `~/.factory/sessions/` | ✅ 支持 |
 | <img width="48px" src=".github/assets/client-pi.png" alt="Pi" /> | [Pi](https://github.com/badlogic/pi-mono) | `~/.pi/agent/sessions/` | ✅ 支持 |
+| <img width="48px" src="packages/frontend/public/assets/logos/zai.jpg" alt="Kimi" /> | [Kimi CLI](https://github.com/MoonshotAI/kimi-cli) | `~/.kimi/sessions/` | ✅ 支持 |
 
 使用 [🚅 LiteLLM 的价格数据](https://github.com/BerriAI/litellm)提供实时价格计算，支持分层定价模型和缓存 Token 折扣。
 
@@ -114,7 +115,7 @@
   - 9 种颜色主题的 GitHub 风格贡献图
   - 实时筛选和排序
   - 零闪烁渲染（原生 Zig 引擎）
-- **多平台支持** - 跟踪 OpenCode、Claude Code、Codex CLI、Cursor IDE、Gemini CLI、Amp、Droid、OpenClaw 和 Pi 的使用情况
+- **多平台支持** - 跟踪 OpenCode、Claude Code、Codex CLI、Cursor IDE、Gemini CLI、Amp、Droid、OpenClaw、Pi 和 Kimi CLI 的使用情况
 - **实时定价** - 从 LiteLLM 获取当前价格，带 1 小时磁盘缓存；OpenRouter 自动回退和新模型的 Cursor 定价支持
 - **详细分解** - 输入、输出、缓存读写和推理 Token 跟踪
 - **原生 Rust 核心** - 所有解析和聚合在 Rust 中完成，处理速度提升 10 倍
@@ -217,7 +218,7 @@ tokscale models --json > report.json   # 保存到文件
   - `1-4` 或 `←/→/Tab`：切换视图
   - `↑/↓`：导航列表
   - `c/n/t`：按成本/名称/Token 排序
-  - `1-9`：切换来源（OpenCode/Claude/Codex/Cursor/Gemini/Amp/Droid/OpenClaw/Pi）
+  - `1-0`（或 `k`）：切换来源（OpenCode/Claude/Codex/Cursor/Gemini/Amp/Droid/OpenClaw/Pi/Kimi）
   - `p`：循环 9 种颜色主题
   - `r`：刷新数据
   - `e`：导出为 JSON
@@ -243,6 +244,9 @@ tokscale --gemini
 
 # 仅显示 Cursor IDE 使用量（需要先 `tokscale cursor login`）
 tokscale --cursor
+
+# 仅显示 Kimi CLI 使用量
+tokscale --kimi
 
 # 组合筛选
 tokscale --opencode --claude
@@ -474,7 +478,7 @@ tokscale sources --json
 - **交互式提示**：悬停查看详细的每日分解
 - **每日分解面板**：点击查看每个来源和模型的详情
 - **年份筛选**：在年份之间导航
-- **来源筛选**：按平台筛选（OpenCode、Claude、Codex、Cursor、Gemini、Amp、Droid、OpenClaw、Pi）
+- **来源筛选**：按平台筛选（OpenCode、Claude、Codex、Cursor、Gemini、Amp、Droid、OpenClaw、Pi、Kimi）
 - **统计面板**：总成本、Token、活跃天数、连续记录
 - **FOUC 防护**：在 React 水合前应用主题（无闪烁）
 
@@ -736,6 +740,7 @@ AI 编程工具将会话数据存储在跨平台位置。大多数工具在所�
 | Cursor | API 同步 | API 同步 | 通过 API 获取数据，缓存在 `%USERPROFILE%\.config\tokscale\cursor-cache\` |
 | Droid | `~/.factory/` | `%USERPROFILE%\.factory\` | 所有平台使用相同路径 |
 | Pi | `~/.pi/` | `%USERPROFILE%\.pi\` | 所有平台使用相同路径 |
+| Kimi CLI | `~/.kimi/` | `%USERPROFILE%\.kimi\` | 所有平台使用相同路径 |
 
 > **注意**：在 Windows 上，`~` 扩展为 `%USERPROFILE%`（例如 `C:\Users\用户名`）。这些工具故意使用 Unix 风格的路径（如 `.local/share`）而不是 Windows 原生路径（如 `%APPDATA%`），以实现跨平台一致性。
 
