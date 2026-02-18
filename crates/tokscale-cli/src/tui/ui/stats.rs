@@ -239,7 +239,7 @@ fn render_stats_panel(frame: &mut Frame, app: &App, area: Rect) {
     let model_color = get_model_color(favorite_model);
     let sessions: u32 = app.data.models.iter().map(|m| m.session_count).sum();
 
-    let col1_width = if is_narrow { 18u16 } else { 30u16 };
+    let col1_width = if is_narrow { 36u16 } else { 60u16 };
     let col2_x = inner.x + col1_width;
 
     let mut y = inner.y;
