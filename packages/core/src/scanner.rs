@@ -215,6 +215,10 @@ pub fn scan_all_sources(home_dir: &str, sources: &[String]) -> ScanResult {
         let codex_path = format!("{}/sessions", codex_home);
         tasks.push((SessionType::Codex, codex_path, "*.jsonl"));
 
+        // Codex archived sessions: ~/.codex/archived_sessions/**/*.jsonl
+        let codex_archived_path = format!("{}/archived_sessions", codex_home);
+        tasks.push((SessionType::Codex, codex_archived_path, "*.jsonl"));
+
         // Codex headless: <headless_root>/codex/*.jsonl
         for root in &headless_roots {
             let codex_headless_path = root.join("codex");
@@ -486,6 +490,13 @@ mod tests {
         file.write_all(b"").unwrap();
     }
 
+    fn setup_mock_codex_archived_dir(base: &std::path::Path) {
+        let archived_path = base.join(".codex/archived_sessions");
+        fs::create_dir_all(&archived_path).unwrap();
+        let mut file = File::create(archived_path.join("archived.jsonl")).unwrap();
+        file.write_all(b"").unwrap();
+    }
+
     fn setup_mock_gemini_dir(base: &std::path::Path) {
         let gemini_path = base.join(".gemini/tmp/123/chats");
         fs::create_dir_all(&gemini_path).unwrap();
@@ -679,6 +690,42 @@ mod tests {
 
         let result = scan_all_sources(home.to_str().unwrap(), &["codex".to_string()]);
         assert_eq!(result.codex_files.len(), 1);
+
+        restore_env("CODEX_HOME", previous_codex);
+    }
+
+    #[test]
+    #[serial]
+    fn test_scan_all_sources_codex_archived_sessions() {
+        let previous_codex = std::env::var("CODEX_HOME").ok();
+
+        let dir = TempDir::new().unwrap();
+        let home = dir.path();
+        setup_mock_codex_archived_dir(home);
+
+        std::env::set_var("CODEX_HOME", home.join(".codex"));
+
+        let result = scan_all_sources(home.to_str().unwrap(), &["codex".to_string()]);
+        assert_eq!(result.codex_files.len(), 1);
+        assert!(result.codex_files[0].ends_with("archived.jsonl"));
+
+        restore_env("CODEX_HOME", previous_codex);
+    }
+
+    #[test]
+    #[serial]
+    fn test_scan_all_sources_codex_sessions_and_archived() {
+        let previous_codex = std::env::var("CODEX_HOME").ok();
+
+        let dir = TempDir::new().unwrap();
+        let home = dir.path();
+        setup_mock_codex_dir(home);
+        setup_mock_codex_archived_dir(home);
+
+        std::env::set_var("CODEX_HOME", home.join(".codex"));
+
+        let result = scan_all_sources(home.to_str().unwrap(), &["codex".to_string()]);
+        assert_eq!(result.codex_files.len(), 2);
 
         restore_env("CODEX_HOME", previous_codex);
     }
