@@ -3,6 +3,7 @@
 //! Parses wire.jsonl files from ~/.kimi/sessions/[GROUP_ID]/[SESSION_UUID]/wire.jsonl
 //! Token data comes from StatusUpdate messages in the wire protocol.
 
+use super::utils::file_modified_timestamp_ms;
 use super::UnifiedMessage;
 use crate::TokenBreakdown;
 use serde::Deserialize;
@@ -130,11 +131,11 @@ pub fn parse_kimi_file(path: &Path) -> Vec<UnifiedMessage> {
             None => continue,
         };
 
-        // Convert Unix seconds (float) to milliseconds
+        // Convert Unix seconds (float) to milliseconds, fallback to file mtime
         let timestamp_ms = wire_line
             .timestamp
             .map(|ts| (ts * 1000.0) as i64)
-            .unwrap_or(0);
+            .unwrap_or_else(|| file_modified_timestamp_ms(path));
 
         let input = token_usage.input_other.unwrap_or(0).max(0);
         let output = token_usage.output.unwrap_or(0).max(0);

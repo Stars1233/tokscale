@@ -100,7 +100,7 @@ const CLIENT_LOGO_URLS: Record<string, string> = {
   "Droid": `${ASSETS_BASE_URL}/droid.png`,
   "OpenClaw": `${ASSETS_BASE_URL}/openclaw.png`,
   "Pi": `${ASSETS_BASE_URL}/pi.png`,
-  "Kimi": `${ASSETS_BASE_URL}/zai.jpg`,
+  "Kimi": `${ASSETS_BASE_URL}/client-kimi.png`,
 };
 
 const PROVIDER_LOGO_URLS: Record<string, string> = {
