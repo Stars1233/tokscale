@@ -912,6 +912,16 @@ model_change 이벤트와 어시스턴트 메시지가 포함된 세션 JSONL �
 {"type":"message","id":"msg_001","timestamp":"2026-01-01T00:00:01.000Z","message":{"role":"assistant","model":"claude-3-5-sonnet","provider":"anthropic","usage":{"input":100,"output":50,"cacheRead":10,"cacheWrite":5,"totalTokens":165}}}
 ```
 
+### Kimi CLI
+
+위치: `~/.kimi/sessions/{GROUP_ID}/{SESSION_UUID}/wire.jsonl`
+
+StatusUpdate 메시지를 포함하는 wire.jsonl 형식:
+```json
+{"type": "metadata", "protocol_version": "1.3"}
+{"timestamp": 1770983426.420942, "message": {"type": "StatusUpdate", "payload": {"token_usage": {"input_other": 1562, "output": 2463, "input_cache_read": 0, "input_cache_creation": 0}, "message_id": "chatcmpl-xxx"}}}
+```
+
 ## 가격
 
 Tokscale은 [LiteLLM의 가격 데이터베이스](https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json)에서 실시간 가격을 가져옵니다.

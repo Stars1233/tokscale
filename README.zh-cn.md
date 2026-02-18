@@ -913,6 +913,16 @@ Cursor 数据使用您的会话令牌从 Cursor API 获取并本地缓存。运�
 {"type":"message","id":"msg_001","timestamp":"2026-01-01T00:00:01.000Z","message":{"role":"assistant","model":"claude-3-5-sonnet","provider":"anthropic","usage":{"input":100,"output":50,"cacheRead":10,"cacheWrite":5,"totalTokens":165}}}
 ```
 
+### Kimi CLI
+
+位置：`~/.kimi/sessions/{GROUP_ID}/{SESSION_UUID}/wire.jsonl`
+
+包含 StatusUpdate 消息的 wire.jsonl 格式：
+```json
+{"type": "metadata", "protocol_version": "1.3"}
+{"timestamp": 1770983426.420942, "message": {"type": "StatusUpdate", "payload": {"token_usage": {"input_other": 1562, "output": 2463, "input_cache_read": 0, "input_cache_creation": 0}, "message_id": "chatcmpl-xxx"}}}
+```
+
 ## 定价
 
 Tokscale 从 [LiteLLM 的价格数据库](https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json)获取实时价格。
