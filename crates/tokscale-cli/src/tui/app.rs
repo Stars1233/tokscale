@@ -157,6 +157,7 @@ impl App {
                     "droid" => enabled_sources.insert(Source::Droid),
                     "openclaw" => enabled_sources.insert(Source::OpenClaw),
                     "pi" => enabled_sources.insert(Source::Pi),
+                    "kimi" => enabled_sources.insert(Source::Kimi),
                     _ => false,
                 };
             }
@@ -314,7 +315,7 @@ impl App {
             KeyCode::Char('e') => {
                 self.export_to_json();
             }
-            KeyCode::Char(c @ '1'..='9') => {
+            KeyCode::Char(c @ '0'..='9') => {
                 self.toggle_source(c);
             }
             KeyCode::Enter => {

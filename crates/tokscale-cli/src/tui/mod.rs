@@ -74,6 +74,7 @@ pub fn run(
                 "droid" => enabled_sources.insert(Source::Droid),
                 "openclaw" => enabled_sources.insert(Source::OpenClaw),
                 "pi" => enabled_sources.insert(Source::Pi),
+                "kimi" => enabled_sources.insert(Source::Kimi),
                 _ => false,
             };
         }

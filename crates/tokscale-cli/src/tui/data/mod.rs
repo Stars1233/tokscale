@@ -91,6 +91,7 @@ pub enum Source {
     Droid,
     OpenClaw,
     Pi,
+    Kimi,
 }
 
 impl Source {
@@ -105,6 +106,7 @@ impl Source {
             Source::Droid,
             Source::OpenClaw,
             Source::Pi,
+            Source::Kimi,
         ]
     }
 
@@ -119,6 +121,7 @@ impl Source {
             Source::Droid => "Droid",
             Source::OpenClaw => "OpenClaw",
             Source::Pi => "Pi",
+            Source::Kimi => "Kimi",
         }
     }
 
@@ -133,6 +136,7 @@ impl Source {
             Source::Droid => '7',
             Source::OpenClaw => '8',
             Source::Pi => '9',
+            Source::Kimi => '0',
         }
     }
 
@@ -147,6 +151,7 @@ impl Source {
             '7' => Some(Source::Droid),
             '8' => Some(Source::OpenClaw),
             '9' => Some(Source::Pi),
+            '0' => Some(Source::Kimi),
             _ => None,
         }
     }
@@ -162,6 +167,7 @@ impl Source {
             Source::Droid => "droid",
             Source::OpenClaw => "openclaw",
             Source::Pi => "pi",
+            Source::Kimi => "kimi",
         }
     }
 }
@@ -216,13 +222,31 @@ impl DataLoader {
 
         let mut all_messages: Vec<UnifiedMessage> = Vec::new();
 
+        // OpenCode: read both SQLite (1.2+) and legacy JSON, deduplicate by message ID
+        let mut opencode_seen: HashSet<String> = HashSet::new();
+
         if enabled_sources.contains(&Source::OpenCode) {
-            let msgs: Vec<UnifiedMessage> = scan_result
+            if let Some(db_path) = &scan_result.opencode_db {
+                let sqlite_messages: Vec<UnifiedMessage> =
+                    sessions::opencode::parse_opencode_sqlite(db_path);
+                for msg in &sqlite_messages {
+                    if let Some(ref key) = msg.dedup_key {
+                        opencode_seen.insert(key.clone());
+                    }
+                }
+                all_messages.extend(sqlite_messages);
+            }
+
+            let json_messages: Vec<UnifiedMessage> = scan_result
                 .opencode_files
                 .par_iter()
                 .filter_map(|path| sessions::opencode::parse_opencode_file(path))
                 .collect();
-            all_messages.extend(msgs);
+            all_messages.extend(json_messages.into_iter().filter(|msg| {
+                msg.dedup_key
+                    .as_ref()
+                    .map_or(true, |key| opencode_seen.insert(key.clone()))
+            }));
         }
 
         if enabled_sources.contains(&Source::Claude) {
@@ -293,7 +317,7 @@ impl DataLoader {
             let msgs: Vec<UnifiedMessage> = scan_result
                 .openclaw_files
                 .par_iter()
-                .flat_map(|path| sessions::openclaw::parse_openclaw_index(path))
+                .flat_map(|path| sessions::openclaw::parse_openclaw_transcript(path))
                 .collect();
             all_messages.extend(msgs);
         }
@@ -307,18 +331,37 @@ impl DataLoader {
             all_messages.extend(msgs);
         }
 
+        if enabled_sources.contains(&Source::Kimi) {
+            let msgs: Vec<UnifiedMessage> = scan_result
+                .kimi_files
+                .par_iter()
+                .flat_map(|path| sessions::kimi::parse_kimi_file(path))
+                .collect();
+            all_messages.extend(msgs);
+        }
+
         if let Some(svc) = pricing {
             for msg in &mut all_messages {
-                let calculated_cost = svc.calculate_cost(
-                    &msg.model_id,
-                    msg.tokens.input,
-                    msg.tokens.output,
-                    msg.tokens.cache_read,
-                    msg.tokens.cache_write,
-                    msg.tokens.reasoning,
-                );
-                // Only overwrite cost if pricing service returns a positive value
-                // Preserve original cost for sources like cursor/amp that provide pre-calculated costs
+                let is_gemini = msg.source.eq_ignore_ascii_case("gemini");
+                let calculated_cost = if is_gemini {
+                    svc.calculate_cost(
+                        &msg.model_id,
+                        msg.tokens.input,
+                        msg.tokens.output + msg.tokens.reasoning,
+                        0,
+                        0,
+                        0,
+                    )
+                } else {
+                    svc.calculate_cost(
+                        &msg.model_id,
+                        msg.tokens.input,
+                        msg.tokens.output,
+                        msg.tokens.cache_read,
+                        msg.tokens.cache_write,
+                        msg.tokens.reasoning,
+                    )
+                };
                 if calculated_cost > 0.0 {
                     msg.cost = calculated_cost;
                 }
@@ -653,7 +696,7 @@ mod tests {
     #[test]
     fn test_source_all() {
         let sources = Source::all();
-        assert_eq!(sources.len(), 9);
+        assert_eq!(sources.len(), 10);
         assert_eq!(sources[0], Source::OpenCode);
         assert_eq!(sources[1], Source::Claude);
         assert_eq!(sources[2], Source::Codex);
@@ -663,6 +706,7 @@ mod tests {
         assert_eq!(sources[6], Source::Droid);
         assert_eq!(sources[7], Source::OpenClaw);
         assert_eq!(sources[8], Source::Pi);
+        assert_eq!(sources[9], Source::Kimi);
     }
 
     #[test]
@@ -676,6 +720,7 @@ mod tests {
         assert_eq!(Source::Droid.as_str(), "Droid");
         assert_eq!(Source::OpenClaw.as_str(), "OpenClaw");
         assert_eq!(Source::Pi.as_str(), "Pi");
+        assert_eq!(Source::Kimi.as_str(), "Kimi");
     }
 
     #[test]
@@ -689,6 +734,7 @@ mod tests {
         assert_eq!(Source::Droid.key(), '7');
         assert_eq!(Source::OpenClaw.key(), '8');
         assert_eq!(Source::Pi.key(), '9');
+        assert_eq!(Source::Kimi.key(), '0');
     }
 
     #[test]
@@ -702,7 +748,7 @@ mod tests {
         assert_eq!(Source::from_key('7'), Some(Source::Droid));
         assert_eq!(Source::from_key('8'), Some(Source::OpenClaw));
         assert_eq!(Source::from_key('9'), Some(Source::Pi));
-        assert_eq!(Source::from_key('0'), None);
+        assert_eq!(Source::from_key('0'), Some(Source::Kimi));
         assert_eq!(Source::from_key('a'), None);
     }
 

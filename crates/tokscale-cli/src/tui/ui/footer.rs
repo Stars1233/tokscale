@@ -126,6 +126,7 @@ fn render_source_badges(frame: &mut Frame, app: &mut App, area: Rect) {
         (Source::Droid, "7", "DR"),
         (Source::OpenClaw, "8", "CL"),
         (Source::Pi, "9", "PI"),
+        (Source::Kimi, "0", "KI"),
     ];
 
     for (source, key, short) in source_labels {
