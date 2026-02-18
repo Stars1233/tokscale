@@ -486,11 +486,21 @@ async function runInSubprocess<T>(method: string, args: unknown[]): Promise<T> {
 
     if (exitCode !== 0) {
       const stderr = await proc.stderr.text();
-      let errorMsg = stderr || `Process exited with code ${exitCode}`;
-      try {
-        const parsed = JSON.parse(stderr);
-        if (parsed.error) errorMsg = parsed.error;
-      } catch {}
+      let errorMsg = `Process exited with code ${exitCode}`;
+      if (stderr) {
+        try {
+          const parsed = JSON.parse(stderr);
+          if (parsed.error) {
+            errorMsg = parsed.error;
+          } else {
+            errorMsg = stderr;
+          }
+        } catch {
+          // Not JSON — include raw stderr so the user sees the actual error
+          // (e.g. dynamic linker errors on NixOS, missing shared libraries, etc.)
+          errorMsg = stderr;
+        }
+      }
       throw new Error(`Subprocess '${method}' failed: ${errorMsg}`);
     }
 
