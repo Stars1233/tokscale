@@ -49,7 +49,7 @@ export const SOURCE_LOGOS: Record<string, string> = {
   droid: `${GITHUB_CDN_BASE}/client-droid.png`,
   openclaw: `${GITHUB_CDN_BASE}/client-openclaw.jpg`,
   pi: `${GITHUB_CDN_BASE}/client-pi.png`,
-  kimi: `${GITHUB_CDN_BASE}/client-kimi.jpg`,
+  kimi: `${GITHUB_CDN_BASE}/client-kimi.png`,
 };
 
 export const SOURCE_COLORS: Record<string, string> = {
