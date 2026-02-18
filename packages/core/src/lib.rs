@@ -311,7 +311,9 @@ pub fn parse_local_sources(options: LocalParseOptions) -> napi::Result<ParsedMes
 
     let mut messages: Vec<ParsedMessage> = Vec::new();
 
-    // Parse OpenCode: read both SQLite (1.2+) and legacy JSON, deduplicate by message ID
+    // Parse OpenCode: read both SQLite (1.2+) and legacy JSON, deduplicate by message ID.
+    // If migration cache indicates all JSON was already migrated to SQLite and the JSON
+    // directory is unchanged, skip the (potentially expensive) JSON parsing entirely.
     let opencode_count: i32 = {
         let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
         let mut count: i32 = 0;
@@ -334,22 +336,61 @@ pub fn parse_local_sources(options: LocalParseOptions) -> napi::Result<ParsedMes
             }
         }
 
-        let json_msgs: Vec<(String, ParsedMessage)> = scan_result
-            .opencode_files
-            .par_iter()
-            .filter_map(|path| {
-                let msg = sessions::opencode::parse_opencode_file(path)?;
-                let key = msg.dedup_key.clone().unwrap_or_default();
-                Some((key, unified_to_parsed(&msg)))
-            })
-            .collect();
-        let deduped: Vec<ParsedMessage> = json_msgs
-            .into_iter()
-            .filter(|(key, _)| key.is_empty() || seen.insert(key.clone()))
-            .map(|(_, msg)| msg)
-            .collect();
-        count += deduped.len() as i32;
-        messages.extend(deduped);
+        // Check whether we can skip JSON parsing entirely.
+        // Conditions: SQLite DB present, cache says migration_complete, and the JSON
+        // directory's file count and mtime are unchanged since the cache was written.
+        let skip_json = scan_result.opencode_db.is_some()
+            && scan_result
+                .opencode_json_dir
+                .as_ref()
+                .and_then(|json_dir| {
+                    let file_count = scan_result.opencode_files.len() as u64;
+                    sessions::opencode::load_opencode_migration_cache().filter(|cache| {
+                        cache.migration_complete
+                            && file_count == cache.json_file_count
+                            && sessions::opencode::get_json_dir_mtime(json_dir)
+                                .map_or(false, |m| m <= cache.json_dir_mtime_secs)
+                    })
+                })
+                .is_some();
+
+        if !skip_json {
+            let json_msgs: Vec<(String, ParsedMessage)> = scan_result
+                .opencode_files
+                .par_iter()
+                .filter_map(|path| {
+                    let msg = sessions::opencode::parse_opencode_file(path)?;
+                    let key = msg.dedup_key.clone().unwrap_or_default();
+                    Some((key, unified_to_parsed(&msg)))
+                })
+                .collect();
+            let deduped: Vec<ParsedMessage> = json_msgs
+                .into_iter()
+                .filter(|(key, _)| key.is_empty() || seen.insert(key.clone()))
+                .map(|(_, msg)| msg)
+                .collect();
+
+            let json_survived = deduped.len() as u64;
+            count += json_survived as i32;
+            messages.extend(deduped);
+
+            // Persist migration status so subsequent launches can skip JSON parsing
+            // when the DB exists and migration is complete.
+            if scan_result.opencode_db.is_some() {
+                if let Some(json_dir) = &scan_result.opencode_json_dir {
+                    if let Some(mtime) = sessions::opencode::get_json_dir_mtime(json_dir) {
+                        sessions::opencode::save_opencode_migration_cache(
+                            &sessions::opencode::OpenCodeMigrationCache {
+                                migration_complete: json_survived == 0,
+                                json_file_count: scan_result.opencode_files.len() as u64,
+                                json_dir_mtime_secs: mtime,
+                                checked_at_secs: sessions::opencode::now_secs(),
+                            },
+                        );
+                    }
+                }
+            }
+        }
 
         count
     };
