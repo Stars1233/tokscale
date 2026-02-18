@@ -8,7 +8,6 @@
  * Communication: tmpfile (JSON input) -> tmpfile (JSON output)
  */
 
-import nativeCore from "@tokscale/core";
 import { readFileSync, writeFileSync } from "node:fs";
 
 interface NativeRunnerRequest {
@@ -22,6 +21,23 @@ async function main() {
 
   if (!inputFile || !outputFile) {
     process.stderr.write(JSON.stringify({ error: "Usage: native-runner <inputFile> <outputFile>" }));
+    process.exit(1);
+  }
+
+  // Dynamic import so that load failures are caught and reported as JSON to stderr
+  // rather than causing an unhandled crash with no diagnostic output (e.g. on NixOS
+  // where the .node binary's dynamic linker path differs from standard Linux paths).
+  let nativeCore: typeof import("@tokscale/core");
+  try {
+    const mod = await import("@tokscale/core");
+    // CJS modules wrapped by Bun expose exports as .default; fall back to the namespace.
+    nativeCore = ((mod as unknown as { default: typeof mod }).default ?? mod) as typeof import("@tokscale/core");
+  } catch (e) {
+    const err = e as Error;
+    process.stderr.write(JSON.stringify({
+      error: `Failed to load native module (@tokscale/core): ${err.message}`,
+      stack: err.stack,
+    }));
     process.exit(1);
   }
 
