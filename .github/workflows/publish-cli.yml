@@ -100,10 +100,8 @@ jobs:
           echo "  cli -> darwin arm64: $(jq -r '.optionalDependencies["@tokscale/cli-darwin-arm64"]' packages/cli/package.json)"
           echo "  tokscale -> cli: $(jq -r '.dependencies["@tokscale/cli"]' packages/tokscale/package.json)"
           echo "  Platform packages:"
-          for dir in packages/core/npm/*/; do
-            if [ -f "${dir}package.json" ]; then
-              echo "    $(basename $dir): $(jq -r '.version' "${dir}package.json")"
-            fi
+          for pkg in cli-darwin-arm64 cli-darwin-x64 cli-linux-x64-gnu cli-linux-x64-musl cli-linux-arm64-gnu cli-linux-arm64-musl cli-win32-x64-msvc cli-win32-arm64-msvc; do
+            echo "    $pkg: $(jq -r '.version' "packages/$pkg/package.json")"
           done
           
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
