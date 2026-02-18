@@ -53,7 +53,7 @@
 | <img width="48px" src=".github/assets/client-amp.png" alt="Amp" /> | [Amp (AmpCode)](https://ampcode.com/) | `~/.local/share/amp/threads/` | ✅ 対応 |
 | <img width="48px" src=".github/assets/client-droid.png" alt="Droid" /> | [Droid (Factory Droid)](https://factory.ai/) | `~/.factory/sessions/` | ✅ 対応 |
 | <img width="48px" src=".github/assets/client-pi.png" alt="Pi" /> | [Pi](https://github.com/badlogic/pi-mono) | `~/.pi/agent/sessions/` | ✅ 対応 |
-| <img width="48px" src="packages/frontend/public/assets/logos/zai.jpg" alt="Kimi" /> | [Kimi CLI](https://github.com/MoonshotAI/kimi-cli) | `~/.kimi/sessions/` | ✅ 対応 |
+| <img width="48px" src=".github/assets/client-kimi.jpg" alt="Kimi" /> | [Kimi CLI](https://github.com/MoonshotAI/kimi-cli) | `~/.kimi/sessions/` | ✅ 対応 |
 
 [🚅 LiteLLMの価格データ](https://github.com/BerriAI/litellm)を使用してリアルタイム価格計算を提供し、階層型価格モデルとキャッシュトークン割引をサポートしています。
 
@@ -218,7 +218,7 @@ tokscale models --json > report.json   # ファイルに保存
   - `1-4`または`←/→/Tab`: ビュー切り替え
   - `↑/↓`: リスト操作
   - `c/n/t`: コスト/名前/トークンでソート
-  - `1-0`（または`k`）: ソーストグル（OpenCode/Claude/Codex/Cursor/Gemini/Amp/Droid/OpenClaw/Pi/Kimi）
+  - `1-0`: ソーストグル（OpenCode/Claude/Codex/Cursor/Gemini/Amp/Droid/OpenClaw/Pi/Kimi）
   - `p`: 9色テーマを循環
   - `r`: データ更新
   - `e`: JSONにエクスポート
@@ -911,6 +911,16 @@ model_changeイベントとアシスタントメッセージを含むセッシ�
 ```json
 {"type":"session","id":"pi_ses_001","timestamp":"2026-01-01T00:00:00.000Z","cwd":"/tmp"}
 {"type":"message","id":"msg_001","timestamp":"2026-01-01T00:00:01.000Z","message":{"role":"assistant","model":"claude-3-5-sonnet","provider":"anthropic","usage":{"input":100,"output":50,"cacheRead":10,"cacheWrite":5,"totalTokens":165}}}
+```
+
+### Kimi CLI
+
+場所: `~/.kimi/sessions/{GROUP_ID}/{SESSION_UUID}/wire.jsonl`
+
+StatusUpdate メッセージを含む wire.jsonl 形式：
+```json
+{"type": "metadata", "protocol_version": "1.3"}
+{"timestamp": 1770983426.420942, "message": {"type": "StatusUpdate", "payload": {"token_usage": {"input_other": 1562, "output": 2463, "input_cache_read": 0, "input_cache_creation": 0}, "message_id": "chatcmpl-xxx"}}}
 ```
 
 ## 価格
