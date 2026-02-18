@@ -25,6 +25,8 @@ pub enum SessionType {
 pub struct ScanResult {
     pub opencode_files: Vec<PathBuf>,
     pub opencode_db: Option<PathBuf>,
+    /// Path to the OpenCode legacy JSON directory (for migration cache stat checks)
+    pub opencode_json_dir: Option<PathBuf>,
     pub claude_files: Vec<PathBuf>,
     pub codex_files: Vec<PathBuf>,
     pub gemini_files: Vec<PathBuf>,
@@ -199,6 +201,7 @@ pub fn scan_all_sources(home_dir: &str, sources: &[String]) -> ScanResult {
 
         // OpenCode legacy: JSON files at ~/.local/share/opencode/storage/message/*/*.json
         let opencode_path = format!("{}/opencode/storage/message", xdg_data);
+        result.opencode_json_dir = Some(PathBuf::from(&opencode_path));
         tasks.push((SessionType::OpenCode, opencode_path, "*.json"));
     }
 
@@ -319,6 +322,7 @@ mod tests {
         let result = ScanResult {
             opencode_files: vec![PathBuf::from("a.json"), PathBuf::from("b.json")],
             opencode_db: None,
+            opencode_json_dir: None,
             claude_files: vec![PathBuf::from("c.jsonl")],
             codex_files: vec![],
             gemini_files: vec![PathBuf::from("d.json")],
@@ -336,6 +340,7 @@ mod tests {
         let result = ScanResult {
             opencode_files: vec![PathBuf::from("a.json")],
             opencode_db: None,
+            opencode_json_dir: None,
             claude_files: vec![PathBuf::from("b.jsonl")],
             codex_files: vec![PathBuf::from("c.jsonl")],
             gemini_files: vec![PathBuf::from("d.json")],
