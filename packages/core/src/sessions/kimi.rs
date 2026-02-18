@@ -49,7 +49,11 @@ const DEFAULT_PROVIDER: &str = "moonshot";
 fn read_model_from_config(wire_path: &Path) -> String {
     // Navigate from wire.jsonl up to ~/.kimi/config.json
     // wire.jsonl is at ~/.kimi/sessions/GROUP/UUID/wire.jsonl
-    if let Some(sessions_dir) = wire_path.parent().and_then(|p| p.parent()).and_then(|p| p.parent()) {
+    if let Some(sessions_dir) = wire_path
+        .parent()
+        .and_then(|p| p.parent())
+        .and_then(|p| p.parent())
+    {
         if let Some(kimi_dir) = sessions_dir.parent() {
             let config_path = kimi_dir.join("config.json");
             if let Ok(content) = std::fs::read_to_string(&config_path) {
@@ -147,7 +151,9 @@ pub fn parse_kimi_file(path: &Path) -> Vec<UnifiedMessage> {
             continue;
         }
 
-        messages.push(UnifiedMessage::new(
+        let dedup_key = payload.message_id;
+
+        messages.push(UnifiedMessage::new_with_dedup(
             "kimi",
             model.clone(),
             DEFAULT_PROVIDER,
@@ -158,9 +164,11 @@ pub fn parse_kimi_file(path: &Path) -> Vec<UnifiedMessage> {
                 output,
                 cache_read,
                 cache_write,
+                // Kimi wire protocol does not expose reasoning tokens; all reasoning included in output
                 reasoning: 0,
             },
             0.0,
+            dedup_key,
         ));
     }
 
