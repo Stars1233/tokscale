@@ -68,6 +68,7 @@ pub struct ParsedMessages {
     pub droid_count: i32,
     pub openclaw_count: i32,
     pub pi_count: i32,
+    pub kimi_count: i32,
     pub processing_time_ms: u32,
 }
 
@@ -186,6 +187,28 @@ use sessions::UnifiedMessage;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
+const DEFAULT_SOURCES: [&str; 10] = [
+    "opencode",
+    "claude",
+    "codex",
+    "gemini",
+    "cursor",
+    "amp",
+    "droid",
+    "openclaw",
+    "pi",
+    "kimi",
+];
+
+fn default_sources(include_cursor: bool) -> Vec<String> {
+    DEFAULT_SOURCES
+        .iter()
+        .copied()
+        .filter(|source| include_cursor || *source != "cursor")
+        .map(str::to_string)
+        .collect()
+}
+
 fn get_home_dir(home_dir_option: &Option<String>) -> napi::Result<String> {
     home_dir_option
         .clone()
@@ -290,18 +313,10 @@ pub fn parse_local_sources(options: LocalParseOptions) -> napi::Result<ParsedMes
     let home_dir = get_home_dir(&options.home_dir)?;
 
     // Default to local sources only (no cursor)
-    let sources = options.sources.clone().unwrap_or_else(|| {
-        vec![
-            "opencode".to_string(),
-            "claude".to_string(),
-            "codex".to_string(),
-            "gemini".to_string(),
-            "amp".to_string(),
-            "droid".to_string(),
-            "openclaw".to_string(),
-            "pi".to_string(),
-        ]
-    });
+    let sources = options
+        .sources
+        .clone()
+        .unwrap_or_else(|| default_sources(false));
 
     // Filter out cursor if somehow included
     let local_sources: Vec<String> = sources.into_iter().filter(|s| s != "cursor").collect();
@@ -508,6 +523,20 @@ pub fn parse_local_sources(options: LocalParseOptions) -> napi::Result<ParsedMes
     let pi_count = pi_msgs.len() as i32;
     messages.extend(pi_msgs);
 
+    // Parse Kimi wire.jsonl files in parallel
+    let kimi_msgs: Vec<ParsedMessage> = scan_result
+        .kimi_files
+        .par_iter()
+        .flat_map(|path| {
+            sessions::kimi::parse_kimi_file(path)
+                .into_iter()
+                .map(|msg| unified_to_parsed(&msg))
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    let kimi_count = kimi_msgs.len() as i32;
+    messages.extend(kimi_msgs);
+
     // Apply date filters
     let filtered = filter_parsed_messages(messages, &options);
 
@@ -521,6 +550,7 @@ pub fn parse_local_sources(options: LocalParseOptions) -> napi::Result<ParsedMes
         droid_count,
         openclaw_count,
         pi_count,
+        kimi_count,
         processing_time_ms: start.elapsed().as_millis() as u32,
     })
 }

@@ -61,7 +61,8 @@ export const SOURCE_COLORS: Record<SourceType, string> = {
   amp: "#EC4899",
   droid: "#10b981",
   openclaw: "#ef4444",
-  pi: "#f97316",
+  pi: "#fb923c",
+  kimi: "#8B5CF6",
 };
 
 export function getSourceColor(source: SourceType | string): string {
@@ -72,5 +73,6 @@ export function getSourceDisplayName(source: string): string {
   if (source === "droid") return "Droid";
   if (source === "openclaw") return "OpenClaw";
   if (source === "pi") return "Pi";
+  if (source === "kimi") return "Kimi";
   return source.charAt(0).toUpperCase() + source.slice(1);
 }
