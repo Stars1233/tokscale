@@ -42,9 +42,7 @@ const client =
     prepare: false,
   });
 
-if (process.env.NODE_ENV !== "production") {
-  globalForDb._pgClient = client;
-}
+globalForDb._pgClient = client;
 
 export const db = drizzle(client, { schema });
 
