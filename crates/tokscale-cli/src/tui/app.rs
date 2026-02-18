@@ -398,7 +398,14 @@ impl App {
     }
 
     fn move_selection_up(&mut self) {
-        if self.selected_index > 0 {
+        let len = self.get_current_list_len();
+        if len == 0 {
+            return;
+        }
+        if self.selected_index == 0 {
+            self.selected_index = len - 1;
+            self.scroll_offset = len.saturating_sub(self.max_visible_items);
+        } else {
             self.selected_index -= 1;
             if self.selected_index < self.scroll_offset {
                 self.scroll_offset = self.selected_index;
@@ -407,8 +414,15 @@ impl App {
     }
 
     fn move_selection_down(&mut self) {
-        let max_index = self.get_current_list_len().saturating_sub(1);
-        if self.selected_index < max_index {
+        let len = self.get_current_list_len();
+        if len == 0 {
+            return;
+        }
+        let max_index = len - 1;
+        if self.selected_index >= max_index {
+            self.selected_index = 0;
+            self.scroll_offset = 0;
+        } else {
             self.selected_index += 1;
             if self.selected_index >= self.scroll_offset + self.max_visible_items {
                 self.scroll_offset = self.selected_index - self.max_visible_items + 1;
@@ -786,9 +800,9 @@ mod tests {
         app.move_selection_up();
         assert_eq!(app.selected_index, 0);
 
-        // At top boundary - should not move
+        // At top boundary - wraps to last item (index 1)
         app.move_selection_up();
-        assert_eq!(app.selected_index, 0);
+        assert_eq!(app.selected_index, 1);
     }
 
     #[test]
@@ -829,9 +843,9 @@ mod tests {
         app.move_selection_down();
         assert_eq!(app.selected_index, 1);
 
-        // At bottom boundary - should not move
+        // At bottom boundary - wraps to first item (index 0)
         app.move_selection_down();
-        assert_eq!(app.selected_index, 1);
+        assert_eq!(app.selected_index, 0);
     }
 
     #[test]
@@ -1121,8 +1135,9 @@ mod tests {
         app.handle_key_event(key(KeyCode::Up));
         assert_eq!(app.selected_index, 0);
 
+        // At top boundary - wraps to last item (index 4, 5 models)
         app.handle_key_event(key(KeyCode::Up));
-        assert_eq!(app.selected_index, 0);
+        assert_eq!(app.selected_index, 4);
     }
 
     #[test]
@@ -1132,8 +1147,70 @@ mod tests {
         app.handle_key_event(key(KeyCode::Down));
         assert_eq!(app.selected_index, 2);
 
+        // At bottom boundary - wraps to first item (index 0)
         app.handle_key_event(key(KeyCode::Down));
+        assert_eq!(app.selected_index, 0);
+    }
+
+    // ── wrap-around navigation ──────────────────────────────────────
+
+    #[test]
+    fn test_move_selection_up_wraps_to_last() {
+        let mut app = make_app_with_models(3);
+        app.max_visible_items = 10;
+        app.selected_index = 0;
+        app.move_selection_up();
         assert_eq!(app.selected_index, 2);
+    }
+
+    #[test]
+    fn test_move_selection_down_wraps_to_first() {
+        let mut app = make_app_with_models(3);
+        app.max_visible_items = 10;
+        app.selected_index = 2;
+        app.move_selection_down();
+        assert_eq!(app.selected_index, 0);
+        assert_eq!(app.scroll_offset, 0);
+    }
+
+    #[test]
+    fn test_move_selection_up_empty_list_noop() {
+        let mut app = make_app();
+        app.data.models.clear();
+        app.selected_index = 0;
+        app.move_selection_up();
+        assert_eq!(app.selected_index, 0);
+    }
+
+    #[test]
+    fn test_move_selection_down_empty_list_noop() {
+        let mut app = make_app();
+        app.data.models.clear();
+        app.selected_index = 0;
+        app.move_selection_down();
+        assert_eq!(app.selected_index, 0);
+    }
+
+    #[test]
+    fn test_move_selection_up_wrap_scroll_offset() {
+        let mut app = make_app_with_models(10);
+        app.max_visible_items = 3;
+        app.selected_index = 0;
+        app.move_selection_up();
+        // Should wrap to index 9 and scroll so last item is visible
+        assert_eq!(app.selected_index, 9);
+        assert_eq!(app.scroll_offset, 7); // 10 - 3 = 7
+    }
+
+    #[test]
+    fn test_move_selection_down_wrap_resets_scroll() {
+        let mut app = make_app_with_models(10);
+        app.max_visible_items = 3;
+        app.selected_index = 9;
+        app.scroll_offset = 7;
+        app.move_selection_down();
+        assert_eq!(app.selected_index, 0);
+        assert_eq!(app.scroll_offset, 0);
     }
 
     // ── handle_key_event: theme ─────────────────────────────────────
