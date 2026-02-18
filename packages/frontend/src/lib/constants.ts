@@ -62,7 +62,7 @@ export const SOURCE_COLORS: Record<string, string> = {
   droid: "#1F1D1C",
   openclaw: "#EF4444",
   pi: "#6366F1",
-  kimi: "#A855F7",
+  kimi: "#8B5CF6",
 };
 
 export const SOURCE_TEXT_COLORS: Record<string, string> = {
