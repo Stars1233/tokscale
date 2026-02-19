@@ -525,10 +525,16 @@ pub fn compute_cost(
 ) -> f64 {
     let safe_price = |opt: Option<f64>| opt.filter(|v| v.is_finite() && *v >= 0.0).unwrap_or(0.0);
 
-    let input_cost = input as f64 * safe_price(pricing.input_cost_per_token);
-    let output_cost = (output + reasoning) as f64 * safe_price(pricing.output_cost_per_token);
-    let cache_read_cost = cache_read as f64 * safe_price(pricing.cache_read_input_token_cost);
-    let cache_write_cost = cache_write as f64 * safe_price(pricing.cache_creation_input_token_cost);
+    let input_clamped = input.max(0) as f64;
+    let output_clamped = output.max(0).saturating_add(reasoning.max(0)) as f64;
+    let cache_read_clamped = cache_read.max(0) as f64;
+    let cache_write_clamped = cache_write.max(0) as f64;
+
+    let input_cost = input_clamped * safe_price(pricing.input_cost_per_token);
+    let output_cost = output_clamped * safe_price(pricing.output_cost_per_token);
+    let cache_read_cost = cache_read_clamped * safe_price(pricing.cache_read_input_token_cost);
+    let cache_write_cost =
+        cache_write_clamped * safe_price(pricing.cache_creation_input_token_cost);
 
     input_cost + output_cost + cache_read_cost + cache_write_cost
 }

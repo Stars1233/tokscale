@@ -236,18 +236,18 @@ pub fn save_opencode_migration_cache(cache: &OpenCodeMigrationCache) {
         .duration_since(std::time::SystemTime::UNIX_EPOCH)
         .map(|d| d.as_nanos() as u64)
         .unwrap_or(0);
-    let tmp_name = format!(
-        ".opencode-migration.{}.{:x}.tmp",
-        std::process::id(),
-        nanos
-    );
+    let tmp_name = format!(".opencode-migration.{}.{:x}.tmp", std::process::id(), nanos);
     let tmp_path = dir.join(tmp_name);
 
     let result = (|| -> std::io::Result<()> {
         let mut file = std::fs::File::create(&tmp_path)?;
         file.write_all(content.as_bytes())?;
         file.sync_all()?;
-        std::fs::rename(&tmp_path, &final_path)
+        if std::fs::rename(&tmp_path, &final_path).is_err() {
+            std::fs::copy(&tmp_path, &final_path)?;
+            std::fs::remove_file(&tmp_path)?;
+        }
+        Ok(())
     })();
 
     if result.is_err() {
@@ -750,8 +750,7 @@ mod tests {
         // Simulate the validity check from lib.rs
         let is_valid = cache.migration_complete
             && current_file_count == cache.json_file_count
-            && get_json_dir_mtime(&json_dir)
-                .map_or(false, |m| m <= cache.json_dir_mtime_secs);
+            && get_json_dir_mtime(&json_dir).map_or(false, |m| m <= cache.json_dir_mtime_secs);
 
         assert!(is_valid, "Cache should be valid when count and mtime match");
     }
@@ -777,13 +776,9 @@ mod tests {
         let current_file_count = 2u64; // changed
         let is_valid = cache.migration_complete
             && current_file_count == cache.json_file_count
-            && get_json_dir_mtime(&json_dir)
-                .map_or(false, |m| m <= cache.json_dir_mtime_secs);
+            && get_json_dir_mtime(&json_dir).map_or(false, |m| m <= cache.json_dir_mtime_secs);
 
-        assert!(
-            !is_valid,
-            "Cache should be invalid when file count changes"
-        );
+        assert!(!is_valid, "Cache should be invalid when file count changes");
     }
 
     /// Cache is invalid when directory mtime is newer than cached value.
@@ -807,8 +802,7 @@ mod tests {
 
         let is_valid = cache.migration_complete
             && 1u64 == cache.json_file_count
-            && get_json_dir_mtime(&json_dir)
-                .map_or(false, |m| m <= cache.json_dir_mtime_secs);
+            && get_json_dir_mtime(&json_dir).map_or(false, |m| m <= cache.json_dir_mtime_secs);
 
         assert!(
             !is_valid,
@@ -823,7 +817,10 @@ mod tests {
         // We can't easily override the path in a unit test, but we can verify that
         // serde_json::from_str returns None for invalid input (simulating missing file).
         let result: Option<OpenCodeMigrationCache> = serde_json::from_str("").ok();
-        assert!(result.is_none(), "Empty/missing content should produce None");
+        assert!(
+            result.is_none(),
+            "Empty/missing content should produce None"
+        );
     }
 
     /// migration_complete=false disables the cache even if count/mtime match.
@@ -845,8 +842,7 @@ mod tests {
 
         let is_valid = cache.migration_complete
             && 1u64 == cache.json_file_count
-            && get_json_dir_mtime(&json_dir)
-                .map_or(false, |m| m <= cache.json_dir_mtime_secs);
+            && get_json_dir_mtime(&json_dir).map_or(false, |m| m <= cache.json_dir_mtime_secs);
 
         assert!(
             !is_valid,
