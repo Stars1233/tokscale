@@ -2,13 +2,13 @@ name: Test & Coverage
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - 'crates/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
   pull_request:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - 'crates/**'
       - 'Cargo.toml'
