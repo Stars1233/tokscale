@@ -214,11 +214,11 @@ impl<T: Clone + 'static> DialogContent for DialogSelect<T> {
 
             let footer = item.footer.clone().unwrap_or_default();
             let usable = list_area.width.saturating_sub(4) as usize;
-            let left_width = usable.saturating_sub(footer.len() + 1);
-            if left.len() > left_width {
+            let left_width = usable.saturating_sub(footer.chars().count() + 1);
+            if left.chars().count() > left_width {
                 left = truncate_with_ellipsis(&left, left_width);
             }
-            let padding = usable.saturating_sub(left.len() + footer.len());
+            let padding = usable.saturating_sub(left.chars().count() + footer.chars().count());
 
             let item_style = if selected {
                 Style::default()

@@ -502,7 +502,6 @@ impl App {
     }
 
     fn open_source_picker(&mut self) {
-        *self.dialog_needs_reload.borrow_mut() = false;
         let dialog = SourcePickerDialog::new(
             self.enabled_sources.clone(),
             self.dialog_needs_reload.clone(),

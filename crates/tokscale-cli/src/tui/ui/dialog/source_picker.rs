@@ -156,7 +156,7 @@ impl DialogContent for SourcePickerDialog {
 
             let usable = list_area.width.saturating_sub(4) as usize;
             let left = format!("{} {} {}", checkbox, key_hint, name);
-            let padding = usable.saturating_sub(left.len());
+            let padding = usable.saturating_sub(left.chars().count());
 
             let base_style = if is_selected {
                 Style::default()
