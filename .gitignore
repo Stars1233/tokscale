@@ -26,3 +26,4 @@ notepad.md
 ai-todolist.md
 *.tgz
 .sisyphus
+crates/tokscale-cli/tokscale-export-*.json
