@@ -462,7 +462,7 @@ impl DataLoader {
 
                 let model_info = daily_entry
                     .models
-                    .entry(msg.model_id.clone())
+                    .entry(normalized_model.clone())
                     .or_insert_with(|| DailyModelInfo {
                         source: msg.source.clone(),
                         tokens: TokenBreakdown::default(),
