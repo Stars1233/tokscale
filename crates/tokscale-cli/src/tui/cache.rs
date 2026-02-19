@@ -12,7 +12,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 
 use super::data::{
-    ContributionDay, DailyModelInfo, DailyUsage, GraphData, ModelUsage, Source, TokenBreakdown,
+    Client, ContributionDay, DailyModelInfo, DailyUsage, GraphData, ModelUsage, TokenBreakdown,
     UsageData,
 };
 
@@ -35,7 +35,7 @@ fn cache_file() -> Option<PathBuf> {
 #[serde(rename_all = "camelCase")]
 struct CachedTUIData {
     timestamp: u64,
-    enabled_sources: Vec<String>,
+    enabled_clients: Vec<String>,
     data: CachedUsageData,
 }
 
@@ -67,7 +67,7 @@ struct CachedTokenBreakdown {
 struct CachedModelUsage {
     model: String,
     provider: String,
-    source: String,
+    client: String,
     tokens: CachedTokenBreakdown,
     cost: f64,
     session_count: u32,
@@ -76,7 +76,7 @@ struct CachedModelUsage {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct CachedDailyModelInfo {
-    source: String,
+    client: String,
     tokens: CachedTokenBreakdown,
     cost: f64,
 }
@@ -136,7 +136,7 @@ impl From<&ModelUsage> for CachedModelUsage {
         Self {
             model: m.model.clone(),
             provider: m.provider.clone(),
-            source: m.source.clone(),
+            client: m.client.clone(),
             tokens: (&m.tokens).into(),
             cost: m.cost,
             session_count: m.session_count,
@@ -149,7 +149,7 @@ impl From<CachedModelUsage> for ModelUsage {
         Self {
             model: m.model,
             provider: m.provider,
-            source: m.source,
+            client: m.client,
             tokens: m.tokens.into(),
             cost: m.cost,
             session_count: m.session_count,
@@ -160,7 +160,7 @@ impl From<CachedModelUsage> for ModelUsage {
 impl From<&DailyModelInfo> for CachedDailyModelInfo {
     fn from(d: &DailyModelInfo) -> Self {
         Self {
-            source: d.source.clone(),
+            client: d.client.clone(),
             tokens: (&d.tokens).into(),
             cost: d.cost,
         }
@@ -170,7 +170,7 @@ impl From<&DailyModelInfo> for CachedDailyModelInfo {
 impl From<CachedDailyModelInfo> for DailyModelInfo {
     fn from(d: CachedDailyModelInfo) -> Self {
         Self {
-            source: d.source,
+            client: d.client,
             tokens: d.tokens.into(),
             cost: d.cost,
         }
@@ -299,13 +299,13 @@ impl TryFrom<CachedUsageData> for UsageData {
     }
 }
 
-/// Check if sources match between enabled and cached
-fn sources_match(enabled_sources: &HashSet<Source>, cached_sources: &[String]) -> bool {
-    if enabled_sources.len() != cached_sources.len() {
+/// Check if clients match between enabled and cached
+fn clients_match(enabled_clients: &HashSet<Client>, cached_clients: &[String]) -> bool {
+    if enabled_clients.len() != cached_clients.len() {
         return false;
     }
-    for source in enabled_sources {
-        if !cached_sources.contains(&source.as_str().to_lowercase()) {
+    for client in enabled_clients {
+        if !cached_clients.contains(&client.as_str().to_lowercase()) {
             return false;
         }
     }
@@ -313,7 +313,7 @@ fn sources_match(enabled_sources: &HashSet<Source>, cached_sources: &[String]) -
 }
 
 /// Load cached TUI data from disk
-pub fn load_cached_data(enabled_sources: &HashSet<Source>) -> Option<UsageData> {
+pub fn load_cached_data(enabled_clients: &HashSet<Client>) -> Option<UsageData> {
     let cache_path = cache_file()?;
 
     if !cache_path.exists() {
@@ -324,8 +324,8 @@ pub fn load_cached_data(enabled_sources: &HashSet<Source>) -> Option<UsageData> 
     let reader = BufReader::new(file);
     let cached: CachedTUIData = serde_json::from_reader(reader).ok()?;
 
-    // Check if sources match
-    if !sources_match(enabled_sources, &cached.enabled_sources) {
+    // Check if clients match
+    if !clients_match(enabled_clients, &cached.enabled_clients) {
         return None;
     }
 
@@ -334,7 +334,7 @@ pub fn load_cached_data(enabled_sources: &HashSet<Source>) -> Option<UsageData> 
 }
 
 /// Save TUI data to disk cache
-pub fn save_cached_data(data: &UsageData, enabled_sources: &HashSet<Source>) {
+pub fn save_cached_data(data: &UsageData, enabled_clients: &HashSet<Client>) {
     let Some(cache_path) = cache_file() else {
         return;
     };
@@ -353,7 +353,7 @@ pub fn save_cached_data(data: &UsageData, enabled_sources: &HashSet<Source>) {
 
     let cached = CachedTUIData {
         timestamp,
-        enabled_sources: enabled_sources
+        enabled_clients: enabled_clients
             .iter()
             .map(|s| s.as_str().to_lowercase())
             .collect(),
@@ -376,7 +376,7 @@ pub fn save_cached_data(data: &UsageData, enabled_sources: &HashSet<Source>) {
 }
 
 /// Check if cache is stale (older than threshold)
-pub fn is_cache_stale(enabled_sources: &HashSet<Source>) -> bool {
+pub fn is_cache_stale(enabled_clients: &HashSet<Client>) -> bool {
     let Some(cache_path) = cache_file() else {
         return true;
     };
@@ -395,8 +395,8 @@ pub fn is_cache_stale(enabled_sources: &HashSet<Source>) -> bool {
         Err(_) => return true,
     };
 
-    // Check if sources match
-    if !sources_match(enabled_sources, &cached.enabled_sources) {
+    // Check if clients match
+    if !clients_match(enabled_clients, &cached.enabled_clients) {
         return true;
     }
 

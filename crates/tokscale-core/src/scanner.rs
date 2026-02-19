@@ -6,7 +6,7 @@ use rayon::prelude::*;
 use std::path::PathBuf;
 use walkdir::WalkDir;
 
-/// Session source type
+/// Session client type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SessionType {
     OpenCode,
@@ -176,21 +176,21 @@ pub fn scan_directory(root: &str, pattern: &str) -> Vec<PathBuf> {
         .collect()
 }
 
-/// Scan all session source directories in parallel
-pub fn scan_all_sources(home_dir: &str, sources: &[String]) -> ScanResult {
+/// Scan all session client directories in parallel
+pub fn scan_all_clients(home_dir: &str, clients: &[String]) -> ScanResult {
     let mut result = ScanResult::default();
 
-    let include_all = sources.is_empty();
-    let include_opencode = include_all || sources.iter().any(|s| s == "opencode");
-    let include_claude = include_all || sources.iter().any(|s| s == "claude");
-    let include_codex = include_all || sources.iter().any(|s| s == "codex");
-    let include_gemini = include_all || sources.iter().any(|s| s == "gemini");
-    let include_cursor = include_all || sources.iter().any(|s| s == "cursor");
-    let include_amp = include_all || sources.iter().any(|s| s == "amp");
-    let include_droid = include_all || sources.iter().any(|s| s == "droid");
-    let include_openclaw = include_all || sources.iter().any(|s| s == "openclaw");
-    let include_pi = include_all || sources.iter().any(|s| s == "pi");
-    let include_kimi = include_all || sources.iter().any(|s| s == "kimi");
+    let include_all = clients.is_empty();
+    let include_opencode = include_all || clients.iter().any(|s| s == "opencode");
+    let include_claude = include_all || clients.iter().any(|s| s == "claude");
+    let include_codex = include_all || clients.iter().any(|s| s == "codex");
+    let include_gemini = include_all || clients.iter().any(|s| s == "gemini");
+    let include_cursor = include_all || clients.iter().any(|s| s == "cursor");
+    let include_amp = include_all || clients.iter().any(|s| s == "amp");
+    let include_droid = include_all || clients.iter().any(|s| s == "droid");
+    let include_openclaw = include_all || clients.iter().any(|s| s == "openclaw");
+    let include_pi = include_all || clients.iter().any(|s| s == "pi");
+    let include_kimi = include_all || clients.iter().any(|s| s == "kimi");
 
     let headless_roots = headless_roots(home_dir);
 
@@ -589,7 +589,7 @@ mod tests {
 
     #[test]
     #[serial]
-    fn test_scan_all_sources_opencode() {
+    fn test_scan_all_clients_opencode() {
         let previous_xdg = std::env::var("XDG_DATA_HOME").ok();
 
         let dir = TempDir::new().unwrap();
@@ -599,7 +599,7 @@ mod tests {
         // Set XDG_DATA_HOME for the test
         std::env::set_var("XDG_DATA_HOME", home.join(".local/share"));
 
-        let result = scan_all_sources(home.to_str().unwrap(), &["opencode".to_string()]);
+        let result = scan_all_clients(home.to_str().unwrap(), &["opencode".to_string()]);
         assert_eq!(result.opencode_files.len(), 1);
         assert!(result.claude_files.is_empty());
         assert!(result.codex_files.is_empty());
@@ -609,59 +609,59 @@ mod tests {
     }
 
     #[test]
-    fn test_scan_all_sources_pi() {
+    fn test_scan_all_clients_pi() {
         let dir = TempDir::new().unwrap();
         let home = dir.path();
         setup_mock_pi_dir(home);
 
-        let result = scan_all_sources(home.to_str().unwrap(), &["pi".to_string()]);
+        let result = scan_all_clients(home.to_str().unwrap(), &["pi".to_string()]);
         assert_eq!(result.pi_files.len(), 1);
         assert!(result.opencode_files.is_empty());
         assert!(result.claude_files.is_empty());
     }
 
     #[test]
-    fn test_scan_all_sources_claude() {
+    fn test_scan_all_clients_claude() {
         let dir = TempDir::new().unwrap();
         let home = dir.path();
         setup_mock_claude_dir(home);
 
-        let result = scan_all_sources(home.to_str().unwrap(), &["claude".to_string()]);
+        let result = scan_all_clients(home.to_str().unwrap(), &["claude".to_string()]);
         assert_eq!(result.claude_files.len(), 1);
         assert!(result.opencode_files.is_empty());
     }
 
     #[test]
-    fn test_scan_all_sources_gemini() {
+    fn test_scan_all_clients_gemini() {
         let dir = TempDir::new().unwrap();
         let home = dir.path();
         setup_mock_gemini_dir(home);
 
-        let result = scan_all_sources(home.to_str().unwrap(), &["gemini".to_string()]);
+        let result = scan_all_clients(home.to_str().unwrap(), &["gemini".to_string()]);
         assert_eq!(result.gemini_files.len(), 1);
         assert!(result.opencode_files.is_empty());
     }
 
     #[test]
-    fn test_scan_all_sources_openclaw_jsonl_only() {
+    fn test_scan_all_clients_openclaw_jsonl_only() {
         let dir = TempDir::new().unwrap();
         let home = dir.path();
         setup_mock_openclaw_dir(home);
 
-        let result = scan_all_sources(home.to_str().unwrap(), &["openclaw".to_string()]);
+        let result = scan_all_clients(home.to_str().unwrap(), &["openclaw".to_string()]);
         assert_eq!(result.openclaw_files.len(), 1);
         assert!(result.openclaw_files[0].ends_with("session-abc.jsonl"));
     }
 
     #[test]
-    fn test_scan_all_sources_multiple() {
+    fn test_scan_all_clients_multiple() {
         let dir = TempDir::new().unwrap();
         let home = dir.path();
 
         setup_mock_claude_dir(home);
         setup_mock_gemini_dir(home);
 
-        let result = scan_all_sources(
+        let result = scan_all_clients(
             home.to_str().unwrap(),
             &["claude".to_string(), "gemini".to_string()],
         );
@@ -674,7 +674,7 @@ mod tests {
 
     #[test]
     #[serial]
-    fn test_scan_all_sources_headless_paths() {
+    fn test_scan_all_clients_headless_paths() {
         let previous_headless = std::env::var("TOKSCALE_HEADLESS_DIR").ok();
         std::env::remove_var("TOKSCALE_HEADLESS_DIR");
 
@@ -690,7 +690,7 @@ mod tests {
         fs::create_dir_all(mac_root.join("codex")).unwrap();
         File::create(mac_root.join("codex").join("codex.jsonl")).unwrap();
 
-        let result = scan_all_sources(
+        let result = scan_all_clients(
             home.to_str().unwrap(),
             &[
                 "claude".to_string(),
@@ -708,7 +708,7 @@ mod tests {
 
     #[test]
     #[serial]
-    fn test_scan_all_sources_codex_with_env() {
+    fn test_scan_all_clients_codex_with_env() {
         let previous_codex = std::env::var("CODEX_HOME").ok();
 
         let dir = TempDir::new().unwrap();
@@ -718,7 +718,7 @@ mod tests {
         // Set CODEX_HOME environment variable
         std::env::set_var("CODEX_HOME", home.join(".codex"));
 
-        let result = scan_all_sources(home.to_str().unwrap(), &["codex".to_string()]);
+        let result = scan_all_clients(home.to_str().unwrap(), &["codex".to_string()]);
         assert_eq!(result.codex_files.len(), 1);
 
         restore_env("CODEX_HOME", previous_codex);
@@ -726,7 +726,7 @@ mod tests {
 
     #[test]
     #[serial]
-    fn test_scan_all_sources_codex_archived_sessions() {
+    fn test_scan_all_clients_codex_archived_sessions() {
         let previous_codex = std::env::var("CODEX_HOME").ok();
 
         let dir = TempDir::new().unwrap();
@@ -735,7 +735,7 @@ mod tests {
 
         std::env::set_var("CODEX_HOME", home.join(".codex"));
 
-        let result = scan_all_sources(home.to_str().unwrap(), &["codex".to_string()]);
+        let result = scan_all_clients(home.to_str().unwrap(), &["codex".to_string()]);
         assert_eq!(result.codex_files.len(), 1);
         assert!(result.codex_files[0].ends_with("archived.jsonl"));
 
@@ -744,7 +744,7 @@ mod tests {
 
     #[test]
     #[serial]
-    fn test_scan_all_sources_codex_sessions_and_archived() {
+    fn test_scan_all_clients_codex_sessions_and_archived() {
         let previous_codex = std::env::var("CODEX_HOME").ok();
 
         let dir = TempDir::new().unwrap();
@@ -754,19 +754,19 @@ mod tests {
 
         std::env::set_var("CODEX_HOME", home.join(".codex"));
 
-        let result = scan_all_sources(home.to_str().unwrap(), &["codex".to_string()]);
+        let result = scan_all_clients(home.to_str().unwrap(), &["codex".to_string()]);
         assert_eq!(result.codex_files.len(), 2);
 
         restore_env("CODEX_HOME", previous_codex);
     }
 
     #[test]
-    fn test_scan_all_sources_kimi() {
+    fn test_scan_all_clients_kimi() {
         let dir = TempDir::new().unwrap();
         let home = dir.path();
         setup_mock_kimi_dir(home);
 
-        let result = scan_all_sources(home.to_str().unwrap(), &["kimi".to_string()]);
+        let result = scan_all_clients(home.to_str().unwrap(), &["kimi".to_string()]);
         assert_eq!(result.kimi_files.len(), 1);
         assert!(result.kimi_files[0].ends_with("wire.jsonl"));
         assert!(result.opencode_files.is_empty());

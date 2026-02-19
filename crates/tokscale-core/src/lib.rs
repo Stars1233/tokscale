@@ -114,7 +114,7 @@ impl TokenBreakdown {
 
 #[derive(Debug, Clone)]
 pub struct ParsedMessage {
-    pub source: String,
+    pub client: String,
     pub model_id: String,
     pub provider_id: String,
     pub session_id: String,
@@ -146,7 +146,7 @@ pub struct ParsedMessages {
 #[derive(Debug, Clone)]
 pub struct LocalParseOptions {
     pub home_dir: Option<String>,
-    pub sources: Option<Vec<String>>,
+    pub clients: Option<Vec<String>>,
     pub since: Option<String>,
     pub until: Option<String>,
     pub year: Option<String>,
@@ -160,8 +160,8 @@ pub struct DailyTotals {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub struct SourceContribution {
-    pub source: String,
+pub struct ClientContribution {
+    pub client: String,
     pub model_id: String,
     pub provider_id: String,
     pub tokens: TokenBreakdown,
@@ -175,7 +175,7 @@ pub struct DailyContribution {
     pub totals: DailyTotals,
     pub intensity: u8,
     pub token_breakdown: TokenBreakdown,
-    pub sources: Vec<SourceContribution>,
+    pub clients: Vec<ClientContribution>,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -195,7 +195,7 @@ pub struct DataSummary {
     pub active_days: i32,
     pub average_per_day: f64,
     pub max_cost_in_single_day: f64,
-    pub sources: Vec<String>,
+    pub clients: Vec<String>,
     pub models: Vec<String>,
 }
 
@@ -219,7 +219,7 @@ pub struct GraphResult {
 #[derive(Debug, Clone)]
 pub struct ReportOptions {
     pub home_dir: Option<String>,
-    pub sources: Option<Vec<String>>,
+    pub clients: Option<Vec<String>>,
     pub since: Option<String>,
     pub until: Option<String>,
     pub year: Option<String>,
@@ -228,7 +228,7 @@ pub struct ReportOptions {
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ModelUsage {
-    pub source: String,
+    pub client: String,
     pub merged_clients: Option<String>,
     pub model: String,
     pub provider: String,
@@ -284,10 +284,10 @@ pub fn get_home_dir_string(home_dir_option: &Option<String>) -> Result<String, S
 
 fn parse_all_messages_with_pricing(
     home_dir: &str,
-    sources: &[String],
+    clients: &[String],
     pricing: &pricing::PricingService,
 ) -> Vec<UnifiedMessage> {
-    let scan_result = scanner::scan_all_sources(home_dir, sources);
+    let scan_result = scanner::scan_all_clients(home_dir, clients);
     let mut all_messages: Vec<UnifiedMessage> = Vec::new();
 
     // Parse OpenCode: read both SQLite (1.2+) and legacy JSON, deduplicate by message ID
@@ -564,7 +564,7 @@ pub async fn get_model_report(options: ReportOptions) -> Result<ModelReport, Str
 
     let home_dir = get_home_dir_string(&options.home_dir)?;
 
-    let sources = options.sources.clone().unwrap_or_else(|| {
+    let clients = options.clients.clone().unwrap_or_else(|| {
         vec![
             "opencode".to_string(),
             "claude".to_string(),
@@ -580,7 +580,7 @@ pub async fn get_model_report(options: ReportOptions) -> Result<ModelReport, Str
     });
 
     let pricing = pricing::PricingService::get_or_init().await?;
-    let all_messages = parse_all_messages_with_pricing(&home_dir, &sources, &pricing);
+    let all_messages = parse_all_messages_with_pricing(&home_dir, &clients, &pricing);
 
     let filtered = filter_messages_for_report(all_messages, &options);
 
@@ -591,15 +591,15 @@ pub async fn get_model_report(options: ReportOptions) -> Result<ModelReport, Str
         let normalized = normalize_model_for_grouping(&msg.model_id);
         let key = match group_by {
             GroupBy::Model => normalized.clone(),
-            GroupBy::ClientModel => format!("{}:{}", msg.source, normalized),
+            GroupBy::ClientModel => format!("{}:{}", msg.client, normalized),
             GroupBy::ClientProviderModel => {
-                format!("{}:{}:{}", msg.source, msg.provider_id, normalized)
+                format!("{}:{}:{}", msg.client, msg.provider_id, normalized)
             }
         };
         let entry = model_map.entry(key).or_insert_with(|| ModelUsage {
-            source: msg.source.clone(),
+            client: msg.client.clone(),
             merged_clients: if *group_by == GroupBy::Model {
-                Some(msg.source.clone())
+                Some(msg.client.clone())
             } else {
                 None
             },
@@ -615,13 +615,13 @@ pub async fn get_model_report(options: ReportOptions) -> Result<ModelReport, Str
         });
 
         if *group_by == GroupBy::Model {
-            if !entry.source.split(", ").any(|s| s == msg.source) {
-                entry.source = format!("{}, {}", entry.source, msg.source);
+            if !entry.client.split(", ").any(|s| s == msg.client) {
+                entry.client = format!("{}, {}", entry.client, msg.client);
             }
 
             if let Some(merged_clients) = &mut entry.merged_clients {
-                if !merged_clients.split(", ").any(|s| s == msg.source) {
-                    *merged_clients = format!("{}, {}", merged_clients, msg.source);
+                if !merged_clients.split(", ").any(|s| s == msg.client) {
+                    *merged_clients = format!("{}, {}", merged_clients, msg.client);
                 }
             }
         }
@@ -697,7 +697,7 @@ pub async fn get_monthly_report(options: ReportOptions) -> Result<MonthlyReport,
 
     let home_dir = get_home_dir_string(&options.home_dir)?;
 
-    let sources = options.sources.clone().unwrap_or_else(|| {
+    let clients = options.clients.clone().unwrap_or_else(|| {
         vec![
             "opencode".to_string(),
             "claude".to_string(),
@@ -713,7 +713,7 @@ pub async fn get_monthly_report(options: ReportOptions) -> Result<MonthlyReport,
     });
 
     let pricing = pricing::PricingService::get_or_init().await?;
-    let all_messages = parse_all_messages_with_pricing(&home_dir, &sources, &pricing);
+    let all_messages = parse_all_messages_with_pricing(&home_dir, &clients, &pricing);
 
     let filtered = filter_messages_for_report(all_messages, &options);
 
@@ -769,7 +769,7 @@ pub async fn generate_graph(options: ReportOptions) -> Result<GraphResult, Strin
 
     let home_dir = get_home_dir_string(&options.home_dir)?;
 
-    let sources = options.sources.clone().unwrap_or_else(|| {
+    let clients = options.clients.clone().unwrap_or_else(|| {
         vec![
             "opencode".to_string(),
             "claude".to_string(),
@@ -785,7 +785,7 @@ pub async fn generate_graph(options: ReportOptions) -> Result<GraphResult, Strin
     });
 
     let pricing = pricing::PricingService::get_or_init().await?;
-    let all_messages = parse_all_messages_with_pricing(&home_dir, &sources, &pricing);
+    let all_messages = parse_all_messages_with_pricing(&home_dir, &clients, &pricing);
 
     let filtered = filter_messages_for_report(all_messages, &options);
 
@@ -829,12 +829,12 @@ fn apply_headless_agent(message: &mut UnifiedMessage, is_headless: bool) {
     }
 }
 
-pub fn parse_local_sources(options: LocalParseOptions) -> Result<ParsedMessages, String> {
+pub fn parse_local_clients(options: LocalParseOptions) -> Result<ParsedMessages, String> {
     let start = Instant::now();
 
     let home_dir = get_home_dir_string(&options.home_dir)?;
 
-    let sources = options.sources.clone().unwrap_or_else(|| {
+    let clients = options.clients.clone().unwrap_or_else(|| {
         vec![
             "opencode".to_string(),
             "claude".to_string(),
@@ -848,9 +848,9 @@ pub fn parse_local_sources(options: LocalParseOptions) -> Result<ParsedMessages,
         ]
     });
 
-    let local_sources: Vec<String> = sources.into_iter().filter(|s| s != "cursor").collect();
+    let local_clients: Vec<String> = clients.into_iter().filter(|s| s != "cursor").collect();
 
-    let scan_result = scanner::scan_all_sources(&home_dir, &local_sources);
+    let scan_result = scanner::scan_all_clients(&home_dir, &local_clients);
     let headless_roots = scanner::headless_roots(&home_dir);
 
     let mut messages: Vec<ParsedMessage> = Vec::new();
@@ -1036,7 +1036,7 @@ pub fn parse_local_sources(options: LocalParseOptions) -> Result<ParsedMessages,
 
 fn unified_to_parsed(msg: &UnifiedMessage) -> ParsedMessage {
     ParsedMessage {
-        source: msg.source.clone(),
+        client: msg.client.clone(),
         model_id: msg.model_id.clone(),
         provider_id: msg.provider_id.clone(),
         session_id: msg.session_id.clone(),
@@ -1075,7 +1075,7 @@ fn filter_parsed_messages(
 
 pub fn parsed_to_unified(msg: &ParsedMessage, cost: f64) -> UnifiedMessage {
     UnifiedMessage {
-        source: msg.source.clone(),
+        client: msg.client.clone(),
         model_id: msg.model_id.clone(),
         provider_id: msg.provider_id.clone(),
         session_id: msg.session_id.clone(),

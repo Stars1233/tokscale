@@ -5,7 +5,7 @@ use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::layout::Rect;
 
-use super::data::{DailyUsage, DataLoader, ModelUsage, Source, UsageData};
+use super::data::{Client, DailyUsage, DataLoader, ModelUsage, UsageData};
 use super::settings::Settings;
 use super::themes::{Theme, ThemeName};
 
@@ -92,7 +92,7 @@ pub struct ClickArea {
 #[derive(Debug, Clone)]
 pub enum ClickAction {
     Tab(Tab),
-    Source(Source),
+    Client(Client),
     Sort(SortField),
     GraphCell { week: usize, day: usize },
 }
@@ -105,7 +105,7 @@ pub struct App {
     pub data: UsageData,
     pub data_loader: DataLoader,
 
-    pub enabled_sources: HashSet<Source>,
+    pub enabled_clients: HashSet<Client>,
     pub sort_field: SortField,
     pub sort_direction: SortDirection,
 
@@ -143,27 +143,27 @@ impl App {
             .unwrap_or_else(|_| settings.theme_name());
         let theme = Theme::from_name(theme_name);
 
-        let mut enabled_sources = HashSet::new();
+        let mut enabled_clients = HashSet::new();
 
         if let Some(ref cli_sources) = config.sources {
             for source_str in cli_sources {
                 match source_str.as_str() {
-                    "opencode" => enabled_sources.insert(Source::OpenCode),
-                    "claude" => enabled_sources.insert(Source::Claude),
-                    "codex" => enabled_sources.insert(Source::Codex),
-                    "cursor" => enabled_sources.insert(Source::Cursor),
-                    "gemini" => enabled_sources.insert(Source::Gemini),
-                    "amp" => enabled_sources.insert(Source::Amp),
-                    "droid" => enabled_sources.insert(Source::Droid),
-                    "openclaw" => enabled_sources.insert(Source::OpenClaw),
-                    "pi" => enabled_sources.insert(Source::Pi),
-                    "kimi" => enabled_sources.insert(Source::Kimi),
+                    "opencode" => enabled_clients.insert(Client::OpenCode),
+                    "claude" => enabled_clients.insert(Client::Claude),
+                    "codex" => enabled_clients.insert(Client::Codex),
+                    "cursor" => enabled_clients.insert(Client::Cursor),
+                    "gemini" => enabled_clients.insert(Client::Gemini),
+                    "amp" => enabled_clients.insert(Client::Amp),
+                    "droid" => enabled_clients.insert(Client::Droid),
+                    "openclaw" => enabled_clients.insert(Client::OpenClaw),
+                    "pi" => enabled_clients.insert(Client::Pi),
+                    "kimi" => enabled_clients.insert(Client::Kimi),
                     _ => false,
                 };
             }
         } else {
-            for source in Source::all() {
-                enabled_sources.insert(*source);
+            for client in Client::all() {
+                enabled_clients.insert(*client);
             }
         }
 
@@ -194,7 +194,7 @@ impl App {
             settings,
             data,
             data_loader,
-            enabled_sources,
+            enabled_clients,
             sort_field: SortField::Cost,
             sort_direction: SortDirection::Descending,
             scroll_offset: 0,
@@ -316,7 +316,7 @@ impl App {
                 self.export_to_json();
             }
             KeyCode::Char(c @ '0'..='9') => {
-                self.toggle_source(c);
+                self.toggle_client(c);
             }
             KeyCode::Enter => {
                 if self.current_tab == Tab::Stats {
@@ -347,8 +347,8 @@ impl App {
                             self.current_tab = *tab;
                             self.reset_selection();
                         }
-                        ClickAction::Source(source) => {
-                            self.toggle_source(source.key());
+                        ClickAction::Client(client) => {
+                            self.toggle_client(client.key());
                         }
                         ClickAction::Sort(field) => {
                             self.set_sort(*field);
@@ -471,16 +471,16 @@ impl App {
         }
     }
 
-    fn toggle_source(&mut self, key: char) {
-        if let Some(source) = Source::from_key(key) {
-            if self.enabled_sources.contains(&source) {
-                if self.enabled_sources.len() > 1 {
-                    self.enabled_sources.remove(&source);
-                    self.set_status(&format!("Disabled {}", source.as_str()));
+    fn toggle_client(&mut self, key: char) {
+        if let Some(client) = Client::from_key(key) {
+            if self.enabled_clients.contains(&client) {
+                if self.enabled_clients.len() > 1 {
+                    self.enabled_clients.remove(&client);
+                    self.set_status(&format!("Disabled {}", client.as_str()));
                 }
             } else {
-                self.enabled_sources.insert(source);
-                self.set_status(&format!("Enabled {}", source.as_str()));
+                self.enabled_clients.insert(client);
+                self.set_status(&format!("Enabled {}", client.as_str()));
             }
             self.needs_reload = true;
         }
@@ -559,7 +559,7 @@ impl App {
             "models": self.data.models.iter().map(|m| serde_json::json!({
                 "model": m.model,
                 "provider": m.provider,
-                "source": m.source,
+                "client": m.client,
                 "tokens": {
                     "input": m.tokens.input,
                     "output": m.tokens.output,
@@ -619,7 +619,7 @@ impl App {
             a.model
                 .cmp(&b.model)
                 .then_with(|| a.provider.cmp(&b.provider))
-                .then_with(|| a.source.cmp(&b.source))
+                .then_with(|| a.client.cmp(&b.client))
         };
 
         match (self.sort_field, self.sort_direction) {
@@ -782,7 +782,7 @@ mod tests {
             ModelUsage {
                 model: "model1".to_string(),
                 provider: "provider1".to_string(),
-                source: "opencode".to_string(),
+                client: "opencode".to_string(),
                 tokens: TokenBreakdown::default(),
                 cost: 0.0,
                 session_count: 1,
@@ -790,7 +790,7 @@ mod tests {
             ModelUsage {
                 model: "model2".to_string(),
                 provider: "provider2".to_string(),
-                source: "opencode".to_string(),
+                client: "opencode".to_string(),
                 tokens: TokenBreakdown::default(),
                 cost: 0.0,
                 session_count: 1,
@@ -825,7 +825,7 @@ mod tests {
             ModelUsage {
                 model: "model1".to_string(),
                 provider: "provider1".to_string(),
-                source: "opencode".to_string(),
+                client: "opencode".to_string(),
                 tokens: TokenBreakdown::default(),
                 cost: 0.0,
                 session_count: 1,
@@ -833,7 +833,7 @@ mod tests {
             ModelUsage {
                 model: "model2".to_string(),
                 provider: "provider2".to_string(),
-                source: "opencode".to_string(),
+                client: "opencode".to_string(),
                 tokens: TokenBreakdown::default(),
                 cost: 0.0,
                 session_count: 1,
@@ -867,7 +867,7 @@ mod tests {
         app.data.models = vec![ModelUsage {
             model: "model1".to_string(),
             provider: "provider1".to_string(),
-            source: "opencode".to_string(),
+            client: "opencode".to_string(),
             tokens: TokenBreakdown::default(),
             cost: 0.0,
             session_count: 1,
@@ -959,7 +959,7 @@ mod tests {
             .map(|i| ModelUsage {
                 model: format!("model{}", i),
                 provider: "provider".to_string(),
-                source: "opencode".to_string(),
+                client: "opencode".to_string(),
                 tokens: TokenBreakdown::default(),
                 cost: 0.0,
                 session_count: 1,
@@ -1092,29 +1092,29 @@ mod tests {
 
     #[test]
     #[ignore] // triggers load_data() which requires network + filesystem I/O
-    fn test_handle_key_source_toggle_1_9() {
+    fn test_handle_key_client_toggle_1_9() {
         let mut app = make_app();
-        let initial_count = app.enabled_sources.len();
+        let initial_count = app.enabled_clients.len();
         assert!(initial_count > 1);
 
         app.handle_key_event(key(KeyCode::Char('1')));
-        assert_eq!(app.enabled_sources.len(), initial_count - 1);
-        assert!(!app.enabled_sources.contains(&Source::OpenCode));
+        assert_eq!(app.enabled_clients.len(), initial_count - 1);
+        assert!(!app.enabled_clients.contains(&Client::OpenCode));
 
         app.handle_key_event(key(KeyCode::Char('1')));
-        assert!(app.enabled_sources.contains(&Source::OpenCode));
+        assert!(app.enabled_clients.contains(&Client::OpenCode));
     }
 
     #[test]
     #[ignore] // triggers load_data() which requires network + filesystem I/O
-    fn test_handle_key_source_toggle_prevents_empty() {
+    fn test_handle_key_client_toggle_prevents_empty() {
         let mut app = make_app();
-        app.enabled_sources.clear();
-        app.enabled_sources.insert(Source::OpenCode);
+        app.enabled_clients.clear();
+        app.enabled_clients.insert(Client::OpenCode);
 
         app.handle_key_event(key(KeyCode::Char('1')));
-        assert_eq!(app.enabled_sources.len(), 1);
-        assert!(app.enabled_sources.contains(&Source::OpenCode));
+        assert_eq!(app.enabled_clients.len(), 1);
+        assert!(app.enabled_clients.contains(&Client::OpenCode));
     }
 
     // ── handle_key_event: navigation ────────────────────────────────
@@ -1324,11 +1324,11 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // triggers load_data() via toggle_source
-    fn test_handle_mouse_click_source() {
+    #[ignore] // triggers load_data() via toggle_client
+    fn test_handle_mouse_click_client() {
         let mut app = make_app();
-        app.add_click_area(Rect::new(0, 0, 10, 2), ClickAction::Source(Source::Claude));
-        let initial_has = app.enabled_sources.contains(&Source::Claude);
+        app.add_click_area(Rect::new(0, 0, 10, 2), ClickAction::Client(Client::Claude));
+        let initial_has = app.enabled_clients.contains(&Client::Claude);
 
         let event = MouseEvent {
             kind: MouseEventKind::Down(MouseButton::Left),
@@ -1337,7 +1337,7 @@ mod tests {
             modifiers: KeyModifiers::NONE,
         };
         app.handle_mouse_event(event);
-        assert_ne!(app.enabled_sources.contains(&Source::Claude), initial_has);
+        assert_ne!(app.enabled_clients.contains(&Client::Claude), initial_has);
     }
 
     #[test]

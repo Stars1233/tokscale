@@ -20,16 +20,16 @@ pub struct TokscaleConfig {
 pub struct ColorsConfig {
     #[serde(default)]
     pub providers: HashMap<String, String>,
-    #[serde(default)]
-    pub sources: HashMap<String, String>,
+    #[serde(default, alias = "sources")]
+    pub clients: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct DisplayNamesConfig {
     #[serde(default)]
     pub providers: HashMap<String, String>,
-    #[serde(default)]
-    pub sources: HashMap<String, String>,
+    #[serde(default, alias = "sources")]
+    pub clients: HashMap<String, String>,
 }
 
 impl TokscaleConfig {
@@ -53,10 +53,10 @@ impl TokscaleConfig {
             .and_then(|hex| parse_hex_color(hex))
     }
 
-    pub fn get_source_color(&self, source: &str) -> Option<Color> {
+    pub fn get_client_color(&self, client: &str) -> Option<Color> {
         self.colors
-            .sources
-            .get(&source.to_lowercase())
+            .clients
+            .get(&client.to_lowercase())
             .and_then(|hex| parse_hex_color(hex))
     }
 
@@ -67,10 +67,10 @@ impl TokscaleConfig {
             .map(|s| s.as_str())
     }
 
-    pub fn get_source_display_name(&self, source: &str) -> Option<&str> {
+    pub fn get_client_display_name(&self, client: &str) -> Option<&str> {
         self.display_names
-            .sources
-            .get(&source.to_lowercase())
+            .clients
+            .get(&client.to_lowercase())
             .map(|s| s.as_str())
     }
 }

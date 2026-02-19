@@ -4,7 +4,7 @@ use ratatui::widgets::{Block, Borders, Paragraph};
 use super::spinner::{get_phase_message, get_scanner_spans};
 use super::widgets::{format_cost, format_tokens};
 use crate::tui::app::{App, ClickAction, SortField, Tab};
-use crate::tui::data::Source;
+use crate::tui::data::Client;
 
 pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     let block = Block::default()
@@ -116,21 +116,21 @@ fn render_source_badges(frame: &mut Frame, app: &mut App, area: Rect) {
     let mut x_offset = area.x;
     let is_very_narrow = app.is_very_narrow();
 
-    let source_labels = [
-        (Source::OpenCode, "1", "OC"),
-        (Source::Claude, "2", "CC"),
-        (Source::Codex, "3", "CX"),
-        (Source::Cursor, "4", "CR"),
-        (Source::Gemini, "5", "GM"),
-        (Source::Amp, "6", "AM"),
-        (Source::Droid, "7", "DR"),
-        (Source::OpenClaw, "8", "CL"),
-        (Source::Pi, "9", "PI"),
-        (Source::Kimi, "0", "KI"),
+    let client_labels = [
+        (Client::OpenCode, "1", "OC"),
+        (Client::Claude, "2", "CC"),
+        (Client::Codex, "3", "CX"),
+        (Client::Cursor, "4", "CR"),
+        (Client::Gemini, "5", "GM"),
+        (Client::Amp, "6", "AM"),
+        (Client::Droid, "7", "DR"),
+        (Client::OpenClaw, "8", "CL"),
+        (Client::Pi, "9", "PI"),
+        (Client::Kimi, "0", "KI"),
     ];
 
-    for (source, key, short) in source_labels {
-        let enabled = app.enabled_sources.contains(&source);
+    for (client, key, short) in client_labels {
+        let enabled = app.enabled_clients.contains(&client);
         let indicator = if enabled { "●" } else { "○" };
 
         let badge_text = if is_very_narrow {
@@ -151,7 +151,7 @@ fn render_source_badges(frame: &mut Frame, app: &mut App, area: Rect) {
 
         app.add_click_area(
             Rect::new(x_offset, area.y, badge_width, 1),
-            ClickAction::Source(source),
+            ClickAction::Client(client),
         );
         x_offset += badge_width + 1;
     }

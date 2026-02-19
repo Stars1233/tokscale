@@ -11,7 +11,7 @@ export interface TokenBreakdown {
 }
 
 export interface UnifiedMessage {
-  source: string;
+  client: string;
   modelId: string;
   providerId: string;
   sessionId: string;
@@ -22,7 +22,12 @@ export interface UnifiedMessage {
   agent?: string;
 }
 
-export type SourceType = "opencode" | "claude" | "codex" | "gemini" | "cursor" | "amp" | "droid" | "openclaw" | "pi" | "kimi";
+export type ClientType = "opencode" | "claude" | "codex" | "gemini" | "cursor" | "amp" | "droid" | "openclaw" | "pi" | "kimi";
+
+/**
+ * @deprecated Use ClientType instead
+ */
+export type SourceType = ClientType;
 
 /**
  * Convert Unix milliseconds timestamp to YYYY-MM-DD date string
@@ -36,7 +41,7 @@ export function timestampToDate(timestampMs: number): string {
 }
 
 export function createUnifiedMessage(
-  source: string,
+  client: string,
   modelId: string,
   providerId: string,
   sessionId: string,
@@ -46,7 +51,7 @@ export function createUnifiedMessage(
   agent?: string
 ): UnifiedMessage {
   return {
-    source,
+    client,
     modelId,
     providerId,
     sessionId,

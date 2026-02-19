@@ -7,6 +7,7 @@
 
 import type {
   TokenContributionData,
+  ClientType,
   SourceType,
 } from "./graph-types.js";
 import { loadSettings } from "./tui/config/settings.js";
@@ -235,7 +236,7 @@ function fromNativeResult(result: NativeGraphResult): TokenContributionData {
       activeDays: result.summary.activeDays,
       averagePerDay: result.summary.averagePerDay,
       maxCostInSingleDay: result.summary.maxCostInSingleDay,
-      sources: result.summary.sources as SourceType[],
+      clients: result.summary.sources as ClientType[],
       models: result.summary.models,
     },
     years: result.years.map((y) => ({
@@ -263,20 +264,20 @@ function fromNativeResult(result: NativeGraphResult): TokenContributionData {
         cacheWrite: c.tokenBreakdown.cacheWrite,
         reasoning: c.tokenBreakdown.reasoning,
       },
-      sources: c.sources.map((s) => ({
-        source: s.source as SourceType,
-        modelId: s.modelId,
-        providerId: s.providerId,
-        tokens: {
-          input: s.tokens.input,
-          output: s.tokens.output,
-          cacheRead: s.tokens.cacheRead,
-          cacheWrite: s.tokens.cacheWrite,
-          reasoning: s.tokens.reasoning,
-        },
-        cost: s.cost,
-        messages: s.messages,
-      })),
+      clients: c.sources.map((s) => ({
+         client: s.source as ClientType,
+         modelId: s.modelId,
+         providerId: s.providerId,
+         tokens: {
+           input: s.tokens.input,
+           output: s.tokens.output,
+           cacheRead: s.tokens.cacheRead,
+           cacheWrite: s.tokens.cacheWrite,
+           reasoning: s.tokens.reasoning,
+         },
+         cost: s.cost,
+         messages: s.messages,
+       })),
     })),
   };
 }
@@ -286,7 +287,7 @@ function fromNativeResult(result: NativeGraphResult): TokenContributionData {
 // =============================================================================
 
 export interface ModelUsage {
-  source: string;
+  client: string;
   model: string;
   provider: string;
   input: number;
@@ -332,7 +333,7 @@ export interface MonthlyReport {
 
 export interface ParsedMessages {
   messages: Array<{
-    source: string;
+    client: string;
     modelId: string;
     providerId: string;
     timestamp: number;
@@ -523,6 +524,88 @@ async function runInSubprocess<T>(method: string, args: unknown[]): Promise<T> {
   }
 }
 
+function convertParsedMessages(native: NativeParsedMessages): ParsedMessages {
+  return {
+    messages: native.messages.map((m) => ({
+      client: m.source,
+      modelId: m.modelId,
+      providerId: m.providerId,
+      timestamp: m.timestamp,
+      date: m.date,
+      input: m.input,
+      output: m.output,
+      cacheRead: m.cacheRead,
+      cacheWrite: m.cacheWrite,
+      reasoning: m.reasoning,
+      sessionId: m.sessionId,
+      agent: m.agent,
+    })),
+    opencodeCount: native.opencodeCount,
+    claudeCount: native.claudeCount,
+    codexCount: native.codexCount,
+    geminiCount: native.geminiCount,
+    ampCount: native.ampCount,
+    droidCount: native.droidCount,
+    openclawCount: native.openclawCount,
+    piCount: native.piCount,
+    kimiCount: native.kimiCount,
+    processingTimeMs: native.processingTimeMs,
+  };
+}
+
+function toNativeParsedMessages(parsed: ParsedMessages): NativeParsedMessages {
+  return {
+    messages: parsed.messages.map((m) => ({
+      source: m.client,
+      modelId: m.modelId,
+      providerId: m.providerId,
+      timestamp: m.timestamp,
+      date: m.date,
+      input: m.input,
+      output: m.output,
+      cacheRead: m.cacheRead,
+      cacheWrite: m.cacheWrite,
+      reasoning: m.reasoning,
+      sessionId: m.sessionId,
+      agent: m.agent,
+    })),
+    opencodeCount: parsed.opencodeCount,
+    claudeCount: parsed.claudeCount,
+    codexCount: parsed.codexCount,
+    geminiCount: parsed.geminiCount,
+    ampCount: parsed.ampCount,
+    droidCount: parsed.droidCount,
+    openclawCount: parsed.openclawCount,
+    piCount: parsed.piCount,
+    kimiCount: parsed.kimiCount,
+    processingTimeMs: parsed.processingTimeMs,
+  };
+}
+
+function convertModelReport(native: NativeModelReport): ModelReport {
+  return {
+    entries: native.entries.map((e) => ({
+      client: e.source,
+      model: e.model,
+      provider: e.provider,
+      input: e.input,
+      output: e.output,
+      cacheRead: e.cacheRead,
+      cacheWrite: e.cacheWrite,
+      reasoning: e.reasoning,
+      messageCount: e.messageCount,
+      cost: e.cost,
+    })),
+    totalInput: native.totalInput,
+    totalOutput: native.totalOutput,
+    totalCacheRead: native.totalCacheRead,
+    totalCacheWrite: native.totalCacheWrite,
+    totalMessages: native.totalMessages,
+    totalCost: native.totalCost,
+    processingTimeMs: native.processingTimeMs,
+  };
+}
+
 export async function parseLocalSourcesAsync(options: LocalParseOptions): Promise<ParsedMessages> {
   if (!isNativeAvailable()) {
     throw new Error("Native module required. Run: bun run build:core");
@@ -538,7 +621,8 @@ export async function parseLocalSourcesAsync(options: LocalParseOptions): Promis
     untilTs: options.untilTs,
   };
 
-  return runInSubprocess<ParsedMessages>("parseLocalSources", [nativeOptions]);
+  const result = await runInSubprocess<NativeParsedMessages>("parseLocalSources", [nativeOptions]);
+  return convertParsedMessages(result);
 }
 
 export async function finalizeReportAsync(options: FinalizeOptions): Promise<ModelReport> {
@@ -548,7 +632,7 @@ export async function finalizeReportAsync(options: FinalizeOptions): Promise<Mod
 
   const nativeOptions: NativeFinalizeReportOptions = {
     homeDir: undefined,
-    localMessages: options.localMessages,
+    localMessages: toNativeParsedMessages(options.localMessages),
     includeCursor: options.includeCursor,
     since: options.since,
     until: options.until,
@@ -557,7 +641,8 @@ export async function finalizeReportAsync(options: FinalizeOptions): Promise<Mod
     untilTs: options.untilTs,
   };
 
-  return runInSubprocess<ModelReport>("finalizeReport", [nativeOptions]);
+  const result = await runInSubprocess<NativeModelReport>("finalizeReport", [nativeOptions]);
+  return convertModelReport(result);
 }
 
 export async function finalizeMonthlyReportAsync(options: FinalizeOptions): Promise<MonthlyReport> {
@@ -567,7 +652,7 @@ export async function finalizeMonthlyReportAsync(options: FinalizeOptions): Prom
 
   const nativeOptions: NativeFinalizeReportOptions = {
     homeDir: undefined,
-    localMessages: options.localMessages,
+    localMessages: toNativeParsedMessages(options.localMessages),
     includeCursor: options.includeCursor,
     since: options.since,
     until: options.until,
@@ -586,7 +671,7 @@ export async function finalizeGraphAsync(options: FinalizeOptions): Promise<Toke
 
   const nativeOptions: NativeFinalizeReportOptions = {
     homeDir: undefined,
-    localMessages: options.localMessages,
+    localMessages: toNativeParsedMessages(options.localMessages),
     includeCursor: options.includeCursor,
     since: options.since,
     until: options.until,
@@ -616,7 +701,7 @@ export async function finalizeReportAndGraphAsync(options: FinalizeOptions): Pro
 
   const nativeOptions: NativeFinalizeReportOptions = {
     homeDir: undefined,
-    localMessages: options.localMessages,
+    localMessages: toNativeParsedMessages(options.localMessages),
     includeCursor: options.includeCursor,
     since: options.since,
     until: options.until,
@@ -627,7 +712,7 @@ export async function finalizeReportAndGraphAsync(options: FinalizeOptions): Pro
 
   const result = await runInSubprocess<NativeReportAndGraph>("finalizeReportAndGraph", [nativeOptions]);
   return {
-    report: result.report,
+    report: convertModelReport(result.report),
     graph: fromNativeResult(result.graph),
   };
 }

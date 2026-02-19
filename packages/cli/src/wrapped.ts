@@ -11,7 +11,7 @@ import {
 } from "./native.js";
 import { syncCursorCache, isCursorLoggedIn, hasCursorUsageCache } from "./cursor.js";
 import { loadCredentials } from "./credentials.js";
-import type { SourceType } from "./graph-types.js";
+import type { ClientType } from "./graph-types.js";
 
 interface WrappedData {
   year: string;
@@ -32,7 +32,7 @@ interface WrappedData {
 export interface WrappedOptions {
   output?: string;
   year?: string;
-  sources?: SourceType[];
+  clients?: ClientType[];
   short?: boolean;
   includeAgents?: boolean;
   pinSisyphus?: boolean;
@@ -218,17 +218,17 @@ async function ensureFontsLoaded(): Promise<void> {
 
 async function loadWrappedData(options: WrappedOptions): Promise<WrappedData> {
   const year = options.year || new Date().getFullYear().toString();
-  const sources = options.sources || ["opencode", "claude", "codex", "gemini", "cursor", "amp", "droid", "openclaw", "pi", "kimi"];
-  const localSources = sources.filter(s => s !== "cursor") as ("opencode" | "claude" | "codex" | "gemini" | "amp" | "droid" | "openclaw" | "pi" | "kimi")[];
-  const includeCursor = sources.includes("cursor");
+  const clients = options.clients || ["opencode", "claude", "codex", "gemini", "cursor", "amp", "droid", "openclaw", "pi", "kimi"];
+  const localClients = clients.filter(s => s !== "cursor") as ("opencode" | "claude" | "codex" | "gemini" | "amp" | "droid" | "openclaw" | "pi" | "kimi")[];
+  const includeCursor = clients.includes("cursor");
 
   const since = `${year}-01-01`;
   const until = `${year}-12-31`;
 
   const phase1Results = await Promise.allSettled([
     includeCursor && isCursorLoggedIn() ? syncCursorCache() : Promise.resolve({ synced: false, rows: 0, error: undefined }),
-    localSources.length > 0
-      ? parseLocalSourcesAsync({ sources: localSources, since, until, year })
+    localClients.length > 0
+      ? parseLocalSourcesAsync({ sources: localClients, since, until, year })
       : Promise.resolve({ messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, ampCount: 0, droidCount: 0, openclawCount: 0, piCount: 0, kimiCount: 0, processingTimeMs: 0 } as ParsedMessages),
   ]);
 
@@ -282,7 +282,7 @@ async function loadWrappedData(options: WrappedOptions): Promise<WrappedData> {
 
   const clientMap = new Map<string, { cost: number; tokens: number }>();
   for (const entry of report.entries) {
-    const displayName = SOURCE_DISPLAY_NAMES[entry.source] || entry.source;
+    const displayName = SOURCE_DISPLAY_NAMES[entry.client] || entry.client;
     const existing = clientMap.get(displayName) || { cost: 0, tokens: 0 };
     clientMap.set(displayName, {
       cost: existing.cost + entry.cost,
@@ -298,7 +298,7 @@ async function loadWrappedData(options: WrappedOptions): Promise<WrappedData> {
   if (options.includeAgents !== false && localMessages) {
     const agentMap = new Map<string, { cost: number; tokens: number; messages: number }>();
     for (const msg of localMessages.messages) {
-      if (msg.source === "opencode" && msg.agent) {
+      if (msg.client === "opencode" && msg.agent) {
         const normalizedAgent = normalizeAgentName(msg.agent);
         const existing = agentMap.get(normalizedAgent) || { cost: 0, tokens: 0, messages: 0 };
 
@@ -822,7 +822,7 @@ export async function generateWrapped(options: WrappedOptions): Promise<string> 
 
   const agentsRequested = options.includeAgents !== false;
   const hasAgentData = !!data.topAgents?.length;
-  const opencodeEnabled = !options.sources || options.sources.includes("opencode");
+  const opencodeEnabled = !options.clients || options.clients.includes("opencode");
   let effectiveIncludeAgents = agentsRequested && hasAgentData;
 
   if (agentsRequested && opencodeEnabled && !hasAgentData) {

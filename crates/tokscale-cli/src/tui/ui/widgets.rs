@@ -95,12 +95,12 @@ fn get_provider_from_model(model: &str) -> &'static str {
     }
 }
 
-pub fn get_source_color(source: &str) -> Color {
+pub fn get_client_color(client: &str) -> Color {
     let config = TokscaleConfig::load();
-    if let Some(color) = config.get_source_color(source) {
+    if let Some(color) = config.get_client_color(client) {
         return color;
     }
-    match source.to_lowercase().as_str() {
+    match client.to_lowercase().as_str() {
         "opencode" => Color::Rgb(34, 197, 94), // #22c55e
         "claude" => Color::Rgb(218, 119, 86),  // #DA7756 Claude brand coral
         "codex" => Color::Rgb(59, 130, 246),   // #3b82f6
@@ -113,12 +113,12 @@ pub fn get_source_color(source: &str) -> Color {
     }
 }
 
-pub fn get_source_display_name(source: &str) -> String {
+pub fn get_client_display_name(client: &str) -> String {
     let config = TokscaleConfig::load();
-    if let Some(name) = config.get_source_display_name(source) {
+    if let Some(name) = config.get_client_display_name(client) {
         return name.to_string();
     }
-    match source.to_lowercase().as_str() {
+    match client.to_lowercase().as_str() {
         "opencode" => "OpenCode".to_string(),
         "claude" => "Claude".to_string(),
         "codex" => "Codex".to_string(),
@@ -128,7 +128,7 @@ pub fn get_source_display_name(source: &str) -> String {
         "droid" => "Droid".to_string(),
         "openclaw" => "🦞 OpenClaw".to_string(),
         "pi" => "Pi".to_string(),
-        _ => source.to_string(),
+        _ => client.to_string(),
     }
 }
 

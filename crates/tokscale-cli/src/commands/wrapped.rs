@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tokio::runtime::Runtime;
-use tokscale_core::{generate_graph, parse_local_sources, GroupBy, LocalParseOptions, ReportOptions};
+use tokscale_core::{generate_graph, parse_local_clients, GroupBy, LocalParseOptions, ReportOptions};
 
 const SCALE: i32 = 2;
 const IMAGE_WIDTH: i32 = 1200 * SCALE;
@@ -42,7 +42,7 @@ const COLOR_SISYPHUS: Rgba<u8> = Rgba([0x00, 0xCE, 0xD1, 0xFF]);
 pub struct WrappedOptions {
     pub output: Option<String>,
     pub year: Option<String>,
-    pub sources: Option<Vec<String>>,
+    pub clients: Option<Vec<String>>,
     pub short: bool,
     pub include_agents: bool,
     pub pin_sisyphus: bool,
@@ -110,9 +110,9 @@ async fn generate_wrapped(options: WrappedOptions) -> Result<String> {
         .map(|agents| !agents.is_empty())
         .unwrap_or(false);
     let opencode_enabled = options
-        .sources
+        .clients
         .as_ref()
-        .map_or(true, |sources| sources.iter().any(|s| s == "opencode"));
+        .map_or(true, |clients| clients.iter().any(|s| s == "opencode"));
     let effective_include_agents = agents_requested && has_agent_data;
 
     if agents_requested && opencode_enabled && !has_agent_data {
@@ -160,13 +160,13 @@ async fn load_wrapped_data(options: &WrappedOptions) -> Result<WrappedData> {
         .year
         .clone()
         .unwrap_or_else(|| Local::now().year().to_string());
-    let sources = options.sources.clone().unwrap_or_else(default_sources);
-    let local_sources: Vec<String> = sources
+    let clients = options.clients.clone().unwrap_or_else(default_clients);
+    let local_clients: Vec<String> = clients
         .iter()
         .filter(|src| src.as_str() != "cursor")
         .cloned()
         .collect();
-    let include_cursor = sources.iter().any(|src| src == "cursor");
+    let include_cursor = clients.iter().any(|src| src == "cursor");
 
     let since = format!("{}-01-01", year);
     let until = format!("{}-12-31", year);
@@ -201,21 +201,21 @@ async fn load_wrapped_data(options: &WrappedOptions) -> Result<WrappedData> {
         false
     };
 
-    let graph_sources = if include_cursor && !include_cursor_in_graph {
-        sources
+    let graph_clients = if include_cursor && !include_cursor_in_graph {
+        clients
             .iter()
             .filter(|src| src.as_str() != "cursor")
             .cloned()
             .collect::<Vec<_>>()
     } else {
-        sources.clone()
+        clients.clone()
     };
 
-    let parsed_local = if options.include_agents && !local_sources.is_empty() {
+    let parsed_local = if options.include_agents && !local_clients.is_empty() {
         Some(
-            parse_local_sources(LocalParseOptions {
+            parse_local_clients(LocalParseOptions {
                 home_dir: None,
-                sources: Some(local_sources),
+                clients: Some(local_clients),
                 since: Some(since.clone()),
                 until: Some(until.clone()),
                 year: Some(year.clone()),
@@ -228,7 +228,7 @@ async fn load_wrapped_data(options: &WrappedOptions) -> Result<WrappedData> {
 
     let graph = generate_graph(ReportOptions {
         home_dir: None,
-        sources: Some(graph_sources),
+        clients: Some(graph_clients),
         since: Some(since),
         until: Some(until),
         year: Some(year.clone()),
@@ -244,8 +244,8 @@ async fn load_wrapped_data(options: &WrappedOptions) -> Result<WrappedData> {
     for day in &graph.contributions {
         total_messages += day.totals.messages;
 
-        for source in &day.sources {
-            let model_name = format_model_name(&source.model_id);
+        for client_contrib in &day.clients {
+            let model_name = format_model_name(&client_contrib.model_id);
             let model_entry =
                 model_map
                     .entry(model_name.clone())
@@ -254,14 +254,14 @@ async fn load_wrapped_data(options: &WrappedOptions) -> Result<WrappedData> {
                         cost: 0.0,
                         tokens: 0,
                     });
-            model_entry.cost += source.cost;
-            model_entry.tokens += source.tokens.input
-                + source.tokens.output
-                + source.tokens.cache_read
-                + source.tokens.cache_write;
+            model_entry.cost += client_contrib.cost;
+            model_entry.tokens += client_contrib.tokens.input
+                + client_contrib.tokens.output
+                + client_contrib.tokens.cache_read
+                + client_contrib.tokens.cache_write;
 
-            let client_name = source_display_name(&source.source)
-                .unwrap_or(source.source.as_str())
+            let client_name = client_display_name(&client_contrib.client)
+                .unwrap_or(client_contrib.client.as_str())
                 .to_string();
             let client_entry =
                 client_map
@@ -271,11 +271,11 @@ async fn load_wrapped_data(options: &WrappedOptions) -> Result<WrappedData> {
                         cost: 0.0,
                         tokens: 0,
                     });
-            client_entry.cost += source.cost;
-            client_entry.tokens += source.tokens.input
-                + source.tokens.output
-                + source.tokens.cache_read
-                + source.tokens.cache_write;
+            client_entry.cost += client_contrib.cost;
+            client_entry.tokens += client_contrib.tokens.input
+                + client_contrib.tokens.output
+                + client_contrib.tokens.cache_read
+                + client_contrib.tokens.cache_write;
         }
     }
 
@@ -341,7 +341,7 @@ fn build_top_agents(parsed: &tokscale_core::ParsedMessages) -> Vec<WrappedAgentE
     let mut agent_map: HashMap<String, WrappedAgentEntry> = HashMap::new();
 
     for message in &parsed.messages {
-        if message.source != "opencode" {
+        if message.client != "opencode" {
             continue;
         }
 
@@ -1338,8 +1338,8 @@ fn format_number_with_commas_i64(value: i64) -> String {
     result
 }
 
-fn source_display_name(source: &str) -> Option<&'static str> {
-    match source {
+fn client_display_name(client: &str) -> Option<&'static str> {
+    match client {
         "opencode" => Some("OpenCode"),
         "claude" => Some("Claude Code"),
         "codex" => Some("Codex CLI"),
@@ -1695,7 +1695,7 @@ fn truncate_username(username: &str, max_chars: usize) -> Option<String> {
     Some(format!("{}\u{2026}", truncated))
 }
 
-fn default_sources() -> Vec<String> {
+fn default_clients() -> Vec<String> {
     vec![
         "opencode".to_string(),
         "claude".to_string(),
@@ -2108,58 +2108,58 @@ mod tests {
         assert_eq!(date_diff_days("2024-01-01", "2024-02-01"), 31);
     }
 
-    // ========== source_display_name tests ==========
+    // ========== client_display_name tests ==========
 
     #[test]
-    fn test_source_display_name_opencode() {
-        assert_eq!(source_display_name("opencode"), Some("OpenCode"));
+    fn test_client_display_name_opencode() {
+        assert_eq!(client_display_name("opencode"), Some("OpenCode"));
     }
 
     #[test]
-    fn test_source_display_name_claude() {
-        assert_eq!(source_display_name("claude"), Some("Claude Code"));
+    fn test_client_display_name_claude() {
+        assert_eq!(client_display_name("claude"), Some("Claude Code"));
     }
 
     #[test]
-    fn test_source_display_name_codex() {
-        assert_eq!(source_display_name("codex"), Some("Codex CLI"));
+    fn test_client_display_name_codex() {
+        assert_eq!(client_display_name("codex"), Some("Codex CLI"));
     }
 
     #[test]
-    fn test_source_display_name_gemini() {
-        assert_eq!(source_display_name("gemini"), Some("Gemini CLI"));
+    fn test_client_display_name_gemini() {
+        assert_eq!(client_display_name("gemini"), Some("Gemini CLI"));
     }
 
     #[test]
-    fn test_source_display_name_cursor() {
-        assert_eq!(source_display_name("cursor"), Some("Cursor IDE"));
+    fn test_client_display_name_cursor() {
+        assert_eq!(client_display_name("cursor"), Some("Cursor IDE"));
     }
 
     #[test]
-    fn test_source_display_name_amp() {
-        assert_eq!(source_display_name("amp"), Some("Amp"));
+    fn test_client_display_name_amp() {
+        assert_eq!(client_display_name("amp"), Some("Amp"));
     }
 
     #[test]
-    fn test_source_display_name_droid() {
-        assert_eq!(source_display_name("droid"), Some("Droid"));
+    fn test_client_display_name_droid() {
+        assert_eq!(client_display_name("droid"), Some("Droid"));
     }
 
     #[test]
-    fn test_source_display_name_openclaw() {
-        assert_eq!(source_display_name("openclaw"), Some("OpenClaw"));
+    fn test_client_display_name_openclaw() {
+        assert_eq!(client_display_name("openclaw"), Some("OpenClaw"));
     }
 
     #[test]
-    fn test_source_display_name_pi() {
-        assert_eq!(source_display_name("pi"), Some("Pi"));
+    fn test_client_display_name_pi() {
+        assert_eq!(client_display_name("pi"), Some("Pi"));
     }
 
     #[test]
-    fn test_source_display_name_unknown() {
-        assert_eq!(source_display_name("unknown"), None);
-        assert_eq!(source_display_name(""), None);
-        assert_eq!(source_display_name("Claude"), None); // case-sensitive
+    fn test_client_display_name_unknown() {
+        assert_eq!(client_display_name("unknown"), None);
+        assert_eq!(client_display_name(""), None);
+        assert_eq!(client_display_name("Claude"), None); // case-sensitive
     }
 
     // ========== client_logo_url tests ==========

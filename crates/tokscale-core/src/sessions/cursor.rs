@@ -332,7 +332,7 @@ mod tests {
         let messages = parse_cursor_file(&file_path);
         assert_eq!(messages.len(), 2);
 
-        assert_eq!(messages[0].source, "cursor");
+        assert_eq!(messages[0].client, "cursor");
         assert_eq!(messages[0].model_id, "gpt-4o");
         assert_eq!(messages[0].provider_id, "openai");
         assert_eq!(messages[0].tokens.input, 5);
@@ -358,7 +358,7 @@ mod tests {
         assert_eq!(messages.len(), 2);
 
         // First message: auto model
-        assert_eq!(messages[0].source, "cursor");
+        assert_eq!(messages[0].client, "cursor");
         assert_eq!(messages[0].model_id, "auto");
         assert_eq!(messages[0].provider_id, "cursor"); // unknown model -> cursor
         assert_eq!(messages[0].tokens.input, 775);

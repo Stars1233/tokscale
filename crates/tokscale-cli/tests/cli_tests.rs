@@ -159,9 +159,9 @@ fn test_pricing_command_help() {
 }
 
 #[test]
-fn test_sources_command_help() {
+fn test_clients_command_help() {
     let mut cmd = cargo_bin_cmd!("tokscale");
-    cmd.arg("sources")
+    cmd.arg("clients")
         .arg("--help")
         .assert()
         .success()
@@ -247,16 +247,16 @@ fn test_pricing_command_missing_model() {
 }
 
 #[test]
-fn test_headless_command_missing_source() {
+fn test_headless_command_missing_client() {
     let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("headless").assert().failure();
 }
 
 #[test]
-fn test_headless_command_invalid_source() {
+fn test_headless_command_invalid_client() {
     let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.arg("headless")
-        .arg("invalid-source")
+        .arg("invalid-client")
         .arg("test")
         .assert()
         .failure();
@@ -399,10 +399,10 @@ fn test_graph_with_year_filter() {
     }
 }
 
-// ── Source filtering tests ─────────────────────────────────────────────────
+// ── Client filtering tests ─────────────────────────────────────────────────
 
 #[test]
-fn test_models_with_source_filter_opencode() {
+fn test_models_with_client_filter_opencode() {
     let tmp = create_temp_fixture_dir();
     let output = cmd_with_home(tmp.path())
         .args(["models", "--json", "--opencode", "--no-spinner"])
@@ -412,12 +412,12 @@ fn test_models_with_source_filter_opencode() {
     let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     let entries = json["entries"].as_array().unwrap();
     for entry in entries {
-        assert_eq!(entry["source"].as_str().unwrap(), "opencode");
+        assert_eq!(entry["client"].as_str().unwrap(), "opencode");
     }
 }
 
 #[test]
-fn test_models_with_source_filter_multiple() {
+fn test_models_with_client_filter_multiple() {
     let tmp = create_temp_fixture_dir();
     cmd_with_home(tmp.path())
         .args(["models", "--json", "--opencode", "--claude", "--no-spinner"])
@@ -426,7 +426,7 @@ fn test_models_with_source_filter_multiple() {
 }
 
 #[test]
-fn test_models_with_all_source_flags() {
+fn test_models_with_all_client_flags() {
     let tmp = create_temp_fixture_dir();
     cmd_with_home(tmp.path())
         .args([
@@ -448,7 +448,7 @@ fn test_models_with_all_source_flags() {
 }
 
 #[test]
-fn test_models_source_and_date_combined() {
+fn test_models_client_and_date_combined() {
     let tmp = create_temp_fixture_dir();
     cmd_with_home(tmp.path())
         .args(["models", "--json", "--opencode", "--no-spinner"])
@@ -493,7 +493,7 @@ fn test_models_json_output() {
     let entries = json["entries"].as_array().unwrap();
     assert!(!entries.is_empty(), "Should have entries from fixture data");
     let first = &entries[0];
-    assert!(first.get("source").is_some());
+    assert!(first.get("client").is_some());
     assert!(first.get("model").is_some());
     assert!(first.get("provider").is_some());
     assert!(first.get("input").is_some());
@@ -563,7 +563,7 @@ fn test_monthly_json_output() {
 }
 
 #[test]
-fn test_monthly_json_with_source_filter() {
+fn test_monthly_json_with_client_filter() {
     let tmp = create_temp_fixture_dir();
     let output = cmd_with_home(tmp.path())
         .args(["monthly", "--json", "--opencode", "--no-spinner"])
@@ -646,7 +646,7 @@ fn test_graph_json_has_summary() {
         summary.get("activeDays").is_some(),
         "Missing summary.activeDays"
     );
-    assert!(summary.get("sources").is_some(), "Missing summary.sources");
+    assert!(summary.get("clients").is_some(), "Missing summary.clients");
     assert!(summary.get("models").is_some(), "Missing summary.models");
 }
 
@@ -703,7 +703,7 @@ fn test_models_group_by_client_provider_model() {
 
     let entries = json["entries"].as_array().unwrap();
     for entry in entries {
-        assert!(entry.get("source").is_some(), "Entry must have source");
+        assert!(entry.get("client").is_some(), "Entry must have client");
         assert!(entry.get("provider").is_some(), "Entry must have provider");
         assert!(entry.get("model").is_some(), "Entry must have model");
     }
@@ -792,12 +792,12 @@ fn test_pricing_command_invalid_provider() {
     .failure();
 }
 
-// ── Sources command tests ──────────────────────────────────────────────────
+// ── Clients command tests ──────────────────────────────────────────────────
 
 #[test]
-fn test_sources_command() {
+fn test_clients_command() {
     let mut cmd = cargo_bin_cmd!("tokscale");
-    cmd.arg("sources")
+    cmd.arg("clients")
         .assert()
         .success()
         .stdout(predicate::str::contains("OpenCode").or(predicate::str::contains("opencode")))
@@ -805,40 +805,40 @@ fn test_sources_command() {
 }
 
 #[test]
-fn test_sources_json() {
+fn test_clients_json() {
     let output = cargo_bin_cmd!("tokscale")
-        .args(["sources", "--json"])
+        .args(["clients", "--json"])
         .output()
         .unwrap();
     assert!(output.status.success());
     let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert!(json.is_object(), "Sources JSON should be an object");
-    assert!(json.get("sources").is_some(), "Should have 'sources' field");
+    assert!(json.is_object(), "Clients JSON should be an object");
+    assert!(json.get("clients").is_some(), "Should have 'clients' field");
     assert!(
         json.get("headlessRoots").is_some(),
         "Should have 'headlessRoots' field"
     );
     assert!(json.get("note").is_some(), "Should have 'note' field");
 
-    let arr = json["sources"].as_array().unwrap();
-    assert!(!arr.is_empty(), "Should list at least one source");
+    let arr = json["clients"].as_array().unwrap();
+    assert!(!arr.is_empty(), "Should list at least one client");
 
     let first = &arr[0];
     assert!(
-        first.get("source").is_some(),
-        "Source entry should have 'source' field"
+        first.get("client").is_some(),
+        "Client entry should have 'client' field"
     );
     assert!(
         first.get("label").is_some(),
-        "Source entry should have 'label' field"
+        "Client entry should have 'label' field"
     );
     assert!(
         first.get("sessionsPath").is_some(),
-        "Source entry should have 'sessionsPath' field"
+        "Client entry should have 'sessionsPath' field"
     );
     assert!(
         first.get("messageCount").is_some(),
-        "Source entry should have 'messageCount' field"
+        "Client entry should have 'messageCount' field"
     );
 }
 
@@ -865,7 +865,7 @@ fn test_monthly_light_output() {
 }
 
 #[test]
-fn test_models_light_with_source_filter() {
+fn test_models_light_with_client_filter() {
     let tmp = create_temp_fixture_dir();
     cmd_with_home(tmp.path())
         .args(["models", "--light", "--opencode", "--no-spinner"])
@@ -965,10 +965,10 @@ fn test_graph_no_spinner_flag() {
         .success();
 }
 
-// ── Graph with source filter tests ─────────────────────────────────────────
+// ── Graph with client filter tests ─────────────────────────────────────────
 
 #[test]
-fn test_graph_with_source_filter() {
+fn test_graph_with_client_filter() {
     let tmp = create_temp_fixture_dir();
     let output = cmd_with_home(tmp.path())
         .args(["graph", "--opencode", "--no-spinner"])
@@ -978,10 +978,10 @@ fn test_graph_with_source_filter() {
     let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     let contributions = json["contributions"].as_array().unwrap();
     for c in contributions {
-        let sources = c["sources"].as_array().unwrap();
-        for s in sources {
+        let clients = c["clients"].as_array().unwrap();
+        for cl in clients {
             assert_eq!(
-                s["source"].as_str().unwrap(),
+                cl["client"].as_str().unwrap(),
                 "opencode",
                 "All contributions should be from opencode"
             );

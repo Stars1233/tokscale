@@ -180,7 +180,7 @@ mod tests {
 
         // then
         assert_eq!(messages.len(), 1);
-        assert_eq!(messages[0].source, "pi");
+        assert_eq!(messages[0].client, "pi");
         assert_eq!(messages[0].session_id, "pi_ses_001");
         assert_eq!(messages[0].model_id, "claude-3-5-sonnet");
         assert_eq!(messages[0].provider_id, "anthropic");

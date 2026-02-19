@@ -57,7 +57,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { performance } from "node:perf_hooks";
-import type { SourceType } from "./graph-types.js";
+import type { ClientType, SourceType } from "./graph-types.js";
 import type { TUIOptions, TabType } from "./tui/types/index.js";
 import { loadSettings } from "./tui/config/settings.js";
 import { formatDateLocal, parseDateStringToLocal, getStartOfDayTimestamp, getEndOfDayTimestamp, validateTimestampMs } from "./date-utils.js";
@@ -471,11 +471,11 @@ function buildTUIOptions(
   initialTab?: TabType
 ): TUIOptions {
   const dateFilters = getDateFilters(options);
-  const enabledSources = getEnabledSources(options);
+  const enabledClients = getEnabledClients(options);
 
   return {
     initialTab,
-    enabledSources: enabledSources as TUIOptions["enabledSources"],
+    enabledSources: enabledClients as TUIOptions["enabledSources"],
     since: dateFilters.since,
     until: dateFilters.until,
     year: dateFilters.year,
@@ -571,7 +571,7 @@ async function main() {
     });
 
   program
-    .command("sources")
+    .command("clients")
     .description("Show local scan locations and session counts")
     .option("--json", "Output as JSON (for scripting)")
     .action(async (options) => {
@@ -611,13 +611,13 @@ async function main() {
       };
 
       for (const message of localMessages.messages) {
-        if (message.agent === "headless" && message.source === "codex") {
+        if (message.agent === "headless" && message.client === "codex") {
           headlessCounts.codex += 1;
         }
       }
 
       const sourceRows: Array<{
-        source: SourceType;
+        client: ClientType;
         label: string;
         sessionsPath: string;
         legacyPaths?: string[];
@@ -627,7 +627,7 @@ async function main() {
         headlessMessageCount: number;
       }> = [
         {
-          source: "opencode",
+          client: "opencode",
           label: "OpenCode",
           sessionsPath: opencodeSessions,
           messageCount: localMessages.opencodeCount,
@@ -636,7 +636,7 @@ async function main() {
           headlessMessageCount: 0,
         },
         {
-          source: "claude",
+          client: "claude",
           label: "Claude Code",
           sessionsPath: claudeSessions,
           messageCount: localMessages.claudeCount,
@@ -645,7 +645,7 @@ async function main() {
           headlessMessageCount: 0,
         },
         {
-          source: "codex",
+          client: "codex",
           label: "Codex CLI",
           sessionsPath: codexSessions,
           headlessPaths: headlessRoots.map((root) => path.join(root, "codex")),
@@ -654,7 +654,7 @@ async function main() {
           headlessSupported: true,
         },
         {
-          source: "gemini",
+          client: "gemini",
           label: "Gemini CLI",
           sessionsPath: geminiSessions,
           messageCount: localMessages.geminiCount,
@@ -663,7 +663,7 @@ async function main() {
           headlessMessageCount: 0,
         },
         {
-          source: "cursor",
+          client: "cursor",
           label: "Cursor IDE",
           sessionsPath: path.join(homeDir, ".config", "tokscale", "cursor-cache"),
           messageCount: 0, // Cursor uses API sync, not local sessions
@@ -672,7 +672,7 @@ async function main() {
           headlessMessageCount: 0,
         },
         {
-          source: "amp",
+          client: "amp",
           label: "Amp",
           sessionsPath: ampSessions,
           messageCount: localMessages.ampCount,
@@ -681,7 +681,7 @@ async function main() {
           headlessMessageCount: 0,
         },
         {
-          source: "droid",
+          client: "droid",
           label: "Droid",
           sessionsPath: droidSessions,
           messageCount: localMessages.droidCount,
@@ -690,7 +690,7 @@ async function main() {
           headlessMessageCount: 0,
         },
         {
-          source: "openclaw",
+          client: "openclaw",
           label: "OpenClaw",
           sessionsPath: openclawSessions,
           legacyPaths: openclawLegacyPaths,
@@ -700,7 +700,7 @@ async function main() {
           headlessMessageCount: 0,
         },
         {
-          source: "pi",
+          client: "pi",
           label: "Pi",
           sessionsPath: piSessions,
           messageCount: localMessages.piCount,
@@ -709,7 +709,7 @@ async function main() {
           headlessMessageCount: 0,
         },
         {
-          source: "kimi",
+          client: "kimi",
           label: "Kimi CLI",
           sessionsPath: kimiSessions,
           messageCount: localMessages.kimiCount,
@@ -723,7 +723,7 @@ async function main() {
         const payload = {
           headlessRoots,
           sources: sourceRows.map((row) => ({
-            source: row.source,
+            client: row.client,
             label: row.label,
             sessionsPath: row.sessionsPath,
             sessionsPathExists: fs.existsSync(row.sessionsPath),
@@ -1079,22 +1079,22 @@ async function main() {
   }
 }
 
-function getEnabledSources(options: FilterOptions): SourceType[] | undefined {
+function getEnabledClients(options: FilterOptions): SourceType[] | undefined {
   const hasFilter = options.opencode || options.claude || options.codex || options.gemini || options.cursor || options.amp || options.droid || options.openclaw || options.pi || options.kimi;
-  if (!hasFilter) return undefined; // All sources
+  if (!hasFilter) return undefined; // All clients
 
-  const sources: SourceType[] = [];
-  if (options.opencode) sources.push("opencode");
-  if (options.claude) sources.push("claude");
-  if (options.codex) sources.push("codex");
-  if (options.gemini) sources.push("gemini");
-  if (options.cursor) sources.push("cursor");
-  if (options.amp) sources.push("amp");
-  if (options.droid) sources.push("droid");
-  if (options.openclaw) sources.push("openclaw");
-  if (options.pi) sources.push("pi");
-  if (options.kimi) sources.push("kimi");
-  return sources;
+  const clients: SourceType[] = [];
+  if (options.opencode) clients.push("opencode");
+  if (options.claude) clients.push("claude");
+  if (options.codex) clients.push("codex");
+  if (options.gemini) clients.push("gemini");
+  if (options.cursor) clients.push("cursor");
+  if (options.amp) clients.push("amp");
+  if (options.droid) clients.push("droid");
+  if (options.openclaw) clients.push("openclaw");
+  if (options.pi) clients.push("pi");
+  if (options.kimi) clients.push("kimi");
+  return clients;
 }
 
 
@@ -1125,17 +1125,17 @@ interface LoadedDataSources {
 }
 
 async function loadDataSourcesParallel(
-  localSources: SourceType[],
+  localClients: SourceType[],
   dateFilters: DateFilters,
   onPhase?: (phase: string) => void
 ): Promise<LoadedDataSources> {
-  const shouldParseLocal = localSources.length > 0;
+  const shouldParseLocal = localClients.length > 0;
 
   const [cursorResult, localResult] = await Promise.allSettled([
     syncCursorData(),
     shouldParseLocal
       ? parseLocalSourcesAsync({
-          sources: localSources.filter(s => s !== 'cursor'),
+          sources: localClients.filter(s => s !== 'cursor'),
           since: dateFilters.since,
           until: dateFilters.until,
           year: dateFilters.year,
@@ -1158,9 +1158,9 @@ async function loadDataSourcesParallel(
 
 async function showModelReport(options: FilterOptions & DateFilterOptions & { benchmark?: boolean }, extraOptions?: { spinner?: boolean }) {
   const dateFilters = getDateFilters(options);
-  const enabledSources = getEnabledSources(options);
-  const onlyCursor = enabledSources?.length === 1 && enabledSources[0] === 'cursor';
-  const includeCursor = !enabledSources || enabledSources.includes('cursor');
+  const enabledClients = getEnabledClients(options);
+  const onlyCursor = enabledClients?.length === 1 && enabledClients[0] === 'cursor';
+  const includeCursor = !enabledClients || enabledClients.includes('cursor');
 
   // Check cursor auth early if cursor-only mode
   if (onlyCursor) {
@@ -1185,13 +1185,13 @@ async function showModelReport(options: FilterOptions & DateFilterOptions & { be
   const useSpinner = extraOptions?.spinner !== false;
   const spinner = useSpinner ? createSpinner({ color: "cyan" }) : null;
 
-  const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid', 'openclaw', 'pi', 'kimi'])
+  const localClients: SourceType[] = (enabledClients || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid', 'openclaw', 'pi', 'kimi'])
     .filter(s => s !== 'cursor');
 
   spinner?.start(pc.gray("Scanning session data..."));
 
   const { cursorSync, localMessages } = await loadDataSourcesParallel(
-    onlyCursor ? [] : localSources,
+    onlyCursor ? [] : localClients,
     dateFilters,
     (phase) => spinner?.update(phase)
   );
@@ -1256,8 +1256,8 @@ async function showModelReport(options: FilterOptions & DateFilterOptions & { be
     : report.entries.filter(e => e.input + e.output + e.cacheRead + e.cacheWrite > 0);
 
   for (const entry of filteredEntries) {
-    const sourceLabel = getSourceLabel(entry.source);
-    const modelDisplay = `${pc.dim(sourceLabel)} ${formatModelName(entry.model)}`;
+    const clientLabel = getClientLabel(entry.client);
+    const modelDisplay = `${pc.dim(clientLabel)} ${formatModelName(entry.model)}`;
     table.push(
       formatUsageRow(
         modelDisplay,
@@ -1323,15 +1323,15 @@ async function showMonthlyReport(options: FilterOptions & DateFilterOptions & { 
   const spinner = useSpinner ? createSpinner({ color: "cyan" }) : null;
 
   const dateFilters = getDateFilters(options);
-  const enabledSources = getEnabledSources(options);
-  const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid', 'openclaw', 'pi', 'kimi'])
+  const enabledClients = getEnabledClients(options);
+  const localClients: SourceType[] = (enabledClients || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid', 'openclaw', 'pi', 'kimi'])
     .filter(s => s !== 'cursor');
-  const includeCursor = !enabledSources || enabledSources.includes('cursor');
+  const includeCursor = !enabledClients || enabledClients.includes('cursor');
 
   spinner?.start(pc.gray("Scanning session data..."));
 
   const { cursorSync, localMessages } = await loadDataSourcesParallel(
-    localSources,
+    localClients,
     dateFilters,
     (phase) => spinner?.update(phase)
   );
@@ -1432,14 +1432,14 @@ async function outputJsonReport(
   options: FilterOptions & DateFilterOptions
 ) {
   const dateFilters = getDateFilters(options);
-  const enabledSources = getEnabledSources(options);
-  const onlyCursor = enabledSources?.length === 1 && enabledSources[0] === 'cursor';
-  const includeCursor = !enabledSources || enabledSources.includes('cursor');
-  const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid', 'openclaw', 'pi', 'kimi'])
+  const enabledClients = getEnabledClients(options);
+  const onlyCursor = enabledClients?.length === 1 && enabledClients[0] === 'cursor';
+  const includeCursor = !enabledClients || enabledClients.includes('cursor');
+  const localClients: SourceType[] = (enabledClients || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid', 'openclaw', 'pi', 'kimi'])
     .filter(s => s !== 'cursor');
 
   const { cursorSync, localMessages } = await loadDataSourcesParallel(
-    onlyCursor ? [] : localSources,
+    onlyCursor ? [] : localClients,
     dateFilters
   );
   
@@ -1486,15 +1486,15 @@ async function handleGraphCommand(options: GraphCommandOptions) {
   const spinner = useSpinner ? createSpinner({ color: "cyan" }) : null;
 
   const dateFilters = getDateFilters(options);
-  const enabledSources = getEnabledSources(options);
-  const localSources: SourceType[] = (enabledSources || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid', 'openclaw', 'pi', 'kimi'])
+  const enabledClients = getEnabledClients(options);
+  const localClients: SourceType[] = (enabledClients || ['opencode', 'claude', 'codex', 'gemini', 'cursor', 'amp', 'droid', 'openclaw', 'pi', 'kimi'])
     .filter(s => s !== 'cursor');
-  const includeCursor = !enabledSources || enabledSources.includes('cursor');
+  const includeCursor = !enabledClients || enabledClients.includes('cursor');
 
   spinner?.start(pc.gray("Scanning session data..."));
 
   const { cursorSync, localMessages } = await loadDataSourcesParallel(
-    localSources,
+    localClients,
     dateFilters,
     (phase) => spinner?.update(phase)
   );
@@ -1528,7 +1528,7 @@ async function handleGraphCommand(options: GraphCommandOptions) {
     console.error(pc.green(`✓ Graph data written to ${options.output}`));
     console.error(
       pc.gray(
-        `  ${data.contributions.length} days, ${data.summary.sources.length} sources, ${data.summary.models.length} models`
+        `  ${data.contributions.length} days, ${data.summary.clients.length} clients, ${data.summary.models.length} models`
       )
     );
     console.error(pc.gray(`  Total: ${formatCurrency(data.summary.totalCost)}`));
@@ -1565,11 +1565,11 @@ async function handleWrappedCommand(options: WrappedCommandOptions) {
   spinner?.start(pc.gray(`Generating your ${year} Wrapped...`));
 
   try {
-    const enabledSources = getEnabledSources(options);
+    const enabledClients = getEnabledClients(options);
     const outputPath = await generateWrapped({
       output: options.output,
       year,
-      sources: enabledSources,
+      clients: enabledClients,
       short: options.short,
       includeAgents: !options.clients,
       pinSisyphus: !options.disablePinned,
@@ -1700,7 +1700,7 @@ function formatPricePerMillion(costPerToken: number): string {
   return pc.green(`$${perMillion.toFixed(2)}`) + pc.gray(" / 1M tokens");
 }
 
-function getSourceLabel(source: string): string {
+function getClientLabel(source: string): string {
   switch (source) {
     case "opencode":
       return "OpenCode";

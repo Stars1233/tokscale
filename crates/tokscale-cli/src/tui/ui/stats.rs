@@ -2,7 +2,7 @@ use ratatui::prelude::*;
 use ratatui::widgets::{Block, Borders, Paragraph};
 
 use super::widgets::{
-    format_cost, format_tokens, get_model_color, get_source_color, get_source_display_name,
+    format_cost, format_tokens, get_client_color, get_client_display_name, get_model_color,
 };
 use crate::tui::app::{App, ClickAction};
 
@@ -459,24 +459,24 @@ fn render_breakdown_panel(frame: &mut Frame, app: &App, area: Rect) {
         > = std::collections::HashMap::new();
         for (model_name, model_info) in &daily.models {
             grouped
-                .entry(model_info.source.clone())
+                .entry(model_info.client.clone())
                 .or_default()
                 .push((model_name.clone(), model_info));
         }
 
-        for (source, mut models) in grouped {
+        for (client, mut models) in grouped {
             models.sort_by(|a, b| b.1.tokens.total().cmp(&a.1.tokens.total()));
 
-            let source_color = get_source_color(&source);
-            let source_name = get_source_display_name(&source);
+            let client_color = get_client_color(&client);
+            let client_name = get_client_display_name(&client);
             let model_count = models.len();
             let plural = if model_count > 1 { "s" } else { "" };
 
             lines.push(Line::from(vec![
                 Span::styled(
-                    format!("● {}", source_name),
+                    format!("● {}", client_name),
                     Style::default()
-                        .fg(source_color)
+                        .fg(client_color)
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(

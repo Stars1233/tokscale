@@ -7,7 +7,7 @@ export interface DailyContribution {
   totals: DailyTotals
   intensity: number
   tokenBreakdown: TokenBreakdown
-  sources: Array<SourceContribution>
+  clients: Array<ClientContribution>
 }
 
 /** Daily contribution totals */
@@ -25,7 +25,7 @@ export interface DataSummary {
   activeDays: number
   averagePerDay: number
   maxCostInSingleDay: number
-  sources: Array<string>
+  clients: Array<string>
   models: Array<string>
 }
 
@@ -97,10 +97,10 @@ export interface GraphResult {
   contributions: Array<DailyContribution>
 }
 
-/** Options for parsing local sources only (no Cursor) */
+/** Options for parsing local clients only (no Cursor) */
 export interface LocalParseOptions {
   homeDir?: string
-  sources?: Array<string>
+  clients?: Array<string>
   since?: string
   until?: string
   year?: string
@@ -124,7 +124,7 @@ export interface ModelReport {
 
 /** Model usage summary for reports */
 export interface ModelUsage {
-  source: string
+  client: string
   model: string
   provider: string
   input: number
@@ -163,7 +163,7 @@ export interface NativePricing {
 }
 
 export interface ParsedMessage {
-  source: string
+  client: string
   modelId: string
   providerId: string
   sessionId: string
@@ -177,7 +177,7 @@ export interface ParsedMessage {
   agent?: string
 }
 
-/** Result of parsing local sources (excludes Cursor - it's network-synced) */
+/** Result of parsing local clients (excludes Cursor - it's network-synced) */
 export interface ParsedMessages {
   messages: Array<ParsedMessage>
   opencodeCount: number
@@ -193,10 +193,10 @@ export interface ParsedMessages {
 }
 
 /**
- * Parse local sources only (OpenCode, Claude, Codex, Gemini - NO Cursor)
+ * Parse local clients only (OpenCode, Claude, Codex, Gemini - NO Cursor)
  * This can run in parallel with network operations (Cursor sync, pricing fetch)
  */
-export declare function parseLocalSources(options: LocalParseOptions): ParsedMessages
+export declare function parseLocalClients(options: LocalParseOptions): ParsedMessages
 
 export interface PricingLookupResult {
   modelId: string
@@ -211,9 +211,9 @@ export interface ReportAndGraph {
   graph: GraphResult
 }
 
-/** Source contribution for a specific day */
-export interface SourceContribution {
-  source: string
+/** Client contribution for a specific day */
+export interface ClientContribution {
+  client: string
   modelId: string
   providerId: string
   tokens: TokenBreakdown

@@ -197,7 +197,7 @@ mod tests {
         let messages = parse_kimi_file(file.path());
 
         assert_eq!(messages.len(), 1);
-        assert_eq!(messages[0].source, "kimi");
+        assert_eq!(messages[0].client, "kimi");
         assert_eq!(messages[0].model_id, "kimi-for-coding");
         assert_eq!(messages[0].provider_id, "moonshot");
         assert_eq!(messages[0].tokens.input, 1562);
