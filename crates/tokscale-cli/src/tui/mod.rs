@@ -54,7 +54,7 @@ pub fn run(
         theme: theme.to_string(),
         refresh,
         sessions_path: None,
-        sources: clients.clone(),
+        clients: clients.clone(),
         since: since.clone(),
         until: until.clone(),
         year: year.clone(),

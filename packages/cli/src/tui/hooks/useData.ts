@@ -158,7 +158,7 @@ async function loadData(
   const phase1Results = await Promise.allSettled([
     includeCursor && isCursorLoggedIn() ? syncCursorCache() : Promise.resolve({ synced: false, rows: 0, error: undefined }),
     localClients.length > 0
-      ? parseLocalSourcesAsync({ sources: localClients as ClientType[], since, until, year, sinceTs, untilTs })
+      ? parseLocalSourcesAsync({ clients: localClients as ClientType[], since, until, year, sinceTs, untilTs })
       : Promise.resolve({ messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, ampCount: 0, droidCount: 0, openclawCount: 0, piCount: 0, kimiCount: 0, processingTimeMs: 0 } as ParsedMessages),
   ]);
 

@@ -384,7 +384,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
         end: stats?.latestDate || null,
       },
       updatedAt: latestSubmission?.updatedAt?.toISOString() || null,
-      sources: latestSubmission?.sourcesUsed || [],
+      clients: latestSubmission?.sourcesUsed || [],
       models: latestSubmission?.modelsUsed || [],
       modelUsage,
       contributions: graphContributions,

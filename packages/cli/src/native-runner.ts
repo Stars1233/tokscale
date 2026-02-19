@@ -59,8 +59,9 @@ async function main() {
   let result: unknown;
 
   switch (method) {
+    case "parseLocalClients":
     case "parseLocalSources":
-      result = nativeCore.parseLocalSources(args[0] as Parameters<typeof nativeCore.parseLocalSources>[0]);
+      result = nativeCore.parseLocalClients(args[0] as Parameters<typeof nativeCore.parseLocalClients>[0]);
       break;
     case "finalizeReport":
       result = await nativeCore.finalizeReport(args[0] as Parameters<typeof nativeCore.finalizeReport>[0]);

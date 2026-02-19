@@ -85,12 +85,51 @@ const ExportMetaSchema = z.object({
   }),
 });
 
-const SubmissionDataSchema = z.object({
+/**
+ * Normalize legacy payloads that use "sources"/"source" to the new "clients"/"client" keys.
+ * This ensures older CLI versions can still submit data during the rename rollout.
+ */
+function normalizeLegacySources(data: unknown): unknown {
+  if (!data || typeof data !== "object") return data;
+  const d = { ...(data as Record<string, unknown>) };
+
+  if (d.summary && typeof d.summary === "object") {
+    const summary = { ...(d.summary as Record<string, unknown>) };
+    if ("sources" in summary && !("clients" in summary)) {
+      summary.clients = summary.sources;
+      delete summary.sources;
+    }
+    d.summary = summary;
+  }
+
+  if (Array.isArray(d.contributions)) {
+    d.contributions = (d.contributions as Record<string, unknown>[]).map((c) => {
+      if (!c || typeof c !== "object") return c;
+      const contrib = { ...c };
+      if ("sources" in contrib && !("clients" in contrib)) {
+        const items = Array.isArray(contrib.sources) ? contrib.sources : [];
+        contrib.clients = (items as Record<string, unknown>[]).map((s) => {
+          if (s && typeof s === "object" && "source" in s && !("client" in s)) {
+            const { source, ...rest } = s;
+            return { client: source, ...rest };
+          }
+          return s;
+        });
+        delete contrib.sources;
+      }
+      return contrib;
+    });
+  }
+
+  return d;
+}
+
+const SubmissionDataSchema = z.preprocess(normalizeLegacySources, z.object({
   meta: ExportMetaSchema,
   summary: DataSummarySchema,
   years: z.array(YearSummarySchema),
   contributions: z.array(DailyContributionSchema),
-});
+}));
 
 export type SubmissionData = z.infer<typeof SubmissionDataSchema>;
 

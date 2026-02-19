@@ -599,7 +599,7 @@ async function main() {
       try {
         localMessages = await parseLocalSourcesAsync({
           homeDir,
-          sources: ["opencode", "claude", "codex", "gemini", "amp", "droid", "openclaw", "pi", "kimi"],
+          clients: ["opencode", "claude", "codex", "gemini", "amp", "droid", "openclaw", "pi", "kimi"],
         });
       } catch (e) {
         console.error(`Error: ${(e as Error).message}`);
@@ -1030,7 +1030,7 @@ async function main() {
   // Global flags should go to main program
   const isGlobalFlag = ['--help', '-h', '--version', '-V'].includes(firstArg);
   const hasSubcommand = args.length > 0 && !firstArg.startsWith('-');
-  const knownCommands = ['monthly', 'models', 'sources', 'headless', 'graph', 'wrapped', 'login', 'logout', 'whoami', 'submit', 'cursor', 'tui', 'pricing', 'help'];
+  const knownCommands = ['monthly', 'models', 'sources', 'clients', 'headless', 'graph', 'wrapped', 'login', 'logout', 'whoami', 'submit', 'cursor', 'tui', 'pricing', 'help'];
   const isKnownCommand = hasSubcommand && knownCommands.includes(firstArg);
 
   if (isKnownCommand || isGlobalFlag) {
@@ -1135,7 +1135,7 @@ async function loadDataSourcesParallel(
     syncCursorData(),
     shouldParseLocal
       ? parseLocalSourcesAsync({
-          sources: localClients.filter(s => s !== 'cursor'),
+          clients: localClients.filter(s => s !== 'cursor'),
           since: dateFilters.since,
           until: dateFilters.until,
           year: dateFilters.year,

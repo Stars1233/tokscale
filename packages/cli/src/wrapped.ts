@@ -228,7 +228,7 @@ async function loadWrappedData(options: WrappedOptions): Promise<WrappedData> {
   const phase1Results = await Promise.allSettled([
     includeCursor && isCursorLoggedIn() ? syncCursorCache() : Promise.resolve({ synced: false, rows: 0, error: undefined }),
     localClients.length > 0
-      ? parseLocalSourcesAsync({ sources: localClients, since, until, year })
+      ? parseLocalSourcesAsync({ clients: localClients, since, until, year })
       : Promise.resolve({ messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, ampCount: 0, droidCount: 0, openclawCount: 0, piCount: 0, kimiCount: 0, processingTimeMs: 0 } as ParsedMessages),
   ]);
 

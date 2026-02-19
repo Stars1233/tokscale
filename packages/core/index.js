@@ -577,5 +577,6 @@ module.exports.finalizeMonthlyReport = nativeBinding.finalizeMonthlyReport
 module.exports.finalizeReport = nativeBinding.finalizeReport
 module.exports.finalizeReportAndGraph = nativeBinding.finalizeReportAndGraph
 module.exports.lookupPricing = nativeBinding.lookupPricing
-module.exports.parseLocalSources = nativeBinding.parseLocalSources
+module.exports.parseLocalClients = nativeBinding.parseLocalClients || nativeBinding.parseLocalSources
+module.exports.parseLocalSources = nativeBinding.parseLocalSources || nativeBinding.parseLocalClients
 module.exports.version = nativeBinding.version

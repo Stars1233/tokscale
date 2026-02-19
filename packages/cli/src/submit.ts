@@ -247,7 +247,7 @@ export async function submit(options: SubmitOptions = {}): Promise<void> {
      // Phase 1: Parse local clients + sync cursor in parallel
      const [localMessages, cursorSync] = await Promise.all([
        parseLocalSourcesAsync({
-         sources: localClients,
+          clients: localClients,
         since: options.since,
         until: options.until,
         year: options.year,

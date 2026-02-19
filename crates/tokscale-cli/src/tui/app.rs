@@ -14,7 +14,7 @@ pub struct TuiConfig {
     pub theme: String,
     pub refresh: u64,
     pub sessions_path: Option<String>,
-    pub sources: Option<Vec<String>>,
+    pub clients: Option<Vec<String>>,
     pub since: Option<String>,
     pub until: Option<String>,
     pub year: Option<String>,
@@ -145,9 +145,9 @@ impl App {
 
         let mut enabled_clients = HashSet::new();
 
-        if let Some(ref cli_sources) = config.sources {
-            for source_str in cli_sources {
-                match source_str.as_str() {
+        if let Some(ref cli_clients) = config.clients {
+            for client_str in cli_clients {
+                match client_str.as_str() {
                     "opencode" => enabled_clients.insert(Client::OpenCode),
                     "claude" => enabled_clients.insert(Client::Claude),
                     "codex" => enabled_clients.insert(Client::Codex),
@@ -744,7 +744,7 @@ mod tests {
             theme: "blue".to_string(),
             refresh: 0,
             sessions_path: None,
-            sources: None,
+            clients: None,
             since: None,
             until: None,
             year: None,
@@ -769,7 +769,7 @@ mod tests {
             theme: "blue".to_string(),
             refresh: 0,
             sessions_path: None,
-            sources: None,
+            clients: None,
             since: None,
             until: None,
             year: None,
@@ -812,7 +812,7 @@ mod tests {
             theme: "blue".to_string(),
             refresh: 0,
             sessions_path: None,
-            sources: None,
+            clients: None,
             since: None,
             until: None,
             year: None,
@@ -855,7 +855,7 @@ mod tests {
             theme: "blue".to_string(),
             refresh: 0,
             sessions_path: None,
-            sources: None,
+            clients: None,
             since: None,
             until: None,
             year: None,
@@ -892,7 +892,7 @@ mod tests {
             theme: "blue".to_string(),
             refresh: 0,
             sessions_path: None,
-            sources: None,
+            clients: None,
             since: None,
             until: None,
             year: None,
@@ -926,7 +926,7 @@ mod tests {
             theme: "blue".to_string(),
             refresh: 0,
             sessions_path: None,
-            sources: None,
+            clients: None,
             since: None,
             until: None,
             year: None,
@@ -944,7 +944,7 @@ mod tests {
             theme: "blue".to_string(),
             refresh: 0,
             sessions_path: None,
-            sources: None,
+            clients: None,
             since: None,
             until: None,
             year: None,
