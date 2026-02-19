@@ -388,7 +388,7 @@ impl PricingLookup {
                 matched_key: key.clone(),
             });
         }
-        if let Some(model_part) = model_id.split('/').last() {
+        if let Some(model_part) = model_id.split('/').next_back() {
             if model_part != model_id {
                 if let Some(key) = self.cursor_lower.get(model_part) {
                     return Some(LookupResult {

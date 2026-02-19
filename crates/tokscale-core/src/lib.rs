@@ -57,17 +57,12 @@ pub fn normalize_model_for_grouping(model_id: &str) -> String {
     name
 }
 
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, serde::Serialize)]
 pub enum GroupBy {
     Model,
+    #[default]
     ClientModel,
     ClientProviderModel,
-}
-
-impl Default for GroupBy {
-    fn default() -> Self {
-        GroupBy::ClientModel
-    }
 }
 
 impl std::fmt::Display for GroupBy {
@@ -294,23 +289,24 @@ fn parse_all_messages_with_pricing(
     let mut opencode_seen: HashSet<String> = HashSet::new();
 
     if let Some(db_path) = &scan_result.opencode_db {
-        let sqlite_messages: Vec<UnifiedMessage> = sessions::opencode::parse_opencode_sqlite(db_path)
-            .into_iter()
-            .map(|mut msg| {
-                msg.cost = pricing.calculate_cost(
-                    &msg.model_id,
-                    msg.tokens.input,
-                    msg.tokens.output,
-                    msg.tokens.cache_read,
-                    msg.tokens.cache_write,
-                    msg.tokens.reasoning,
-                );
-                if let Some(ref key) = msg.dedup_key {
-                    opencode_seen.insert(key.clone());
-                }
-                msg
-            })
-            .collect();
+        let sqlite_messages: Vec<UnifiedMessage> =
+            sessions::opencode::parse_opencode_sqlite(db_path)
+                .into_iter()
+                .map(|mut msg| {
+                    msg.cost = pricing.calculate_cost(
+                        &msg.model_id,
+                        msg.tokens.input,
+                        msg.tokens.output,
+                        msg.tokens.cache_read,
+                        msg.tokens.cache_write,
+                        msg.tokens.reasoning,
+                    );
+                    if let Some(ref key) = msg.dedup_key {
+                        opencode_seen.insert(key.clone());
+                    }
+                    msg
+                })
+                .collect();
         all_messages.extend(sqlite_messages);
     }
 
@@ -330,13 +326,11 @@ fn parse_all_messages_with_pricing(
             Some(msg)
         })
         .collect();
-    all_messages.extend(
-        opencode_messages
-            .into_iter()
-            .filter(|msg| {
-                msg.dedup_key.as_ref().map_or(true, |key| opencode_seen.insert(key.clone()))
-            }),
-    );
+    all_messages.extend(opencode_messages.into_iter().filter(|msg| {
+        msg.dedup_key
+            .as_ref()
+            .is_none_or(|key| opencode_seen.insert(key.clone()))
+    }));
 
     let claude_messages_raw: Vec<(String, UnifiedMessage)> = scan_result
         .claude_files
@@ -626,10 +620,10 @@ pub async fn get_model_report(options: ReportOptions) -> Result<ModelReport, Str
             }
         }
 
-        if *group_by != GroupBy::ClientProviderModel {
-            if !entry.provider.split(", ").any(|p| p == msg.provider_id) {
-                entry.provider = format!("{}, {}", entry.provider, msg.provider_id);
-            }
+        if *group_by != GroupBy::ClientProviderModel
+            && !entry.provider.split(", ").any(|p| p == msg.provider_id)
+        {
+            entry.provider = format!("{}, {}", entry.provider, msg.provider_id);
         }
 
         entry.input += msg.tokens.input;
@@ -1208,8 +1202,14 @@ mod tests {
 
     #[test]
     fn test_group_by_from_str_whitespace_handling() {
-        assert_eq!(GroupBy::from_str("client, model").unwrap(), GroupBy::ClientModel);
+        assert_eq!(
+            GroupBy::from_str("client, model").unwrap(),
+            GroupBy::ClientModel
+        );
         assert_eq!(GroupBy::from_str(" model ").unwrap(), GroupBy::Model);
-        assert_eq!(GroupBy::from_str("client , provider , model").unwrap(), GroupBy::ClientProviderModel);
+        assert_eq!(
+            GroupBy::from_str("client , provider , model").unwrap(),
+            GroupBy::ClientProviderModel
+        );
     }
 }
