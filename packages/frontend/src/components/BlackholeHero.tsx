@@ -49,7 +49,7 @@ export function BlackholeHero() {
         <CommandCard>
           <CopyButton onClick={handleCopy}>
             <CopyButtonText>
-              {copied ? "Copied" : "Copy"}
+              {copied ? "Copied!" : "Copy"}
             </CopyButtonText>
           </CopyButton>
           
