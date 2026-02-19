@@ -1,4 +1,6 @@
+use std::cell::RefCell;
 use std::collections::HashSet;
+use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
@@ -8,6 +10,7 @@ use ratatui::layout::Rect;
 use super::data::{DailyUsage, DataLoader, ModelUsage, Source, UsageData};
 use super::settings::Settings;
 use super::themes::{Theme, ThemeName};
+use super::ui::dialog::{DialogStack, SourcePickerDialog};
 
 /// Configuration for TUI initialization
 pub struct TuiConfig {
@@ -105,7 +108,7 @@ pub struct App {
     pub data: UsageData,
     pub data_loader: DataLoader,
 
-    pub enabled_sources: HashSet<Source>,
+    pub enabled_sources: Rc<RefCell<HashSet<Source>>>,
     pub sort_field: SortField,
     pub sort_direction: SortDirection,
 
@@ -132,6 +135,10 @@ pub struct App {
     pub background_loading: bool,
 
     pub needs_reload: bool,
+
+    pub dialog_stack: DialogStack,
+
+    pub dialog_needs_reload: Rc<RefCell<bool>>,
 }
 
 impl App {
@@ -186,6 +193,8 @@ impl App {
 
         let data = cached_data.unwrap_or_default();
         let has_data = !data.models.is_empty();
+        let dialog_stack = DialogStack::new(theme.clone());
+        let dialog_needs_reload = Rc::new(RefCell::new(false));
 
         Ok(Self {
             should_quit: false,
@@ -194,7 +203,7 @@ impl App {
             settings,
             data,
             data_loader,
-            enabled_sources,
+            enabled_sources: Rc::new(RefCell::new(enabled_sources)),
             sort_field: SortField::Cost,
             sort_direction: SortDirection::Descending,
             scroll_offset: 0,
@@ -216,6 +225,8 @@ impl App {
             spinner_frame: 0,
             background_loading: false,
             needs_reload: false,
+            dialog_stack,
+            dialog_needs_reload,
         })
     }
 
@@ -250,12 +261,22 @@ impl App {
         {
             self.needs_reload = true;
         }
+
+        if *self.dialog_needs_reload.borrow() {
+            *self.dialog_needs_reload.borrow_mut() = false;
+            self.needs_reload = true;
+        }
     }
 
     pub fn handle_key_event(&mut self, key: KeyEvent) -> bool {
         if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
             self.should_quit = true;
             return true;
+        }
+
+        if self.dialog_stack.is_active() {
+            self.dialog_stack.handle_key(key.code);
+            return false;
         }
 
         match key.code {
@@ -315,6 +336,9 @@ impl App {
             KeyCode::Char('e') => {
                 self.export_to_json();
             }
+            KeyCode::Char('s') => {
+                self.open_source_picker();
+            }
             KeyCode::Char(c @ '0'..='9') => {
                 self.toggle_source(c);
             }
@@ -332,6 +356,11 @@ impl App {
     }
 
     pub fn handle_mouse_event(&mut self, event: MouseEvent) {
+        if self.dialog_stack.is_active() {
+            self.dialog_stack.handle_mouse(event);
+            return;
+        }
+
         if let MouseEventKind::Down(MouseButton::Left) = event.kind {
             let x = event.column;
             let y = event.row;
@@ -459,6 +488,7 @@ impl App {
     fn cycle_theme(&mut self) {
         let new_theme = self.theme.name.next();
         self.theme = Theme::from_name(new_theme);
+        self.dialog_stack.set_theme(self.theme.clone());
         self.settings.set_theme(new_theme);
         if let Err(e) = self.settings.save() {
             self.set_status(&format!(
@@ -471,15 +501,26 @@ impl App {
         }
     }
 
+    fn open_source_picker(&mut self) {
+        let dialog = SourcePickerDialog::new(
+            self.enabled_sources.clone(),
+            self.dialog_needs_reload.clone(),
+        );
+        self.dialog_stack.show(Box::new(dialog));
+    }
+
     fn toggle_source(&mut self, key: char) {
         if let Some(source) = Source::from_key(key) {
-            if self.enabled_sources.contains(&source) {
-                if self.enabled_sources.len() > 1 {
-                    self.enabled_sources.remove(&source);
+            let mut enabled = self.enabled_sources.borrow_mut();
+            if enabled.contains(&source) {
+                if enabled.len() > 1 {
+                    enabled.remove(&source);
+                    drop(enabled);
                     self.set_status(&format!("Disabled {}", source.as_str()));
                 }
             } else {
-                self.enabled_sources.insert(source);
+                enabled.insert(source);
+                drop(enabled);
                 self.set_status(&format!("Enabled {}", source.as_str()));
             }
             self.needs_reload = true;
@@ -1094,27 +1135,27 @@ mod tests {
     #[ignore] // triggers load_data() which requires network + filesystem I/O
     fn test_handle_key_source_toggle_1_9() {
         let mut app = make_app();
-        let initial_count = app.enabled_sources.len();
+        let initial_count = app.enabled_sources.borrow().len();
         assert!(initial_count > 1);
 
         app.handle_key_event(key(KeyCode::Char('1')));
-        assert_eq!(app.enabled_sources.len(), initial_count - 1);
-        assert!(!app.enabled_sources.contains(&Source::OpenCode));
+        assert_eq!(app.enabled_sources.borrow().len(), initial_count - 1);
+        assert!(!app.enabled_sources.borrow().contains(&Source::OpenCode));
 
         app.handle_key_event(key(KeyCode::Char('1')));
-        assert!(app.enabled_sources.contains(&Source::OpenCode));
+        assert!(app.enabled_sources.borrow().contains(&Source::OpenCode));
     }
 
     #[test]
     #[ignore] // triggers load_data() which requires network + filesystem I/O
     fn test_handle_key_source_toggle_prevents_empty() {
         let mut app = make_app();
-        app.enabled_sources.clear();
-        app.enabled_sources.insert(Source::OpenCode);
+        app.enabled_sources.borrow_mut().clear();
+        app.enabled_sources.borrow_mut().insert(Source::OpenCode);
 
         app.handle_key_event(key(KeyCode::Char('1')));
-        assert_eq!(app.enabled_sources.len(), 1);
-        assert!(app.enabled_sources.contains(&Source::OpenCode));
+        assert_eq!(app.enabled_sources.borrow().len(), 1);
+        assert!(app.enabled_sources.borrow().contains(&Source::OpenCode));
     }
 
     // ── handle_key_event: navigation ────────────────────────────────
@@ -1328,7 +1369,7 @@ mod tests {
     fn test_handle_mouse_click_source() {
         let mut app = make_app();
         app.add_click_area(Rect::new(0, 0, 10, 2), ClickAction::Source(Source::Claude));
-        let initial_has = app.enabled_sources.contains(&Source::Claude);
+        let initial_has = app.enabled_sources.borrow().contains(&Source::Claude);
 
         let event = MouseEvent {
             kind: MouseEventKind::Down(MouseButton::Left),
@@ -1337,7 +1378,10 @@ mod tests {
             modifiers: KeyModifiers::NONE,
         };
         app.handle_mouse_event(event);
-        assert_ne!(app.enabled_sources.contains(&Source::Claude), initial_has);
+        assert_ne!(
+            app.enabled_sources.borrow().contains(&Source::Claude),
+            initial_has
+        );
     }
 
     #[test]

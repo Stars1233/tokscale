@@ -235,11 +235,11 @@ fn run_loop_with_background(
             app.set_background_loading(true);
 
             let tx = bg_tx.clone();
-            let sources: Vec<Source> = app.enabled_sources.iter().copied().collect();
+            let sources: Vec<Source> = app.enabled_sources.borrow().iter().copied().collect();
             let since = app.data_loader.since.clone();
             let until = app.data_loader.until.clone();
             let year = app.data_loader.year.clone();
-            let enabled_sources = app.enabled_sources.clone();
+            let enabled_sources = app.enabled_sources.borrow().clone();
 
             thread::spawn(move || {
                 let loader = DataLoader::with_filters(None, since, until, year);
