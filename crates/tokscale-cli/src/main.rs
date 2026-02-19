@@ -1026,6 +1026,7 @@ impl Drop for LightSpinner {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn run_models_report(
     json: bool,
     sources: Option<Vec<String>>,
@@ -1165,7 +1166,7 @@ fn run_models_report(
                         let clients_str = entry.merged_clients.as_deref().unwrap_or(&entry.source);
                         let capitalized_clients = clients_str
                             .split(", ")
-                            .map(|s| capitalize_source(s))
+                            .map(capitalize_source)
                             .collect::<Vec<_>>()
                             .join(", ");
                         table.add_row(vec![
@@ -1176,7 +1177,8 @@ fn run_models_report(
                                 .set_alignment(CellAlignment::Right),
                             Cell::new(format_tokens_with_commas(entry.output))
                                 .set_alignment(CellAlignment::Right),
-                            Cell::new(format_currency(entry.cost)).set_alignment(CellAlignment::Right),
+                            Cell::new(format_currency(entry.cost))
+                                .set_alignment(CellAlignment::Right),
                         ]);
                     }
 
@@ -1216,7 +1218,8 @@ fn run_models_report(
                                 .set_alignment(CellAlignment::Right),
                             Cell::new(format_tokens_with_commas(entry.output))
                                 .set_alignment(CellAlignment::Right),
-                            Cell::new(format_currency(entry.cost)).set_alignment(CellAlignment::Right),
+                            Cell::new(format_currency(entry.cost))
+                                .set_alignment(CellAlignment::Right),
                         ]);
                     }
 
@@ -1254,12 +1257,13 @@ fn run_models_report(
                     ]);
 
                     for entry in &report.entries {
-                        let total = entry.input + entry.output + entry.cache_write + entry.cache_read;
+                        let total =
+                            entry.input + entry.output + entry.cache_write + entry.cache_read;
 
                         let clients_str = entry.merged_clients.as_deref().unwrap_or(&entry.source);
                         let capitalized_clients = clients_str
                             .split(", ")
-                            .map(|s| capitalize_source(s))
+                            .map(capitalize_source)
                             .collect::<Vec<_>>()
                             .join(", ");
                         table.add_row(vec![
@@ -1276,7 +1280,8 @@ fn run_models_report(
                                 .set_alignment(CellAlignment::Right),
                             Cell::new(format_tokens_with_commas(total))
                                 .set_alignment(CellAlignment::Right),
-                            Cell::new(format_currency(entry.cost)).set_alignment(CellAlignment::Right),
+                            Cell::new(format_currency(entry.cost))
+                                .set_alignment(CellAlignment::Right),
                         ]);
                     }
 
@@ -1325,7 +1330,8 @@ fn run_models_report(
                     ]);
 
                     for entry in &report.entries {
-                        let total = entry.input + entry.output + entry.cache_write + entry.cache_read;
+                        let total =
+                            entry.input + entry.output + entry.cache_write + entry.cache_read;
 
                         table.add_row(vec![
                             Cell::new(capitalize_source(&entry.source)),
@@ -1342,7 +1348,8 @@ fn run_models_report(
                                 .set_alignment(CellAlignment::Right),
                             Cell::new(format_tokens_with_commas(total))
                                 .set_alignment(CellAlignment::Right),
-                            Cell::new(format_currency(entry.cost)).set_alignment(CellAlignment::Right),
+                            Cell::new(format_currency(entry.cost))
+                                .set_alignment(CellAlignment::Right),
                         ]);
                     }
 
@@ -1387,8 +1394,10 @@ fn run_models_report(
         println!("\n  \x1b[36m{}\x1b[0m\n", title);
         println!("{}", dim_borders(&table.to_string()));
 
-        let total_tokens =
-            report.total_input + report.total_output + report.total_cache_write + report.total_cache_read;
+        let total_tokens = report.total_input
+            + report.total_output
+            + report.total_cache_write
+            + report.total_cache_read;
         println!(
             "\x1b[90m\n  Total: {} messages, {} tokens, \x1b[32m{}\x1b[90m\x1b[0m",
             format_tokens_with_commas(report.total_messages as i64),
@@ -1408,6 +1417,7 @@ fn run_models_report(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn run_monthly_report(
     json: bool,
     sources: Option<Vec<String>>,
@@ -1543,8 +1553,10 @@ fn run_monthly_report(
                 table.add_row(vec![
                     Cell::new(entry.month.clone()),
                     Cell::new(models_col),
-                    Cell::new(format_tokens_with_commas(entry.input)).set_alignment(CellAlignment::Right),
-                    Cell::new(format_tokens_with_commas(entry.output)).set_alignment(CellAlignment::Right),
+                    Cell::new(format_tokens_with_commas(entry.input))
+                        .set_alignment(CellAlignment::Right),
+                    Cell::new(format_tokens_with_commas(entry.output))
+                        .set_alignment(CellAlignment::Right),
                     Cell::new(format_currency(entry.cost)).set_alignment(CellAlignment::Right),
                 ]);
             }
@@ -1554,12 +1566,16 @@ fn run_monthly_report(
                     .fg(Color::Yellow)
                     .add_attribute(Attribute::Bold),
                 Cell::new(""),
-                Cell::new(format_tokens_with_commas(report.entries.iter().map(|e| e.input).sum()))
-                    .fg(Color::Yellow)
-                    .set_alignment(CellAlignment::Right),
-                Cell::new(format_tokens_with_commas(report.entries.iter().map(|e| e.output).sum()))
-                    .fg(Color::Yellow)
-                    .set_alignment(CellAlignment::Right),
+                Cell::new(format_tokens_with_commas(
+                    report.entries.iter().map(|e| e.input).sum(),
+                ))
+                .fg(Color::Yellow)
+                .set_alignment(CellAlignment::Right),
+                Cell::new(format_tokens_with_commas(
+                    report.entries.iter().map(|e| e.output).sum(),
+                ))
+                .fg(Color::Yellow)
+                .set_alignment(CellAlignment::Right),
                 Cell::new(format_currency(report.total_cost))
                     .fg(Color::Yellow)
                     .set_alignment(CellAlignment::Right),
@@ -1599,8 +1615,10 @@ fn run_monthly_report(
                 table.add_row(vec![
                     Cell::new(entry.month.clone()),
                     Cell::new(models_col),
-                    Cell::new(format_tokens_with_commas(entry.input)).set_alignment(CellAlignment::Right),
-                    Cell::new(format_tokens_with_commas(entry.output)).set_alignment(CellAlignment::Right),
+                    Cell::new(format_tokens_with_commas(entry.input))
+                        .set_alignment(CellAlignment::Right),
+                    Cell::new(format_tokens_with_commas(entry.output))
+                        .set_alignment(CellAlignment::Right),
                     Cell::new(format_tokens_with_commas(entry.cache_write))
                         .set_alignment(CellAlignment::Right),
                     Cell::new(format_tokens_with_commas(entry.cache_read))
@@ -1701,7 +1719,7 @@ fn run_wrapped_command(
         }
         Err(err) => {
             eprintln!("{}", "\nError generating wrapped image:".red());
-            eprintln!("{}", format!("  {}\n", err));
+            eprintln!("  {}\n", err);
             std::process::exit(1);
         }
     }
@@ -1902,7 +1920,9 @@ fn format_model_name(model: &str) -> String {
     let name = model.strip_prefix("claude-").unwrap_or(model);
     if name.len() > 9 {
         let potential_date = &name[name.len() - 8..];
-        if potential_date.chars().all(|c| c.is_ascii_digit()) && name.as_bytes()[name.len() - 9] == b'-' {
+        if potential_date.chars().all(|c| c.is_ascii_digit())
+            && name.as_bytes()[name.len() - 9] == b'-'
+        {
             return name[..name.len() - 9].to_string();
         }
     }
@@ -2535,7 +2555,7 @@ fn run_graph_command(
     let show_progress = output.is_some() && !no_spinner;
     let include_cursor = sources
         .as_ref()
-        .map_or(true, |s| s.iter().any(|src| src == "cursor"));
+        .is_none_or(|s| s.iter().any(|src| src == "cursor"));
     let has_cursor_cache = cursor::has_cursor_usage_cache();
     let mut cursor_sync_result: Option<cursor::SyncCursorResult> = None;
 
@@ -2679,7 +2699,7 @@ fn run_submit_command(
 
     let include_cursor = sources
         .as_ref()
-        .map_or(true, |s| s.iter().any(|src| src == "cursor"));
+        .is_none_or(|s| s.iter().any(|src| src == "cursor"));
     let has_cursor_cache = cursor::has_cursor_usage_cache();
     if include_cursor && cursor::is_cursor_logged_in() {
         println!("{}", "  Syncing Cursor usage data...".bright_black());
@@ -3332,14 +3352,8 @@ mod tests {
 
     #[test]
     fn test_get_date_range_label_year() {
-        let label = get_date_range_label(
-            false,
-            false,
-            false,
-            &None,
-            &None,
-            &Some("2024".to_string()),
-        );
+        let label =
+            get_date_range_label(false, false, false, &None, &None, &Some("2024".to_string()));
         assert_eq!(label, Some("2024".to_string()));
     }
 

@@ -10,7 +10,9 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tokio::runtime::Runtime;
-use tokscale_core::{generate_graph, parse_local_sources, GroupBy, LocalParseOptions, ReportOptions};
+use tokscale_core::{
+    generate_graph, parse_local_sources, GroupBy, LocalParseOptions, ReportOptions,
+};
 
 const SCALE: i32 = 2;
 const IMAGE_WIDTH: i32 = 1200 * SCALE;
@@ -112,7 +114,7 @@ async fn generate_wrapped(options: WrappedOptions) -> Result<String> {
     let opencode_enabled = options
         .sources
         .as_ref()
-        .map_or(true, |sources| sources.iter().any(|s| s == "opencode"));
+        .is_none_or(|sources| sources.iter().any(|s| s == "opencode"));
     let effective_include_agents = agents_requested && has_agent_data;
 
     if agents_requested && opencode_enabled && !has_agent_data {
@@ -503,7 +505,7 @@ async fn generate_wrapped_image(data: &WrappedData, options: &RenderOptions) -> 
                             logo_size,
                             logo_size,
                             logo_radius,
-                            1 * SCALE,
+                            SCALE,
                             COLOR_GRADE0,
                         );
 
@@ -657,7 +659,7 @@ async fn generate_wrapped_image(data: &WrappedData, options: &RenderOptions) -> 
                             logo_size,
                             logo_size,
                             logo_radius,
-                            1 * SCALE,
+                            SCALE,
                             COLOR_GRADE0,
                         );
                     }
@@ -962,6 +964,7 @@ fn draw_image_rounded(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn draw_rounded_border(
     canvas: &mut RgbaImage,
     x: i32,
@@ -1769,7 +1772,10 @@ mod tests {
     #[test]
     fn test_format_number_with_commas_i64_large() {
         assert_eq!(format_number_with_commas_i64(1_234_567), "1,234,567");
-        assert_eq!(format_number_with_commas_i64(1_000_000_000), "1,000,000,000");
+        assert_eq!(
+            format_number_with_commas_i64(1_000_000_000),
+            "1,000,000,000"
+        );
     }
 
     #[test]
@@ -1859,10 +1865,7 @@ mod tests {
             strip_date_suffix("claude-4-20250514".to_string()),
             "claude-4"
         );
-        assert_eq!(
-            strip_date_suffix("gpt-4-20240101".to_string()),
-            "gpt-4"
-        );
+        assert_eq!(strip_date_suffix("gpt-4-20240101".to_string()), "gpt-4");
     }
 
     #[test]
@@ -1933,10 +1936,7 @@ mod tests {
             format_model_name("claude-3-5-sonnet-20241022"),
             "Claude 3.5 Sonnet"
         );
-        assert_eq!(
-            format_model_name("claude-3-opus-20240229"),
-            "Claude 3 Opus"
-        );
+        assert_eq!(format_model_name("claude-3-opus-20240229"), "Claude 3 Opus");
     }
 
     #[test]
@@ -2420,10 +2420,7 @@ mod tests {
             get_provider_from_model("anthropic/claude-sonnet-4"),
             Some("anthropic")
         );
-        assert_eq!(
-            get_provider_from_model("openai/gpt-4o"),
-            Some("openai")
-        );
+        assert_eq!(get_provider_from_model("openai/gpt-4o"), Some("openai"));
     }
 
     #[test]

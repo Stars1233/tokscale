@@ -245,7 +245,7 @@ impl DataLoader {
             all_messages.extend(json_messages.into_iter().filter(|msg| {
                 msg.dedup_key
                     .as_ref()
-                    .map_or(true, |key| opencode_seen.insert(key.clone()))
+                    .is_none_or(|key| opencode_seen.insert(key.clone()))
             }));
         }
 
@@ -420,7 +420,7 @@ impl DataLoader {
             model_entry.cost += msg_cost;
 
             let session_key = format!("{}:{}", msg.source, msg.session_id);
-            let model_sessions = model_session_ids.entry(key).or_insert_with(HashSet::new);
+            let model_sessions = model_session_ids.entry(key).or_default();
             if model_sessions.insert(session_key) {
                 model_entry.session_count += 1;
             }
@@ -806,7 +806,7 @@ mod tests {
             Some("2024-12-31".to_string()),
             Some("2024".to_string()),
         );
-        
+
         assert_eq!(loader._sessions_path, Some(PathBuf::from("/tmp/sessions")));
         assert_eq!(loader.since, Some("2024-01-01".to_string()));
         assert_eq!(loader.until, Some("2024-12-31".to_string()));

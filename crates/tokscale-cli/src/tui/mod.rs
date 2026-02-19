@@ -34,6 +34,7 @@ use crossterm::{
 };
 use ratatui::prelude::*;
 
+#[allow(clippy::too_many_arguments)]
 pub fn run(
     theme: &str,
     refresh: u64,

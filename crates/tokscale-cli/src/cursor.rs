@@ -79,12 +79,12 @@ fn migrate_cache_dir_from_old_path() {
     let Ok(new_dir) = get_cursor_cache_dir() else {
         return;
     };
-    if !new_dir.exists() && old_dir.exists() {
-        if fs::create_dir_all(&new_dir).is_ok() {
-            if copy_dir_recursive(&old_dir, &new_dir).is_ok() {
-                let _ = fs::remove_dir_all(&old_dir);
-            }
-        }
+    if !new_dir.exists()
+        && old_dir.exists()
+        && fs::create_dir_all(&new_dir).is_ok()
+        && copy_dir_recursive(&old_dir, &new_dir).is_ok()
+    {
+        let _ = fs::remove_dir_all(&old_dir);
     }
 }
 
@@ -135,63 +135,63 @@ fn count_cursor_csv_rows(csv_text: &str) -> usize {
 }
 
 fn atomic_write_file(path: &std::path::Path, contents: &str) -> Result<()> {
-     let parent = path
-         .parent()
-         .ok_or_else(|| anyhow::anyhow!("Invalid cache path"))?;
-     if !parent.exists() {
-         fs::create_dir_all(parent)?;
-     }
+    let parent = path
+        .parent()
+        .ok_or_else(|| anyhow::anyhow!("Invalid cache path"))?;
+    if !parent.exists() {
+        fs::create_dir_all(parent)?;
+    }
 
-     let temp_name = format!(
-         ".tmp-{}-{}",
-         path.file_name()
-             .and_then(|name| name.to_str())
-             .unwrap_or("cursor"),
-         std::process::id()
-     );
-     let temp_path = parent.join(temp_name);
+    let temp_name = format!(
+        ".tmp-{}-{}",
+        path.file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("cursor"),
+        std::process::id()
+    );
+    let temp_path = parent.join(temp_name);
 
-     #[cfg(unix)]
-     {
-         use std::fs::OpenOptions;
-         use std::os::unix::fs::OpenOptionsExt;
+    #[cfg(unix)]
+    {
+        use std::fs::OpenOptions;
+        use std::os::unix::fs::OpenOptionsExt;
 
-         let mut file = OpenOptions::new()
-             .write(true)
-             .create(true)
-             .truncate(true)
-             .mode(0o600)
-             .open(&temp_path)?;
-         file.write_all(contents.as_bytes())?;
-     }
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(&temp_path)?;
+        file.write_all(contents.as_bytes())?;
+    }
 
-     #[cfg(not(unix))]
-     {
-         fs::write(&temp_path, contents)?;
-     }
+    #[cfg(not(unix))]
+    {
+        fs::write(&temp_path, contents)?;
+    }
 
-     if let Err(err) = fs::rename(&temp_path, path) {
-         if path.exists() {
-             match fs::copy(&temp_path, path) {
-                 Ok(_) => {
-                     let _ = fs::remove_file(&temp_path);
-                 }
-                 Err(copy_err) => {
-                     let _ = fs::remove_file(&temp_path);
-                     return Err(anyhow::anyhow!(
-                         "Failed to persist file with rename ({}) and copy fallback ({})",
-                         err,
-                         copy_err
-                     ));
-                 }
-             }
-         } else {
-             let _ = fs::remove_file(&temp_path);
-             return Err(err.into());
-         }
-     }
-     Ok(())
- }
+    if let Err(err) = fs::rename(&temp_path, path) {
+        if path.exists() {
+            match fs::copy(&temp_path, path) {
+                Ok(_) => {
+                    let _ = fs::remove_file(&temp_path);
+                }
+                Err(copy_err) => {
+                    let _ = fs::remove_file(&temp_path);
+                    return Err(anyhow::anyhow!(
+                        "Failed to persist file with rename ({}) and copy fallback ({})",
+                        err,
+                        copy_err
+                    ));
+                }
+            }
+        } else {
+            let _ = fs::remove_file(&temp_path);
+            return Err(err.into());
+        }
+    }
+    Ok(())
+}
 
 fn ensure_config_dir() -> Result<()> {
     let config_dir = home_dir()?.join(".config/tokscale");
@@ -1173,10 +1173,7 @@ mod tests {
     #[test]
     fn test_sanitize_account_id_for_filename_basic() {
         // Alphanumeric, dots, underscores, hyphens should be preserved
-        assert_eq!(
-            sanitize_account_id_for_filename("user123"),
-            "user123"
-        );
+        assert_eq!(sanitize_account_id_for_filename("user123"), "user123");
         assert_eq!(
             sanitize_account_id_for_filename("user.name_123-test"),
             "user.name_123-test"
@@ -1194,10 +1191,7 @@ mod tests {
             sanitize_account_id_for_filename("user/name\\test"),
             "user-name-test"
         );
-        assert_eq!(
-            sanitize_account_id_for_filename("user name"),
-            "user-name"
-        );
+        assert_eq!(sanitize_account_id_for_filename("user name"), "user-name");
     }
 
     #[test]
@@ -1209,26 +1203,14 @@ mod tests {
         );
 
         // Leading/trailing hyphens should be trimmed
-        assert_eq!(
-            sanitize_account_id_for_filename("---user---"),
-            "user"
-        );
+        assert_eq!(sanitize_account_id_for_filename("---user---"), "user");
 
         // Empty after sanitization should return "account"
-        assert_eq!(
-            sanitize_account_id_for_filename("@@@"),
-            "account"
-        );
-        assert_eq!(
-            sanitize_account_id_for_filename(""),
-            "account"
-        );
+        assert_eq!(sanitize_account_id_for_filename("@@@"), "account");
+        assert_eq!(sanitize_account_id_for_filename(""), "account");
 
         // Whitespace only should return "account"
-        assert_eq!(
-            sanitize_account_id_for_filename("   "),
-            "account"
-        );
+        assert_eq!(sanitize_account_id_for_filename("   "), "account");
     }
 
     #[test]
@@ -1294,7 +1276,12 @@ mod tests {
     #[test]
     fn test_atomic_write_file_creates_parent_dirs() -> Result<()> {
         let temp_dir = TempDir::new()?;
-        let nested_path = temp_dir.path().join("a").join("b").join("c").join("test.txt");
+        let nested_path = temp_dir
+            .path()
+            .join("a")
+            .join("b")
+            .join("c")
+            .join("test.txt");
         let contents = "Nested file";
 
         atomic_write_file(&nested_path, contents)?;
@@ -1377,7 +1364,10 @@ mod tests {
         fs::create_dir_all(src.join("subdir1").join("subdir2"))?;
         fs::write(src.join("root.txt"), "Root")?;
         fs::write(src.join("subdir1").join("file1.txt"), "File 1")?;
-        fs::write(src.join("subdir1").join("subdir2").join("file2.txt"), "File 2")?;
+        fs::write(
+            src.join("subdir1").join("subdir2").join("file2.txt"),
+            "File 2",
+        )?;
 
         // Create destination directory
         fs::create_dir_all(&dst)?;
@@ -1388,10 +1378,20 @@ mod tests {
         // Verify nested structure was copied
         assert!(dst.join("root.txt").exists());
         assert!(dst.join("subdir1").join("file1.txt").exists());
-        assert!(dst.join("subdir1").join("subdir2").join("file2.txt").exists());
+        assert!(dst
+            .join("subdir1")
+            .join("subdir2")
+            .join("file2.txt")
+            .exists());
         assert_eq!(fs::read_to_string(dst.join("root.txt"))?, "Root");
-        assert_eq!(fs::read_to_string(dst.join("subdir1").join("file1.txt"))?, "File 1");
-        assert_eq!(fs::read_to_string(dst.join("subdir1").join("subdir2").join("file2.txt"))?, "File 2");
+        assert_eq!(
+            fs::read_to_string(dst.join("subdir1").join("file1.txt"))?,
+            "File 1"
+        );
+        assert_eq!(
+            fs::read_to_string(dst.join("subdir1").join("subdir2").join("file2.txt"))?,
+            "File 2"
+        );
 
         Ok(())
     }

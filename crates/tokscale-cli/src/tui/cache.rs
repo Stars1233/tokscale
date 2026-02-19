@@ -341,7 +341,7 @@ pub fn save_cached_data(data: &UsageData, enabled_sources: &HashSet<Source>) {
 
     // Ensure cache directory exists
     if let Some(dir) = cache_path.parent() {
-        if let Err(_) = fs::create_dir_all(dir) {
+        if fs::create_dir_all(dir).is_err() {
             return;
         }
     }
