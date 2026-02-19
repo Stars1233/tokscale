@@ -8,7 +8,7 @@ use tokio::runtime::Runtime;
 
 use tokscale_core::pricing::PricingService;
 use tokscale_core::sessions::UnifiedMessage;
-use tokscale_core::{scanner, sessions};
+use tokscale_core::{normalize_model_for_grouping, scanner, sessions};
 
 #[derive(Debug, Clone, Default)]
 pub struct TokenBreakdown {
@@ -380,10 +380,11 @@ impl DataLoader {
         let mut model_session_ids: HashMap<String, HashSet<String>> = HashMap::new();
 
         for msg in &messages {
-            let key = format!("{}:{}:{}", msg.source, msg.provider_id, msg.model_id);
+            let normalized_model = normalize_model_for_grouping(&msg.model_id);
+            let key = format!("{}:{}:{}", msg.source, msg.provider_id, normalized_model);
 
             let model_entry = model_map.entry(key.clone()).or_insert_with(|| ModelUsage {
-                model: msg.model_id.clone(),
+                model: normalized_model.clone(),
                 provider: msg.provider_id.clone(),
                 source: msg.source.clone(),
                 tokens: TokenBreakdown::default(),
