@@ -1,5 +1,6 @@
 mod bar_chart;
 mod daily;
+pub mod dialog;
 mod footer;
 mod header;
 mod models;
@@ -47,6 +48,10 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     }
 
     footer::render(frame, app, chunks[2]);
+
+    if app.dialog_stack.is_active() {
+        app.dialog_stack.render(frame, area);
+    }
 }
 
 fn render_loading(frame: &mut Frame, app: &App, area: Rect) {

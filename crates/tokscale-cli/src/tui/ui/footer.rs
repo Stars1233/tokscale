@@ -130,7 +130,7 @@ fn render_source_badges(frame: &mut Frame, app: &mut App, area: Rect) {
     ];
 
     for (client, key, short) in client_labels {
-        let enabled = app.enabled_clients.contains(&client);
+        let enabled = app.enabled_clients.borrow().contains(&client);
         let indicator = if enabled { "●" } else { "○" };
 
         let badge_text = if is_very_narrow {
@@ -202,7 +202,7 @@ fn render_help_row(frame: &mut Frame, app: &App, area: Rect) {
             Span::styled("·", Style::default().fg(app.theme.muted)),
             Span::styled("←→", Style::default().fg(app.theme.muted)),
             Span::styled("·", Style::default().fg(app.theme.muted)),
-            Span::styled("y", Style::default().fg(app.theme.muted)),
+            Span::styled("[s]", Style::default().fg(Color::Cyan)),
             Span::styled("·", Style::default().fg(app.theme.muted)),
             Span::styled("[p]", Style::default().fg(Color::Magenta)),
             Span::styled("·", Style::default().fg(app.theme.muted)),
@@ -213,9 +213,11 @@ fn render_help_row(frame: &mut Frame, app: &App, area: Rect) {
     } else {
         vec![
             Span::styled(
-                "↑↓ scroll • ←→/tab view • y copy • ",
+                "↑↓ scroll • ←→/tab view • ",
                 Style::default().fg(app.theme.muted),
             ),
+            Span::styled("[s:sources]", Style::default().fg(Color::Cyan)),
+            Span::styled(" • ", Style::default().fg(app.theme.muted)),
             Span::styled(
                 format!("[p:{}]", app.theme.name.as_str()),
                 Style::default().fg(Color::Magenta),
@@ -233,9 +235,9 @@ fn render_help_row(frame: &mut Frame, app: &App, area: Rect) {
                     app.theme.muted
                 }),
             ),
-            Span::styled(" [-/+ interval] • ", Style::default().fg(app.theme.muted)),
+            Span::styled(" • ", Style::default().fg(app.theme.muted)),
             Span::styled("[r:refresh]", Style::default().fg(Color::Yellow)),
-            Span::styled(" • e export • q quit", Style::default().fg(app.theme.muted)),
+            Span::styled(" • e • q", Style::default().fg(app.theme.muted)),
         ]
     };
 

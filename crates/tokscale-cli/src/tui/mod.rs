@@ -235,11 +235,11 @@ fn run_loop_with_background(
             app.set_background_loading(true);
 
             let tx = bg_tx.clone();
-            let clients: Vec<Client> = app.enabled_clients.iter().copied().collect();
+            let clients: Vec<Client> = app.enabled_clients.borrow().iter().copied().collect();
             let since = app.data_loader.since.clone();
             let until = app.data_loader.until.clone();
             let year = app.data_loader.year.clone();
-            let enabled_clients = app.enabled_clients.clone();
+            let enabled_clients = app.enabled_clients.borrow().clone();
 
             thread::spawn(move || {
                 let loader = DataLoader::with_filters(None, since, until, year);
