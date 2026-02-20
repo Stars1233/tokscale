@@ -57,10 +57,13 @@ fn render_main_row(frame: &mut Frame, app: &mut App, area: Rect) {
         let mut spans: Vec<Span> = Vec::new();
         let mut x_offset = chunks[0].x;
 
+        spans.push(Span::styled("Sort: ", Style::default().fg(app.theme.muted)));
+        x_offset += 6;
+
         let sort_buttons = [
             (SortField::Date, "Date"),
             (SortField::Cost, "Cost"),
-            (SortField::Tokens, "Tok"),
+            (SortField::Tokens, "Tokens"),
         ];
 
         for (field, label) in sort_buttons {
