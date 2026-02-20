@@ -1,6 +1,4 @@
 pub mod overlay;
-#[allow(dead_code)]
-pub mod select;
 pub mod source_picker;
 pub mod stack;
 
@@ -9,8 +7,6 @@ use ratatui::{layout::Rect, Frame};
 
 use crate::tui::themes::Theme;
 
-#[allow(unused_imports)]
-pub use select::{DialogSelect, DialogSelectItem};
 pub use source_picker::SourcePickerDialog;
 pub use stack::DialogStack;
 
