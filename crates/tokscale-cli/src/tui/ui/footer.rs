@@ -158,6 +158,8 @@ fn render_help_row(frame: &mut Frame, app: &App, area: Rect) {
             Span::styled("·", Style::default().fg(app.theme.muted)),
             Span::styled("[s]", Style::default().fg(Color::Cyan)),
             Span::styled("·", Style::default().fg(app.theme.muted)),
+            Span::styled("[g]", Style::default().fg(Color::Cyan)),
+            Span::styled("·", Style::default().fg(app.theme.muted)),
             Span::styled("[p]", Style::default().fg(Color::Magenta)),
             Span::styled("·", Style::default().fg(app.theme.muted)),
             Span::styled("[r]", Style::default().fg(Color::Yellow)),
@@ -171,6 +173,11 @@ fn render_help_row(frame: &mut Frame, app: &App, area: Rect) {
                 Style::default().fg(app.theme.muted),
             ),
             Span::styled("[s:sources]", Style::default().fg(Color::Cyan)),
+            Span::styled(" ", Style::default()),
+            Span::styled(
+                format!("[g:{}]", app.group_by.borrow()),
+                Style::default().fg(Color::Cyan),
+            ),
             Span::styled(" • ", Style::default().fg(app.theme.muted)),
             Span::styled(
                 format!("[p:{}]", app.theme.name.as_str()),

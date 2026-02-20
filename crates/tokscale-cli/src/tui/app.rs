@@ -109,6 +109,7 @@ pub struct App {
     pub data_loader: DataLoader,
 
     pub enabled_sources: Rc<RefCell<HashSet<Source>>>,
+    pub group_by: Rc<RefCell<tokscale_core::GroupBy>>,
     pub sort_field: SortField,
     pub sort_direction: SortDirection,
 
@@ -204,6 +205,7 @@ impl App {
             data,
             data_loader,
             enabled_sources: Rc::new(RefCell::new(enabled_sources)),
+            group_by: Rc::new(RefCell::new(tokscale_core::GroupBy::default())),
             sort_field: SortField::Cost,
             sort_direction: SortDirection::Descending,
             scroll_offset: 0,
@@ -338,6 +340,9 @@ impl App {
             }
             KeyCode::Char('s') => {
                 self.open_source_picker();
+            }
+            KeyCode::Char('g') => {
+                self.open_group_by_picker();
             }
             KeyCode::Enter => {
                 if self.current_tab == Tab::Stats {
@@ -500,6 +505,13 @@ impl App {
             self.enabled_sources.clone(),
             self.dialog_needs_reload.clone(),
         );
+        self.dialog_stack.show(Box::new(dialog));
+    }
+
+    fn open_group_by_picker(&mut self) {
+        use super::ui::dialog::GroupByPickerDialog;
+        let dialog =
+            GroupByPickerDialog::new(self.group_by.clone(), self.dialog_needs_reload.clone());
         self.dialog_stack.show(Box::new(dialog));
     }
 

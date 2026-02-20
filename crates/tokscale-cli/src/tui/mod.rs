@@ -133,10 +133,11 @@ pub fn run(
         let bg_until = until.clone();
         let bg_year = year.clone();
         let bg_enabled_sources = enabled_sources.clone();
+        let bg_group_by = app.group_by.borrow().clone();
 
         thread::spawn(move || {
             let loader = DataLoader::with_filters(None, bg_since, bg_until, bg_year);
-            let result = loader.load(&bg_sources);
+            let result = loader.load(&bg_sources, &bg_group_by);
 
             if let Ok(ref data) = result {
                 save_cached_data(data, &bg_enabled_sources);
@@ -241,10 +242,11 @@ fn run_loop_with_background(
             let until = app.data_loader.until.clone();
             let year = app.data_loader.year.clone();
             let enabled_sources = app.enabled_sources.borrow().clone();
+            let group_by = app.group_by.borrow().clone();
 
             thread::spawn(move || {
                 let loader = DataLoader::with_filters(None, since, until, year);
-                let result = loader.load(&sources);
+                let result = loader.load(&sources, &group_by);
                 if let Ok(ref data) = result {
                     save_cached_data(data, &enabled_sources);
                 }
@@ -292,7 +294,7 @@ pub fn test_data_loading() -> Result<()> {
         Source::Pi,
     ];
 
-    let data = loader.load(&all_sources)?;
+    let data = loader.load(&all_sources, &tokscale_core::GroupBy::default())?;
 
     println!("Loaded {} models", data.models.len());
     println!("Total cost: ${:.2}", data.total_cost);
