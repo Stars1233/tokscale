@@ -44,12 +44,12 @@ jobs:
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             build: cargo zigbuild --release -p tokscale-cli --target aarch64-unknown-linux-gnu
-            strip: strip target/aarch64-unknown-linux-gnu/release/tokscale
+            strip: ""
             bin_name: tokscale
           - host: ubuntu-latest
             target: aarch64-unknown-linux-musl
             build: cargo zigbuild --release -p tokscale-cli --target aarch64-unknown-linux-musl
-            strip: strip target/aarch64-unknown-linux-musl/release/tokscale
+            strip: ""
             bin_name: tokscale
           - host: windows-latest
             target: x86_64-pc-windows-msvc
