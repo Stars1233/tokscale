@@ -217,8 +217,9 @@ tokscale models --json > report.json   # 保存到文件
 - **键盘导航**：
   - `1-4` 或 `←/→/Tab`：切换视图
   - `↑/↓`：导航列表
-  - `c/n/t`：按成本/名称/Token 排序
-  - `1-0`：切换来源（OpenCode/Claude/Codex/Cursor/Gemini/Amp/Droid/OpenClaw/Pi/Kimi）
+  - `c/d/t`：按成本/日期/Token 排序
+  - `s`：打开来源选择对话框
+  - `g`：打开分组方式选择对话框（模型、客户端+模型、客户端+提供商+模型）
   - `p`：循环 9 种颜色主题
   - `r`：刷新数据
   - `e`：导出为 JSON

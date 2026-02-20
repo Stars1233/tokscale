@@ -221,8 +221,9 @@ The interactive TUI mode provides:
 - **Keyboard Navigation**:
   - `1-4` or `←/→/Tab`: Switch views
   - `↑/↓`: Navigate lists
-  - `c/n/t`: Sort by cost/name/tokens
-  - `1-0`: Toggle sources (OpenCode/Claude/Codex/Cursor/Gemini/Amp/Droid/OpenClaw/Pi/Kimi)
+  - `c/d/t`: Sort by cost/date/tokens
+  - `s`: Open source picker dialog
+  - `g`: Open group-by picker dialog (model, client+model, client+provider+model)
   - `p`: Cycle through 9 color themes
   - `r`: Refresh data
   - `e`: Export to JSON
