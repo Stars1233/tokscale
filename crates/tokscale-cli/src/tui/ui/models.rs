@@ -39,7 +39,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     let models = app.get_sorted_models();
     if models.is_empty() {
         let empty_msg =
-            Paragraph::new("No usage data found. Press 'r' to refresh or toggle sources with 1-8.")
+            Paragraph::new("No usage data found. Press 'r' to refresh or 's' to toggle sources.")
                 .style(Style::default().fg(theme_muted))
                 .alignment(Alignment::Center);
         frame.render_widget(empty_msg, inner);

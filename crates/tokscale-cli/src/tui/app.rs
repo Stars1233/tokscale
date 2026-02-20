@@ -95,7 +95,7 @@ pub struct ClickArea {
 #[derive(Debug, Clone)]
 pub enum ClickAction {
     Tab(Tab),
-    Source(Source),
+
     Sort(SortField),
     GraphCell { week: usize, day: usize },
 }
@@ -339,9 +339,6 @@ impl App {
             KeyCode::Char('s') => {
                 self.open_source_picker();
             }
-            KeyCode::Char(c @ '0'..='9') => {
-                self.toggle_source(c);
-            }
             KeyCode::Enter => {
                 if self.current_tab == Tab::Stats {
                     self.handle_graph_selection();
@@ -375,9 +372,6 @@ impl App {
                         ClickAction::Tab(tab) => {
                             self.current_tab = *tab;
                             self.reset_selection();
-                        }
-                        ClickAction::Source(source) => {
-                            self.toggle_source(source.key());
                         }
                         ClickAction::Sort(field) => {
                             self.set_sort(*field);
@@ -507,24 +501,6 @@ impl App {
             self.dialog_needs_reload.clone(),
         );
         self.dialog_stack.show(Box::new(dialog));
-    }
-
-    fn toggle_source(&mut self, key: char) {
-        if let Some(source) = Source::from_key(key) {
-            let mut enabled = self.enabled_sources.borrow_mut();
-            if enabled.contains(&source) {
-                if enabled.len() > 1 {
-                    enabled.remove(&source);
-                    drop(enabled);
-                    self.set_status(&format!("Disabled {}", source.as_str()));
-                }
-            } else {
-                enabled.insert(source);
-                drop(enabled);
-                self.set_status(&format!("Enabled {}", source.as_str()));
-            }
-            self.needs_reload = true;
-        }
     }
 
     fn toggle_auto_refresh(&mut self) {
@@ -1129,35 +1105,6 @@ mod tests {
         assert_eq!(app.sort_direction, SortDirection::Descending);
     }
 
-    // ── handle_key_event: source toggle ─────────────────────────────
-
-    #[test]
-    #[ignore] // triggers load_data() which requires network + filesystem I/O
-    fn test_handle_key_source_toggle_1_9() {
-        let mut app = make_app();
-        let initial_count = app.enabled_sources.borrow().len();
-        assert!(initial_count > 1);
-
-        app.handle_key_event(key(KeyCode::Char('1')));
-        assert_eq!(app.enabled_sources.borrow().len(), initial_count - 1);
-        assert!(!app.enabled_sources.borrow().contains(&Source::OpenCode));
-
-        app.handle_key_event(key(KeyCode::Char('1')));
-        assert!(app.enabled_sources.borrow().contains(&Source::OpenCode));
-    }
-
-    #[test]
-    #[ignore] // triggers load_data() which requires network + filesystem I/O
-    fn test_handle_key_source_toggle_prevents_empty() {
-        let mut app = make_app();
-        app.enabled_sources.borrow_mut().clear();
-        app.enabled_sources.borrow_mut().insert(Source::OpenCode);
-
-        app.handle_key_event(key(KeyCode::Char('1')));
-        assert_eq!(app.enabled_sources.borrow().len(), 1);
-        assert!(app.enabled_sources.borrow().contains(&Source::OpenCode));
-    }
-
     // ── handle_key_event: navigation ────────────────────────────────
 
     #[test]
@@ -1362,26 +1309,6 @@ mod tests {
         };
         app.handle_mouse_event(event);
         assert_eq!(app.current_tab, Tab::Models);
-    }
-
-    #[test]
-    #[ignore] // triggers load_data() via toggle_source
-    fn test_handle_mouse_click_source() {
-        let mut app = make_app();
-        app.add_click_area(Rect::new(0, 0, 10, 2), ClickAction::Source(Source::Claude));
-        let initial_has = app.enabled_sources.borrow().contains(&Source::Claude);
-
-        let event = MouseEvent {
-            kind: MouseEventKind::Down(MouseButton::Left),
-            column: 5,
-            row: 1,
-            modifiers: KeyModifiers::NONE,
-        };
-        app.handle_mouse_event(event);
-        assert_ne!(
-            app.enabled_sources.borrow().contains(&Source::Claude),
-            initial_has
-        );
     }
 
     #[test]
