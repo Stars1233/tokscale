@@ -205,7 +205,7 @@ impl App {
             data,
             data_loader,
             enabled_sources: Rc::new(RefCell::new(enabled_sources)),
-            group_by: Rc::new(RefCell::new(tokscale_core::GroupBy::default())),
+            group_by: Rc::new(RefCell::new(tokscale_core::GroupBy::Model)),
             sort_field: SortField::Cost,
             sort_direction: SortDirection::Descending,
             scroll_offset: 0,

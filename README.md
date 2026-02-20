@@ -232,6 +232,38 @@ The interactive TUI mode provides:
 - **Themes**: Green, Halloween, Teal, Blue, Pink, Purple, Orange, Monochrome, YlGnBu
 - **Settings Persistence**: Preferences saved to `~/.config/tokscale/settings.json` (see [Configuration](#configuration))
 
+### Group-By Strategies
+
+Press `g` in the TUI or use `--group-by` in `--light`/`--json` mode to control how model rows are aggregated:
+
+| Strategy | Flag | TUI Default | Effect |
+|----------|------|-------------|--------|
+| **Model** | `--group-by model` | ✅ | One row per model — merges all clients and providers |
+| **Client + Model** | `--group-by client,model` | | One row per client-model pair |
+| **Client + Provider + Model** | `--group-by client,provider,model` | | Most granular — no merging |
+
+**`--group-by model`** (most consolidated)
+
+| Clients | Providers | Model | Cost |
+|---------|-----------|-------|------|
+| OpenCode, Claude, Amp | github-copilot, anthropic | claude-opus-4-5 | $2,424 |
+| OpenCode, Claude | anthropic, github-copilot | claude-sonnet-4-5 | $1,332 |
+
+**`--group-by client,model`** (CLI default)
+
+| Client | Provider | Model | Cost |
+|--------|----------|-------|------|
+| OpenCode | github-copilot, anthropic | claude-opus-4-5 | $1,368 |
+| Claude | anthropic | claude-opus-4-5 | $970 |
+
+**`--group-by client,provider,model`** (most granular)
+
+| Client | Provider | Model | Cost |
+|--------|----------|-------|------|
+| OpenCode | github-copilot | claude-opus-4-5 | $1,200 |
+| OpenCode | anthropic | claude-opus-4-5 | $168 |
+| Claude | anthropic | claude-opus-4-5 | $970 |
+
 ### Filtering by Platform
 
 ```bash

@@ -227,6 +227,38 @@ tokscale models --json > report.json   # 파일로 저장
 - **테마**: Green, Halloween, Teal, Blue, Pink, Purple, Orange, Monochrome, YlGnBu
 - **설정 저장**: 테마 설정이 `~/.config/tokscale/tui-settings.json`에 저장됨
 
+### 그룹 기준 전략
+
+TUI에서 `g`를 누르거나 `--light`/`--json` 모드에서 `--group-by`를 사용하여 모델 행 집계 방식을 제어합니다:
+
+| 전략 | 플래그 | TUI 기본값 | 효과 |
+|------|--------|-----------|------|
+| **모델** | `--group-by model` | ✅ | 모델당 한 행 — 모든 클라이언트와 프로바이더 병합 |
+| **클라이언트 + 모델** | `--group-by client,model` | | 클라이언트-모델 쌍당 한 행 |
+| **클라이언트 + 프로바이더 + 모델** | `--group-by client,provider,model` | | 가장 세분화 — 병합 없음 |
+
+**`--group-by model`** (가장 통합)
+
+| 클라이언트 | 프로바이더 | 모델 | 비용 |
+|-----------|-----------|------|------|
+| OpenCode, Claude, Amp | github-copilot, anthropic | claude-opus-4-5 | $2,424 |
+| OpenCode, Claude | anthropic, github-copilot | claude-sonnet-4-5 | $1,332 |
+
+**`--group-by client,model`** (CLI 기본값)
+
+| 클라이언트 | 프로바이더 | 모델 | 비용 |
+|-----------|-----------|------|------|
+| OpenCode | github-copilot, anthropic | claude-opus-4-5 | $1,368 |
+| Claude | anthropic | claude-opus-4-5 | $970 |
+
+**`--group-by client,provider,model`** (가장 세분화)
+
+| 클라이언트 | 프로바이더 | 모델 | 비용 |
+|-----------|-----------|------|------|
+| OpenCode | github-copilot | claude-opus-4-5 | $1,200 |
+| OpenCode | anthropic | claude-opus-4-5 | $168 |
+| Claude | anthropic | claude-opus-4-5 | $970 |
+
 ### 플랫폼별 필터링
 
 ```bash

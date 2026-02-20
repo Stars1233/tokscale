@@ -228,6 +228,38 @@ tokscale models --json > report.json   # 保存到文件
 - **主题**：Green、Halloween、Teal、Blue、Pink、Purple、Orange、Monochrome、YlGnBu
 - **设置持久化**：主题偏好保存到 `~/.config/tokscale/tui-settings.json`
 
+### 分组策略
+
+在 TUI 中按 `g` 或在 `--light`/`--json` 模式下使用 `--group-by` 来控制模型行的聚合方式：
+
+| 策略 | 标志 | TUI 默认 | 效果 |
+|------|------|---------|------|
+| **模型** | `--group-by model` | ✅ | 每个模型一行 — 合并所有客户端和提供商 |
+| **客户端 + 模型** | `--group-by client,model` | | 每个客户端-模型对一行 |
+| **客户端 + 提供商 + 模型** | `--group-by client,provider,model` | | 最详细 — 不合并 |
+
+**`--group-by model`**（最精简）
+
+| 客户端 | 提供商 | 模型 | 费用 |
+|--------|--------|------|------|
+| OpenCode, Claude, Amp | github-copilot, anthropic | claude-opus-4-5 | $2,424 |
+| OpenCode, Claude | anthropic, github-copilot | claude-sonnet-4-5 | $1,332 |
+
+**`--group-by client,model`**（CLI 默认）
+
+| 客户端 | 提供商 | 模型 | 费用 |
+|--------|--------|------|------|
+| OpenCode | github-copilot, anthropic | claude-opus-4-5 | $1,368 |
+| Claude | anthropic | claude-opus-4-5 | $970 |
+
+**`--group-by client,provider,model`**（最详细）
+
+| 客户端 | 提供商 | 模型 | 费用 |
+|--------|--------|------|------|
+| OpenCode | github-copilot | claude-opus-4-5 | $1,200 |
+| OpenCode | anthropic | claude-opus-4-5 | $168 |
+| Claude | anthropic | claude-opus-4-5 | $970 |
+
 ### 按平台筛选
 
 ```bash
