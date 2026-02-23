@@ -121,6 +121,12 @@ export function HeroSection({ stargazersCount }: HeroSectionProps) {
                 width={86}
                 height={26}
               />
+              <TrustedByLogo
+                src="/assets/landing/trusted-by-hashed.svg"
+                alt="Hashed"
+                width={108}
+                height={28}
+              />
             </TrustedByLogos>
             <CursorTooltip
               $visible={isHovered}
