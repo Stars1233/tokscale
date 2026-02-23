@@ -1,21 +1,16 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import styled from "styled-components";
 import { useSquircleClip } from "../hooks";
 import { SquircleBorder } from "../components";
 
-interface LeaderboardUser {
-  rank: number;
-  userId: string;
-  username: string;
-  displayName: string | null;
-  avatarUrl: string | null;
-  totalTokens: number;
-  totalCost: number;
-  submissionCount: number;
-  lastSubmission: string;
+import type { LeaderboardUser } from "@/lib/leaderboard/getLeaderboard";
+
+interface WorldwideSectionProps {
+  topUsersByCost?: LeaderboardUser[];
+  topUsersByTokens?: LeaderboardUser[];
 }
 
 function formatCompactNumber(n: number): string {
@@ -33,27 +28,13 @@ function formatCompactCurrency(n: number): string {
   if (n >= 1) return "$" + n.toFixed(2);
   return "$" + n.toFixed(4);
 }
-export function WorldwideSection() {
+export function WorldwideSection({
+  topUsersByCost = [],
+  topUsersByTokens = [],
+}: WorldwideSectionProps) {
   const worldwideSection = useSquircleClip<HTMLDivElement>(32, 0.6, true, 1);
-  const [activeTab, setActiveTab] = useState<"tokens" | "cost">("tokens");
-  const [users, setUsers] = useState<LeaderboardUser[]>([]);
-
-  const fetchLeaderboard = useCallback(async (sortBy: "tokens" | "cost") => {
-    try {
-      const res = await fetch(
-        `/api/leaderboard?period=all&page=1&limit=3&sortBy=${sortBy}`
-      );
-      if (!res.ok) return;
-      const data = await res.json();
-      setUsers(data.users ?? []);
-    } catch {
-      setUsers([]);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchLeaderboard(activeTab);
-  }, [activeTab, fetchLeaderboard]);
+  const [activeTab, setActiveTab] = useState<"tokens" | "cost">("cost");
+  const users = activeTab === "cost" ? topUsersByCost : topUsersByTokens;
   return (
     <>
       {/* SVG clip-path def for globe section */}
@@ -138,11 +119,7 @@ export function WorldwideSection() {
                   {users.map((user) => (
                     <UserRow key={user.userId} href={`/u/${user.username}`}>
                       <RankBadge data-rank={user.rank}>
-                        {user.rank === 1
-                          ? "🥇"
-                          : user.rank === 2
-                            ? "🥈"
-                            : "🥉"}
+                        #{user.rank}
                       </RankBadge>
                       <UserAvatar
                         src={
@@ -428,10 +405,57 @@ const UserRow = styled(Link)`
 `;
 
 const RankBadge = styled.span`
-  font-size: 18px;
   width: 28px;
-  text-align: center;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  font-family: var(--font-figtree), "Figtree", sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7a90;
+  background: linear-gradient(
+    135deg,
+    #01070f 0%,
+    color-mix(in srgb, #0073ff 15%, #01070f) 50%,
+    color-mix(in srgb, #0073ff 25%, #01070f) 100%
+  );
+  border: 1px solid #10233e;
+
+  &[data-rank="1"] {
+    color: #eab308;
+    border-color: color-mix(in srgb, #eab308 30%, #10233e);
+    background: linear-gradient(
+      135deg,
+      #01070f 0%,
+      color-mix(in srgb, #eab308 10%, #01070f) 50%,
+      color-mix(in srgb, #eab308 20%, #01070f) 100%
+    );
+  }
+
+  &[data-rank="2"] {
+    color: #9ca3af;
+    border-color: color-mix(in srgb, #9ca3af 30%, #10233e);
+    background: linear-gradient(
+      135deg,
+      #01070f 0%,
+      color-mix(in srgb, #9ca3af 10%, #01070f) 50%,
+      color-mix(in srgb, #9ca3af 20%, #01070f) 100%
+    );
+  }
+
+  &[data-rank="3"] {
+    color: #d97706;
+    border-color: color-mix(in srgb, #d97706 30%, #10233e);
+    background: linear-gradient(
+      135deg,
+      #01070f 0%,
+      color-mix(in srgb, #d97706 10%, #01070f) 50%,
+      color-mix(in srgb, #d97706 20%, #01070f) 100%
+    );
+  }
 `;
 
 const UserAvatar = styled(Image)`
