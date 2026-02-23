@@ -8,7 +8,7 @@ use tokio::runtime::Runtime;
 
 use tokscale_core::pricing::PricingService;
 use tokscale_core::sessions::UnifiedMessage;
-use tokscale_core::{normalize_model_for_grouping, scanner, sessions};
+use tokscale_core::{normalize_model_for_grouping, scanner, sessions, GroupBy};
 
 #[derive(Debug, Clone, Default)]
 pub struct TokenBreakdown {
@@ -203,7 +203,7 @@ impl DataLoader {
         }
     }
 
-    pub fn load(&self, enabled_sources: &[Source]) -> Result<UsageData> {
+    pub fn load(&self, enabled_sources: &[Source], group_by: &GroupBy) -> Result<UsageData> {
         let home = dirs::home_dir()
             .ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?
             .to_string_lossy()
@@ -371,17 +371,27 @@ impl DataLoader {
         // Apply date filters if specified
         let filtered_messages = self.apply_date_filters(all_messages);
 
-        self.aggregate_messages(filtered_messages)
+        self.aggregate_messages(filtered_messages, group_by)
     }
 
-    fn aggregate_messages(&self, messages: Vec<UnifiedMessage>) -> Result<UsageData> {
+    fn aggregate_messages(
+        &self,
+        messages: Vec<UnifiedMessage>,
+        group_by: &GroupBy,
+    ) -> Result<UsageData> {
         let mut model_map: HashMap<String, ModelUsage> = HashMap::new();
         let mut daily_map: HashMap<NaiveDate, DailyUsage> = HashMap::new();
         let mut model_session_ids: HashMap<String, HashSet<String>> = HashMap::new();
 
         for msg in &messages {
             let normalized_model = normalize_model_for_grouping(&msg.model_id);
-            let key = format!("{}:{}:{}", msg.source, msg.provider_id, normalized_model);
+            let key = match group_by {
+                GroupBy::Model => normalized_model.clone(),
+                GroupBy::ClientModel => format!("{}:{}", msg.source, normalized_model),
+                GroupBy::ClientProviderModel => {
+                    format!("{}:{}:{}", msg.source, msg.provider_id, normalized_model)
+                }
+            };
 
             let model_entry = model_map.entry(key.clone()).or_insert_with(|| ModelUsage {
                 model: normalized_model.clone(),
@@ -391,6 +401,22 @@ impl DataLoader {
                 cost: 0.0,
                 session_count: 0,
             });
+
+            if *group_by == GroupBy::Model
+                && !model_entry.source.split(", ").any(|s| s == msg.source)
+            {
+                model_entry.source = format!("{}, {}", model_entry.source, msg.source);
+            }
+
+            if *group_by != GroupBy::ClientProviderModel
+                && !model_entry
+                    .provider
+                    .split(", ")
+                    .any(|p| p == msg.provider_id)
+            {
+                model_entry.provider =
+                    format!("{}, {}", model_entry.provider, msg.provider_id);
+            }
 
             model_entry.tokens.input = model_entry
                 .tokens

@@ -4,7 +4,6 @@ use ratatui::widgets::{Block, Borders, Paragraph};
 use super::spinner::{get_phase_message, get_scanner_spans};
 use super::widgets::{format_cost, format_tokens};
 use crate::tui::app::{App, ClickAction, SortField, Tab};
-use crate::tui::data::Source;
 
 pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     let block = Block::default()
@@ -47,16 +46,53 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
 fn render_main_row(frame: &mut Frame, app: &mut App, area: Rect) {
     let is_very_narrow = app.is_very_narrow();
 
-    // Split into left (sources) and right (sort + totals)
+    // Split into left (sort buttons) and right (totals)
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(55), Constraint::Percentage(45)])
+        .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
         .split(area);
 
-    // Left side: source badges
-    render_source_badges(frame, app, chunks[0]);
+    // Left side: sort buttons
+    if !is_very_narrow {
+        let mut spans: Vec<Span> = Vec::new();
+        let mut x_offset = chunks[0].x;
 
-    // Right side: scroll info | tokens | cost (models)
+        spans.push(Span::styled("Sort: ", Style::default().fg(app.theme.muted)));
+        x_offset += 6;
+
+        let sort_buttons = [
+            (SortField::Date, "Date"),
+            (SortField::Cost, "Cost"),
+            (SortField::Tokens, "Tokens"),
+        ];
+
+        for (field, label) in sort_buttons {
+            let is_active = app.sort_field == field;
+            let style = if is_active {
+                Style::default()
+                    .fg(app.theme.foreground)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(app.theme.muted)
+            };
+
+            spans.push(Span::styled(label, style));
+            spans.push(Span::raw(" "));
+
+            let btn_width = label.len() as u16;
+            app.add_click_area(
+                Rect::new(x_offset, chunks[0].y, btn_width, 1),
+                ClickAction::Sort(field),
+            );
+            x_offset += btn_width + 1;
+        }
+
+        let line = Line::from(spans);
+        let paragraph = Paragraph::new(line);
+        frame.render_widget(paragraph, chunks[0]);
+    }
+
+    // Right side: scroll info | tokens | cost
     let mut right_spans: Vec<Span> = Vec::new();
 
     // Scroll position indicator for Overview tab
@@ -111,88 +147,6 @@ fn render_main_row(frame: &mut Frame, app: &mut App, area: Rect) {
     frame.render_widget(right_para, chunks[1]);
 }
 
-fn render_source_badges(frame: &mut Frame, app: &mut App, area: Rect) {
-    let mut spans: Vec<Span> = Vec::new();
-    let mut x_offset = area.x;
-    let is_very_narrow = app.is_very_narrow();
-
-    let source_labels = [
-        (Source::OpenCode, "1", "OC"),
-        (Source::Claude, "2", "CC"),
-        (Source::Codex, "3", "CX"),
-        (Source::Cursor, "4", "CR"),
-        (Source::Gemini, "5", "GM"),
-        (Source::Amp, "6", "AM"),
-        (Source::Droid, "7", "DR"),
-        (Source::OpenClaw, "8", "CL"),
-        (Source::Pi, "9", "PI"),
-        (Source::Kimi, "0", "KI"),
-    ];
-
-    for (source, key, short) in source_labels {
-        let enabled = app.enabled_sources.borrow().contains(&source);
-        let indicator = if enabled { "●" } else { "○" };
-
-        let badge_text = if is_very_narrow {
-            format!("[{}{}]", indicator, key)
-        } else {
-            format!("[{}{}:{}]", indicator, key, short)
-        };
-        let badge_width = badge_text.chars().count() as u16;
-
-        let style = if enabled {
-            Style::default().fg(Color::Green)
-        } else {
-            Style::default().fg(app.theme.muted)
-        };
-
-        spans.push(Span::styled(badge_text, style));
-        spans.push(Span::raw(" "));
-
-        app.add_click_area(
-            Rect::new(x_offset, area.y, badge_width, 1),
-            ClickAction::Source(source),
-        );
-        x_offset += badge_width + 1;
-    }
-
-    // Sort buttons (if not very narrow)
-    if !is_very_narrow {
-        spans.push(Span::styled("| ", Style::default().fg(app.theme.muted)));
-
-        let sort_buttons = [
-            (SortField::Date, "Date"),
-            (SortField::Cost, "Cost"),
-            (SortField::Tokens, "Tok"),
-        ];
-
-        for (field, label) in sort_buttons {
-            let is_active = app.sort_field == field;
-            let style = if is_active {
-                Style::default()
-                    .fg(app.theme.foreground)
-                    .add_modifier(Modifier::BOLD)
-            } else {
-                Style::default().fg(app.theme.muted)
-            };
-
-            spans.push(Span::styled(label, style));
-            spans.push(Span::raw(" "));
-
-            let btn_width = label.len() as u16;
-            app.add_click_area(
-                Rect::new(x_offset + 2, area.y, btn_width, 1),
-                ClickAction::Sort(field),
-            );
-            x_offset += btn_width + 1;
-        }
-    }
-
-    let line = Line::from(spans);
-    let paragraph = Paragraph::new(line);
-    frame.render_widget(paragraph, area);
-}
-
 fn render_help_row(frame: &mut Frame, app: &App, area: Rect) {
     let is_very_narrow = app.is_very_narrow();
 
@@ -203,6 +157,8 @@ fn render_help_row(frame: &mut Frame, app: &App, area: Rect) {
             Span::styled("←→", Style::default().fg(app.theme.muted)),
             Span::styled("·", Style::default().fg(app.theme.muted)),
             Span::styled("[s]", Style::default().fg(Color::Cyan)),
+            Span::styled("·", Style::default().fg(app.theme.muted)),
+            Span::styled("[g]", Style::default().fg(Color::Cyan)),
             Span::styled("·", Style::default().fg(app.theme.muted)),
             Span::styled("[p]", Style::default().fg(Color::Magenta)),
             Span::styled("·", Style::default().fg(app.theme.muted)),
@@ -217,6 +173,11 @@ fn render_help_row(frame: &mut Frame, app: &App, area: Rect) {
                 Style::default().fg(app.theme.muted),
             ),
             Span::styled("[s:sources]", Style::default().fg(Color::Cyan)),
+            Span::styled(" ", Style::default()),
+            Span::styled(
+                format!("[g:{}]", app.group_by.borrow()),
+                Style::default().fg(Color::Cyan),
+            ),
             Span::styled(" • ", Style::default().fg(app.theme.muted)),
             Span::styled(
                 format!("[p:{}]", app.theme.name.as_str()),
