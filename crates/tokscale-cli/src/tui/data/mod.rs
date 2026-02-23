@@ -33,7 +33,7 @@ impl TokenBreakdown {
 pub struct ModelUsage {
     pub model: String,
     pub provider: String,
-    pub source: String,
+    pub client: String,
     pub tokens: TokenBreakdown,
     pub cost: f64,
     pub session_count: u32,
@@ -41,7 +41,7 @@ pub struct ModelUsage {
 
 #[derive(Debug, Clone)]
 pub struct DailyModelInfo {
-    pub source: String,
+    pub client: String,
     pub tokens: TokenBreakdown,
     pub cost: f64,
 }
@@ -81,7 +81,7 @@ pub struct UsageData {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Source {
+pub enum Client {
     OpenCode,
     Claude,
     Codex,
@@ -94,80 +94,80 @@ pub enum Source {
     Kimi,
 }
 
-impl Source {
-    pub fn all() -> &'static [Source] {
+impl Client {
+    pub fn all() -> &'static [Client] {
         &[
-            Source::OpenCode,
-            Source::Claude,
-            Source::Codex,
-            Source::Cursor,
-            Source::Gemini,
-            Source::Amp,
-            Source::Droid,
-            Source::OpenClaw,
-            Source::Pi,
-            Source::Kimi,
+            Client::OpenCode,
+            Client::Claude,
+            Client::Codex,
+            Client::Cursor,
+            Client::Gemini,
+            Client::Amp,
+            Client::Droid,
+            Client::OpenClaw,
+            Client::Pi,
+            Client::Kimi,
         ]
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            Source::OpenCode => "OpenCode",
-            Source::Claude => "Claude",
-            Source::Codex => "Codex",
-            Source::Cursor => "Cursor",
-            Source::Gemini => "Gemini",
-            Source::Amp => "Amp",
-            Source::Droid => "Droid",
-            Source::OpenClaw => "OpenClaw",
-            Source::Pi => "Pi",
-            Source::Kimi => "Kimi",
+            Client::OpenCode => "OpenCode",
+            Client::Claude => "Claude",
+            Client::Codex => "Codex",
+            Client::Cursor => "Cursor",
+            Client::Gemini => "Gemini",
+            Client::Amp => "Amp",
+            Client::Droid => "Droid",
+            Client::OpenClaw => "OpenClaw",
+            Client::Pi => "Pi",
+            Client::Kimi => "Kimi",
         }
     }
 
     pub fn key(&self) -> char {
         match self {
-            Source::OpenCode => '1',
-            Source::Claude => '2',
-            Source::Codex => '3',
-            Source::Cursor => '4',
-            Source::Gemini => '5',
-            Source::Amp => '6',
-            Source::Droid => '7',
-            Source::OpenClaw => '8',
-            Source::Pi => '9',
-            Source::Kimi => '0',
+            Client::OpenCode => '1',
+            Client::Claude => '2',
+            Client::Codex => '3',
+            Client::Cursor => '4',
+            Client::Gemini => '5',
+            Client::Amp => '6',
+            Client::Droid => '7',
+            Client::OpenClaw => '8',
+            Client::Pi => '9',
+            Client::Kimi => '0',
         }
     }
 
-    pub fn from_key(key: char) -> Option<Source> {
+    pub fn from_key(key: char) -> Option<Client> {
         match key {
-            '1' => Some(Source::OpenCode),
-            '2' => Some(Source::Claude),
-            '3' => Some(Source::Codex),
-            '4' => Some(Source::Cursor),
-            '5' => Some(Source::Gemini),
-            '6' => Some(Source::Amp),
-            '7' => Some(Source::Droid),
-            '8' => Some(Source::OpenClaw),
-            '9' => Some(Source::Pi),
-            '0' => Some(Source::Kimi),
+            '1' => Some(Client::OpenCode),
+            '2' => Some(Client::Claude),
+            '3' => Some(Client::Codex),
+            '4' => Some(Client::Cursor),
+            '5' => Some(Client::Gemini),
+            '6' => Some(Client::Amp),
+            '7' => Some(Client::Droid),
+            '8' => Some(Client::OpenClaw),
+            '9' => Some(Client::Pi),
+            '0' => Some(Client::Kimi),
             _ => None,
         }
     }
 
-    fn to_core_source(self) -> &'static str {
+    fn to_core_client(self) -> &'static str {
         match self {
-            Source::OpenCode => "opencode",
-            Source::Claude => "claude",
-            Source::Codex => "codex",
-            Source::Cursor => "cursor",
-            Source::Gemini => "gemini",
-            Source::Amp => "amp",
-            Source::Droid => "droid",
-            Source::OpenClaw => "openclaw",
-            Source::Pi => "pi",
-            Source::Kimi => "kimi",
+            Client::OpenCode => "opencode",
+            Client::Claude => "claude",
+            Client::Codex => "codex",
+            Client::Cursor => "cursor",
+            Client::Gemini => "gemini",
+            Client::Amp => "amp",
+            Client::Droid => "droid",
+            Client::OpenClaw => "openclaw",
+            Client::Pi => "pi",
+            Client::Kimi => "kimi",
         }
     }
 }
@@ -203,7 +203,7 @@ impl DataLoader {
         }
     }
 
-    pub fn load(&self, enabled_sources: &[Source], group_by: &GroupBy) -> Result<UsageData> {
+    pub fn load(&self, enabled_clients: &[Client], group_by: &GroupBy) -> Result<UsageData> {
         let home = dirs::home_dir()
             .ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?
             .to_string_lossy()
@@ -213,19 +213,19 @@ impl DataLoader {
         let pricing_result = rt.block_on(async { PricingService::get_or_init().await });
         let pricing = pricing_result.as_ref().ok();
 
-        let sources: Vec<String> = enabled_sources
+        let sources: Vec<String> = enabled_clients
             .iter()
-            .map(|s| s.to_core_source().to_string())
+            .map(|s| s.to_core_client().to_string())
             .collect();
 
-        let scan_result = scanner::scan_all_sources(&home, &sources);
+        let scan_result = scanner::scan_all_clients(&home, &sources);
 
         let mut all_messages: Vec<UnifiedMessage> = Vec::new();
 
         // OpenCode: read both SQLite (1.2+) and legacy JSON, deduplicate by message ID
         let mut opencode_seen: HashSet<String> = HashSet::new();
 
-        if enabled_sources.contains(&Source::OpenCode) {
+        if enabled_clients.contains(&Client::OpenCode) {
             if let Some(db_path) = &scan_result.opencode_db {
                 let sqlite_messages: Vec<UnifiedMessage> =
                     sessions::opencode::parse_opencode_sqlite(db_path);
@@ -249,7 +249,7 @@ impl DataLoader {
             }));
         }
 
-        if enabled_sources.contains(&Source::Claude) {
+        if enabled_clients.contains(&Client::Claude) {
             let msgs_raw: Vec<UnifiedMessage> = scan_result
                 .claude_files
                 .par_iter()
@@ -268,7 +268,7 @@ impl DataLoader {
             all_messages.extend(msgs);
         }
 
-        if enabled_sources.contains(&Source::Codex) {
+        if enabled_clients.contains(&Client::Codex) {
             let msgs: Vec<UnifiedMessage> = scan_result
                 .codex_files
                 .par_iter()
@@ -277,7 +277,7 @@ impl DataLoader {
             all_messages.extend(msgs);
         }
 
-        if enabled_sources.contains(&Source::Cursor) {
+        if enabled_clients.contains(&Client::Cursor) {
             let msgs: Vec<UnifiedMessage> = scan_result
                 .cursor_files
                 .par_iter()
@@ -286,7 +286,7 @@ impl DataLoader {
             all_messages.extend(msgs);
         }
 
-        if enabled_sources.contains(&Source::Gemini) {
+        if enabled_clients.contains(&Client::Gemini) {
             let msgs: Vec<UnifiedMessage> = scan_result
                 .gemini_files
                 .par_iter()
@@ -295,7 +295,7 @@ impl DataLoader {
             all_messages.extend(msgs);
         }
 
-        if enabled_sources.contains(&Source::Amp) {
+        if enabled_clients.contains(&Client::Amp) {
             let msgs: Vec<UnifiedMessage> = scan_result
                 .amp_files
                 .par_iter()
@@ -304,7 +304,7 @@ impl DataLoader {
             all_messages.extend(msgs);
         }
 
-        if enabled_sources.contains(&Source::Droid) {
+        if enabled_clients.contains(&Client::Droid) {
             let msgs: Vec<UnifiedMessage> = scan_result
                 .droid_files
                 .par_iter()
@@ -313,7 +313,7 @@ impl DataLoader {
             all_messages.extend(msgs);
         }
 
-        if enabled_sources.contains(&Source::OpenClaw) {
+        if enabled_clients.contains(&Client::OpenClaw) {
             let msgs: Vec<UnifiedMessage> = scan_result
                 .openclaw_files
                 .par_iter()
@@ -322,7 +322,7 @@ impl DataLoader {
             all_messages.extend(msgs);
         }
 
-        if enabled_sources.contains(&Source::Pi) {
+        if enabled_clients.contains(&Client::Pi) {
             let msgs: Vec<UnifiedMessage> = scan_result
                 .pi_files
                 .par_iter()
@@ -331,7 +331,7 @@ impl DataLoader {
             all_messages.extend(msgs);
         }
 
-        if enabled_sources.contains(&Source::Kimi) {
+        if enabled_clients.contains(&Client::Kimi) {
             let msgs: Vec<UnifiedMessage> = scan_result
                 .kimi_files
                 .par_iter()
@@ -342,7 +342,7 @@ impl DataLoader {
 
         if let Some(svc) = pricing {
             for msg in &mut all_messages {
-                let is_gemini = msg.source.eq_ignore_ascii_case("gemini");
+                let is_gemini = msg.client.eq_ignore_ascii_case("gemini");
                 let calculated_cost = if is_gemini {
                     svc.calculate_cost(
                         &msg.model_id,
@@ -387,25 +387,25 @@ impl DataLoader {
             let normalized_model = normalize_model_for_grouping(&msg.model_id);
             let key = match group_by {
                 GroupBy::Model => normalized_model.clone(),
-                GroupBy::ClientModel => format!("{}:{}", msg.source, normalized_model),
+                GroupBy::ClientModel => format!("{}:{}", msg.client, normalized_model),
                 GroupBy::ClientProviderModel => {
-                    format!("{}:{}:{}", msg.source, msg.provider_id, normalized_model)
+                    format!("{}:{}:{}", msg.client, msg.provider_id, normalized_model)
                 }
             };
 
             let model_entry = model_map.entry(key.clone()).or_insert_with(|| ModelUsage {
                 model: normalized_model.clone(),
                 provider: msg.provider_id.clone(),
-                source: msg.source.clone(),
+                client: msg.client.clone(),
                 tokens: TokenBreakdown::default(),
                 cost: 0.0,
                 session_count: 0,
             });
 
             if *group_by == GroupBy::Model
-                && !model_entry.source.split(", ").any(|s| s == msg.source)
+                && !model_entry.client.split(", ").any(|s| s == msg.client)
             {
-                model_entry.source = format!("{}, {}", model_entry.source, msg.source);
+                model_entry.client = format!("{}, {}", model_entry.client, msg.client);
             }
 
             if *group_by != GroupBy::ClientProviderModel
@@ -445,7 +445,7 @@ impl DataLoader {
             };
             model_entry.cost += msg_cost;
 
-            let session_key = format!("{}:{}", msg.source, msg.session_id);
+            let session_key = format!("{}:{}", msg.client, msg.session_id);
             let model_sessions = model_session_ids.entry(key).or_default();
             if model_sessions.insert(session_key) {
                 model_entry.session_count += 1;
@@ -490,7 +490,7 @@ impl DataLoader {
                     .models
                     .entry(normalized_model.clone())
                     .or_insert_with(|| DailyModelInfo {
-                        source: msg.source.clone(),
+                        client: msg.client.clone(),
                         tokens: TokenBreakdown::default(),
                         cost: 0.0,
                     });
@@ -530,7 +530,7 @@ impl DataLoader {
                 .total_cmp(&a.cost)
                 .then_with(|| a.model.cmp(&b.model))
                 .then_with(|| a.provider.cmp(&b.provider))
-                .then_with(|| a.source.cmp(&b.source))
+                .then_with(|| a.client.cmp(&b.client))
         });
 
         let mut daily: Vec<DailyUsage> = daily_map.into_values().collect();
@@ -721,62 +721,62 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_source_all() {
-        let sources = Source::all();
-        assert_eq!(sources.len(), 10);
-        assert_eq!(sources[0], Source::OpenCode);
-        assert_eq!(sources[1], Source::Claude);
-        assert_eq!(sources[2], Source::Codex);
-        assert_eq!(sources[3], Source::Cursor);
-        assert_eq!(sources[4], Source::Gemini);
-        assert_eq!(sources[5], Source::Amp);
-        assert_eq!(sources[6], Source::Droid);
-        assert_eq!(sources[7], Source::OpenClaw);
-        assert_eq!(sources[8], Source::Pi);
-        assert_eq!(sources[9], Source::Kimi);
+    fn test_client_all() {
+        let clients = Client::all();
+        assert_eq!(clients.len(), 10);
+        assert_eq!(clients[0], Client::OpenCode);
+        assert_eq!(clients[1], Client::Claude);
+        assert_eq!(clients[2], Client::Codex);
+        assert_eq!(clients[3], Client::Cursor);
+        assert_eq!(clients[4], Client::Gemini);
+        assert_eq!(clients[5], Client::Amp);
+        assert_eq!(clients[6], Client::Droid);
+        assert_eq!(clients[7], Client::OpenClaw);
+        assert_eq!(clients[8], Client::Pi);
+        assert_eq!(clients[9], Client::Kimi);
     }
 
     #[test]
-    fn test_source_as_str() {
-        assert_eq!(Source::OpenCode.as_str(), "OpenCode");
-        assert_eq!(Source::Claude.as_str(), "Claude");
-        assert_eq!(Source::Codex.as_str(), "Codex");
-        assert_eq!(Source::Cursor.as_str(), "Cursor");
-        assert_eq!(Source::Gemini.as_str(), "Gemini");
-        assert_eq!(Source::Amp.as_str(), "Amp");
-        assert_eq!(Source::Droid.as_str(), "Droid");
-        assert_eq!(Source::OpenClaw.as_str(), "OpenClaw");
-        assert_eq!(Source::Pi.as_str(), "Pi");
-        assert_eq!(Source::Kimi.as_str(), "Kimi");
+    fn test_client_as_str() {
+        assert_eq!(Client::OpenCode.as_str(), "OpenCode");
+        assert_eq!(Client::Claude.as_str(), "Claude");
+        assert_eq!(Client::Codex.as_str(), "Codex");
+        assert_eq!(Client::Cursor.as_str(), "Cursor");
+        assert_eq!(Client::Gemini.as_str(), "Gemini");
+        assert_eq!(Client::Amp.as_str(), "Amp");
+        assert_eq!(Client::Droid.as_str(), "Droid");
+        assert_eq!(Client::OpenClaw.as_str(), "OpenClaw");
+        assert_eq!(Client::Pi.as_str(), "Pi");
+        assert_eq!(Client::Kimi.as_str(), "Kimi");
     }
 
     #[test]
-    fn test_source_key() {
-        assert_eq!(Source::OpenCode.key(), '1');
-        assert_eq!(Source::Claude.key(), '2');
-        assert_eq!(Source::Codex.key(), '3');
-        assert_eq!(Source::Cursor.key(), '4');
-        assert_eq!(Source::Gemini.key(), '5');
-        assert_eq!(Source::Amp.key(), '6');
-        assert_eq!(Source::Droid.key(), '7');
-        assert_eq!(Source::OpenClaw.key(), '8');
-        assert_eq!(Source::Pi.key(), '9');
-        assert_eq!(Source::Kimi.key(), '0');
+    fn test_client_key() {
+        assert_eq!(Client::OpenCode.key(), '1');
+        assert_eq!(Client::Claude.key(), '2');
+        assert_eq!(Client::Codex.key(), '3');
+        assert_eq!(Client::Cursor.key(), '4');
+        assert_eq!(Client::Gemini.key(), '5');
+        assert_eq!(Client::Amp.key(), '6');
+        assert_eq!(Client::Droid.key(), '7');
+        assert_eq!(Client::OpenClaw.key(), '8');
+        assert_eq!(Client::Pi.key(), '9');
+        assert_eq!(Client::Kimi.key(), '0');
     }
 
     #[test]
-    fn test_source_from_key() {
-        assert_eq!(Source::from_key('1'), Some(Source::OpenCode));
-        assert_eq!(Source::from_key('2'), Some(Source::Claude));
-        assert_eq!(Source::from_key('3'), Some(Source::Codex));
-        assert_eq!(Source::from_key('4'), Some(Source::Cursor));
-        assert_eq!(Source::from_key('5'), Some(Source::Gemini));
-        assert_eq!(Source::from_key('6'), Some(Source::Amp));
-        assert_eq!(Source::from_key('7'), Some(Source::Droid));
-        assert_eq!(Source::from_key('8'), Some(Source::OpenClaw));
-        assert_eq!(Source::from_key('9'), Some(Source::Pi));
-        assert_eq!(Source::from_key('0'), Some(Source::Kimi));
-        assert_eq!(Source::from_key('a'), None);
+    fn test_client_from_key() {
+        assert_eq!(Client::from_key('1'), Some(Client::OpenCode));
+        assert_eq!(Client::from_key('2'), Some(Client::Claude));
+        assert_eq!(Client::from_key('3'), Some(Client::Codex));
+        assert_eq!(Client::from_key('4'), Some(Client::Cursor));
+        assert_eq!(Client::from_key('5'), Some(Client::Gemini));
+        assert_eq!(Client::from_key('6'), Some(Client::Amp));
+        assert_eq!(Client::from_key('7'), Some(Client::Droid));
+        assert_eq!(Client::from_key('8'), Some(Client::OpenClaw));
+        assert_eq!(Client::from_key('9'), Some(Client::Pi));
+        assert_eq!(Client::from_key('0'), Some(Client::Kimi));
+        assert_eq!(Client::from_key('a'), None);
     }
 
     #[test]

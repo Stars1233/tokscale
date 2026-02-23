@@ -9,7 +9,7 @@ use ratatui::{layout::Rect, Frame};
 use crate::tui::themes::Theme;
 
 pub use group_by_picker::GroupByPickerDialog;
-pub use source_picker::SourcePickerDialog;
+pub use source_picker::ClientPickerDialog;
 pub use stack::DialogStack;
 
 /// Result of handling a dialog event

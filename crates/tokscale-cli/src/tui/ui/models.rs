@@ -4,7 +4,7 @@ use ratatui::widgets::{
 };
 
 use super::widgets::{
-    format_cost, format_tokens, get_model_color, get_provider_display_name, get_source_display_name,
+    format_cost, format_tokens, get_client_display_name, get_model_color, get_provider_display_name,
 };
 use crate::tui::app::{App, SortDirection, SortField};
 
@@ -139,7 +139,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
                             .add_modifier(Modifier::BOLD),
                     ),
                     Cell::from(get_provider_display_name(&model.provider)),
-                    Cell::from(get_source_display_name(&model.source))
+                    Cell::from(get_client_display_name(&model.client))
                         .style(Style::default().fg(theme_muted)),
                     Cell::from(format_tokens(model.tokens.input))
                         .style(Style::default().fg(Color::Rgb(100, 200, 100))),

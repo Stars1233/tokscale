@@ -200,7 +200,7 @@ enum Commands {
         no_spinner: bool,
     },
     #[command(about = "Show local scan locations and session counts")]
-    Sources {
+    Clients {
         #[arg(long, help = "Output as JSON")]
         json: bool,
     },
@@ -450,7 +450,7 @@ fn main() -> Result<()> {
                 eprintln!("Error: {}", e);
                 std::process::exit(1);
             });
-            let sources = build_source_filter(SourceFlags {
+            let clients = build_client_filter(ClientFlags {
                 opencode,
                 claude,
                 codex,
@@ -466,7 +466,7 @@ fn main() -> Result<()> {
             if json || light || !can_use_tui {
                 run_models_report(
                     json,
-                    sources,
+                    clients,
                     since,
                     until,
                     year,
@@ -482,7 +482,7 @@ fn main() -> Result<()> {
                     &cli.theme,
                     cli.refresh,
                     cli.debug,
-                    sources,
+                    clients,
                     since,
                     until,
                     year,
@@ -511,7 +511,7 @@ fn main() -> Result<()> {
             benchmark,
             no_spinner,
         }) => {
-            let sources = build_source_filter(SourceFlags {
+            let clients = build_client_filter(ClientFlags {
                 opencode,
                 claude,
                 codex,
@@ -527,7 +527,7 @@ fn main() -> Result<()> {
             if json || light || !can_use_tui {
                 run_monthly_report(
                     json,
-                    sources,
+                    clients,
                     since,
                     until,
                     year,
@@ -542,7 +542,7 @@ fn main() -> Result<()> {
                     &cli.theme,
                     cli.refresh,
                     cli.debug,
-                    sources,
+                    clients,
                     since,
                     until,
                     year,
@@ -556,7 +556,7 @@ fn main() -> Result<()> {
             provider,
             no_spinner,
         }) => run_pricing_lookup(&model_id, json, provider.as_deref(), no_spinner),
-        Some(Commands::Sources { json }) => run_sources_command(json),
+        Some(Commands::Clients { json }) => run_clients_command(json),
         Some(Commands::Login) => run_login_command(),
         Some(Commands::Logout) => run_logout_command(),
         Some(Commands::Whoami) => run_whoami_command(),
@@ -580,7 +580,7 @@ fn main() -> Result<()> {
             benchmark,
             no_spinner,
         }) => {
-            let sources = build_source_filter(SourceFlags {
+            let clients = build_client_filter(ClientFlags {
                 opencode,
                 claude,
                 codex,
@@ -593,7 +593,7 @@ fn main() -> Result<()> {
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             let year = normalize_year_filter(today, week, month, year);
-            run_graph_command(output, sources, since, until, year, benchmark, no_spinner)
+            run_graph_command(output, clients, since, until, year, benchmark, no_spinner)
         }
         Some(Commands::Tui {
             opencode,
@@ -612,7 +612,7 @@ fn main() -> Result<()> {
             until,
             year,
         }) => {
-            let sources = build_source_filter(SourceFlags {
+            let clients = build_client_filter(ClientFlags {
                 opencode,
                 claude,
                 codex,
@@ -629,7 +629,7 @@ fn main() -> Result<()> {
                 &cli.theme,
                 cli.refresh,
                 cli.debug,
-                sources,
+                clients,
                 since,
                 until,
                 year,
@@ -654,7 +654,7 @@ fn main() -> Result<()> {
             year,
             dry_run,
         }) => {
-            let sources = build_source_filter(SourceFlags {
+            let clients = build_client_filter(ClientFlags {
                 opencode,
                 claude,
                 codex,
@@ -667,7 +667,7 @@ fn main() -> Result<()> {
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             let year = normalize_year_filter(today, week, month, year);
-            run_submit_command(sources, since, until, year, dry_run)
+            run_submit_command(clients, since, until, year, dry_run)
         }
         Some(Commands::Headless {
             source,
@@ -694,7 +694,7 @@ fn main() -> Result<()> {
             disable_pinned,
             no_spinner: _,
         }) => {
-            let sources = build_source_filter(SourceFlags {
+            let client_filter = build_client_filter(ClientFlags {
                 opencode,
                 claude,
                 codex,
@@ -708,7 +708,7 @@ fn main() -> Result<()> {
             run_wrapped_command(
                 output,
                 year,
-                sources,
+                client_filter,
                 short,
                 agents,
                 clients,
@@ -717,7 +717,7 @@ fn main() -> Result<()> {
         }
         Some(Commands::Cursor { subcommand }) => run_cursor_command(subcommand),
         None => {
-            let sources = build_source_filter(SourceFlags {
+            let clients = build_client_filter(ClientFlags {
                 opencode: cli.opencode,
                 claude: cli.claude,
                 codex: cli.codex,
@@ -739,7 +739,7 @@ fn main() -> Result<()> {
             if cli.json {
                 run_models_report(
                     cli.json,
-                    sources,
+                    clients,
                     since,
                     until,
                     year,
@@ -753,7 +753,7 @@ fn main() -> Result<()> {
             } else if cli.light || !can_use_tui {
                 run_models_report(
                     false,
-                    sources,
+                    clients,
                     since,
                     until,
                     year,
@@ -769,7 +769,7 @@ fn main() -> Result<()> {
                     &cli.theme,
                     cli.refresh,
                     cli.debug,
-                    sources,
+                    clients,
                     since,
                     until,
                     year,
@@ -780,7 +780,7 @@ fn main() -> Result<()> {
     }
 }
 
-struct SourceFlags {
+struct ClientFlags {
     opencode: bool,
     claude: bool,
     codex: bool,
@@ -792,40 +792,40 @@ struct SourceFlags {
     pi: bool,
 }
 
-fn build_source_filter(flags: SourceFlags) -> Option<Vec<String>> {
-    let mut sources = Vec::new();
+fn build_client_filter(flags: ClientFlags) -> Option<Vec<String>> {
+    let mut clients = Vec::new();
     if flags.opencode {
-        sources.push("opencode".to_string());
+        clients.push("opencode".to_string());
     }
     if flags.claude {
-        sources.push("claude".to_string());
+        clients.push("claude".to_string());
     }
     if flags.codex {
-        sources.push("codex".to_string());
+        clients.push("codex".to_string());
     }
     if flags.gemini {
-        sources.push("gemini".to_string());
+        clients.push("gemini".to_string());
     }
     if flags.cursor {
-        sources.push("cursor".to_string());
+        clients.push("cursor".to_string());
     }
     if flags.amp {
-        sources.push("amp".to_string());
+        clients.push("amp".to_string());
     }
     if flags.droid {
-        sources.push("droid".to_string());
+        clients.push("droid".to_string());
     }
     if flags.openclaw {
-        sources.push("openclaw".to_string());
+        clients.push("openclaw".to_string());
     }
     if flags.pi {
-        sources.push("pi".to_string());
+        clients.push("pi".to_string());
     }
 
-    if sources.is_empty() {
+    if clients.is_empty() {
         None
     } else {
-        Some(sources)
+        Some(clients)
     }
 }
 
@@ -1029,7 +1029,7 @@ impl Drop for LightSpinner {
 #[allow(clippy::too_many_arguments)]
 fn run_models_report(
     json: bool,
-    sources: Option<Vec<String>>,
+    clients: Option<Vec<String>>,
     since: Option<String>,
     until: Option<String>,
     year: Option<String>,
@@ -1057,7 +1057,7 @@ fn run_models_report(
         .block_on(async {
             get_model_report(ReportOptions {
                 home_dir: None,
-                sources,
+                clients,
                 since,
                 until,
                 year,
@@ -1077,7 +1077,7 @@ fn run_models_report(
         #[derive(serde::Serialize)]
         #[serde(rename_all = "camelCase")]
         struct ModelUsageJson {
-            source: String,
+            client: String,
             merged_clients: Option<String>,
             model: String,
             provider: String,
@@ -1110,7 +1110,7 @@ fn run_models_report(
                 .entries
                 .into_iter()
                 .map(|e| ModelUsageJson {
-                    source: e.source,
+                    client: e.client,
                     merged_clients: e.merged_clients,
                     model: e.model,
                     provider: e.provider,
@@ -1163,10 +1163,10 @@ fn run_models_report(
                     ]);
 
                     for entry in &report.entries {
-                        let clients_str = entry.merged_clients.as_deref().unwrap_or(&entry.source);
+                        let clients_str = entry.merged_clients.as_deref().unwrap_or(&entry.client);
                         let capitalized_clients = clients_str
                             .split(", ")
-                            .map(capitalize_source)
+                            .map(capitalize_client)
                             .collect::<Vec<_>>()
                             .join(", ");
                         table.add_row(vec![
@@ -1211,7 +1211,7 @@ fn run_models_report(
 
                     for entry in &report.entries {
                         table.add_row(vec![
-                            Cell::new(capitalize_source(&entry.source)),
+                            Cell::new(capitalize_client(&entry.client)),
                             Cell::new(&entry.provider).add_attribute(Attribute::Dim),
                             Cell::new(&entry.model),
                             Cell::new(format_tokens_with_commas(entry.input))
@@ -1260,10 +1260,10 @@ fn run_models_report(
                         let total =
                             entry.input + entry.output + entry.cache_write + entry.cache_read;
 
-                        let clients_str = entry.merged_clients.as_deref().unwrap_or(&entry.source);
+                        let clients_str = entry.merged_clients.as_deref().unwrap_or(&entry.client);
                         let capitalized_clients = clients_str
                             .split(", ")
-                            .map(capitalize_source)
+                            .map(capitalize_client)
                             .collect::<Vec<_>>()
                             .join(", ");
                         table.add_row(vec![
@@ -1334,7 +1334,7 @@ fn run_models_report(
                             entry.input + entry.output + entry.cache_write + entry.cache_read;
 
                         table.add_row(vec![
-                            Cell::new(capitalize_source(&entry.source)),
+                            Cell::new(capitalize_client(&entry.client)),
                             Cell::new(&entry.provider).add_attribute(Attribute::Dim),
                             Cell::new(&entry.model),
                             Cell::new(format_model_name(&entry.model)),
@@ -1420,7 +1420,7 @@ fn run_models_report(
 #[allow(clippy::too_many_arguments)]
 fn run_monthly_report(
     json: bool,
-    sources: Option<Vec<String>>,
+    clients: Option<Vec<String>>,
     since: Option<String>,
     until: Option<String>,
     year: Option<String>,
@@ -1447,7 +1447,7 @@ fn run_monthly_report(
         .block_on(async {
             get_monthly_report(ReportOptions {
                 home_dir: None,
-                sources,
+                clients,
                 since,
                 until,
                 year,
@@ -1687,7 +1687,7 @@ fn run_monthly_report(
 fn run_wrapped_command(
     output: Option<String>,
     year: Option<String>,
-    sources: Option<Vec<String>>,
+    client_filter: Option<Vec<String>>,
     short: bool,
     agents: bool,
     clients: bool,
@@ -1704,7 +1704,7 @@ fn run_wrapped_command(
     let wrapped_options = commands::wrapped::WrappedOptions {
         output,
         year,
-        sources,
+        clients: client_filter,
         short,
         include_agents,
         pin_sisyphus: !disable_pinned,
@@ -1929,8 +1929,8 @@ fn format_model_name(model: &str) -> String {
     name.to_string()
 }
 
-fn capitalize_source(source: &str) -> String {
-    match source {
+fn capitalize_client(client: &str) -> String {
+    match client {
         "opencode" => "OpenCode".to_string(),
         "claude" => "Claude".to_string(),
         "codex" => "Codex".to_string(),
@@ -1944,15 +1944,15 @@ fn capitalize_source(source: &str) -> String {
     }
 }
 
-fn run_sources_command(json: bool) -> Result<()> {
-    use tokscale_core::{parse_local_sources, LocalParseOptions};
+fn run_clients_command(json: bool) -> Result<()> {
+    use tokscale_core::{parse_local_clients, LocalParseOptions};
 
     let home_dir =
         dirs::home_dir().ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?;
 
-    let parsed = parse_local_sources(LocalParseOptions {
+    let parsed = parse_local_clients(LocalParseOptions {
         home_dir: Some(home_dir.to_string_lossy().to_string()),
-        sources: Some(vec![
+        clients: Some(vec![
             "opencode".to_string(),
             "claude".to_string(),
             "codex".to_string(),
@@ -1972,13 +1972,13 @@ fn run_sources_command(json: bool) -> Result<()> {
     let headless_codex_count = parsed
         .messages
         .iter()
-        .filter(|m| m.agent.as_deref() == Some("headless") && m.source == "codex")
+        .filter(|m| m.agent.as_deref() == Some("headless") && m.client == "codex")
         .count() as i32;
 
     #[derive(serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    struct SourceRow {
-        source: String,
+    struct ClientRow {
+        client: String,
         label: String,
         sessions_path: String,
         sessions_path_exists: bool,
@@ -2005,9 +2005,9 @@ fn run_sources_command(json: bool) -> Result<()> {
         exists: bool,
     }
 
-    let sources = vec![
-        SourceRow {
-            source: "opencode".to_string(),
+    let clients = vec![
+        ClientRow {
+            client: "opencode".to_string(),
             label: "OpenCode".to_string(),
             sessions_path: home_dir
                 .join(".local/share/opencode/storage/message")
@@ -2022,8 +2022,8 @@ fn run_sources_command(json: bool) -> Result<()> {
             headless_paths: vec![],
             headless_message_count: 0,
         },
-        SourceRow {
-            source: "claude".to_string(),
+        ClientRow {
+            client: "claude".to_string(),
             label: "Claude Code".to_string(),
             sessions_path: home_dir
                 .join(".claude/projects")
@@ -2036,8 +2036,8 @@ fn run_sources_command(json: bool) -> Result<()> {
             headless_paths: vec![],
             headless_message_count: 0,
         },
-        SourceRow {
-            source: "codex".to_string(),
+        ClientRow {
+            client: "codex".to_string(),
             label: "Codex CLI".to_string(),
             sessions_path: get_codex_home(&home_dir)
                 .join("sessions")
@@ -2059,8 +2059,8 @@ fn run_sources_command(json: bool) -> Result<()> {
                 .collect(),
             headless_message_count: headless_codex_count,
         },
-        SourceRow {
-            source: "gemini".to_string(),
+        ClientRow {
+            client: "gemini".to_string(),
             label: "Gemini CLI".to_string(),
             sessions_path: home_dir.join(".gemini/tmp").to_string_lossy().to_string(),
             sessions_path_exists: home_dir.join(".gemini/tmp").exists(),
@@ -2070,8 +2070,8 @@ fn run_sources_command(json: bool) -> Result<()> {
             headless_paths: vec![],
             headless_message_count: 0,
         },
-        SourceRow {
-            source: "cursor".to_string(),
+        ClientRow {
+            client: "cursor".to_string(),
             label: "Cursor IDE".to_string(),
             sessions_path: home_dir
                 .join(".config/tokscale/cursor-cache")
@@ -2084,8 +2084,8 @@ fn run_sources_command(json: bool) -> Result<()> {
             headless_paths: vec![],
             headless_message_count: 0,
         },
-        SourceRow {
-            source: "amp".to_string(),
+        ClientRow {
+            client: "amp".to_string(),
             label: "Amp".to_string(),
             sessions_path: home_dir
                 .join(".local/share/amp/threads")
@@ -2098,8 +2098,8 @@ fn run_sources_command(json: bool) -> Result<()> {
             headless_paths: vec![],
             headless_message_count: 0,
         },
-        SourceRow {
-            source: "droid".to_string(),
+        ClientRow {
+            client: "droid".to_string(),
             label: "Droid".to_string(),
             sessions_path: home_dir
                 .join(".factory/sessions")
@@ -2112,8 +2112,8 @@ fn run_sources_command(json: bool) -> Result<()> {
             headless_paths: vec![],
             headless_message_count: 0,
         },
-        SourceRow {
-            source: "openclaw".to_string(),
+        ClientRow {
+            client: "openclaw".to_string(),
             label: "OpenClaw".to_string(),
             sessions_path: home_dir
                 .join(".openclaw/agents")
@@ -2148,8 +2148,8 @@ fn run_sources_command(json: bool) -> Result<()> {
             headless_paths: vec![],
             headless_message_count: 0,
         },
-        SourceRow {
-            source: "pi".to_string(),
+        ClientRow {
+            client: "pi".to_string(),
             label: "Pi".to_string(),
             sessions_path: home_dir
                 .join(".pi/agent/sessions")
@@ -2169,7 +2169,7 @@ fn run_sources_command(json: bool) -> Result<()> {
         #[serde(rename_all = "camelCase")]
         struct Output {
             headless_roots: Vec<String>,
-            sources: Vec<SourceRow>,
+            clients: Vec<ClientRow>,
             note: String,
         }
 
@@ -2178,7 +2178,7 @@ fn run_sources_command(json: bool) -> Result<()> {
                 .iter()
                 .map(|p| p.to_string_lossy().to_string())
                 .collect(),
-            sources,
+            clients,
             note: "Headless capture is supported for Codex CLI only.".to_string(),
         };
 
@@ -2186,7 +2186,7 @@ fn run_sources_command(json: bool) -> Result<()> {
     } else {
         use colored::Colorize;
 
-        println!("\n  {}", "Local sources & session counts".cyan());
+        println!("\n  {}", "Local clients & session counts".cyan());
         println!(
             "  {}",
             format!(
@@ -2201,7 +2201,7 @@ fn run_sources_command(json: bool) -> Result<()> {
         );
         println!();
 
-        for row in sources {
+        for row in clients {
             println!("  {}", row.label.white());
             println!(
                 "  {}",
@@ -2324,7 +2324,7 @@ struct TsTokenBreakdown {
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 struct TsSourceContribution {
-    source: String,
+    client: String,
     model_id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     provider_id: Option<String>,
@@ -2348,7 +2348,7 @@ struct TsDailyContribution {
     totals: TsDailyTotals,
     intensity: u8,
     token_breakdown: TsTokenBreakdown,
-    sources: Vec<TsSourceContribution>,
+    clients: Vec<TsSourceContribution>,
 }
 
 #[derive(serde::Serialize)]
@@ -2375,7 +2375,7 @@ struct TsDataSummary {
     active_days: i32,
     average_per_day: f64,
     max_cost_in_single_day: f64,
-    sources: Vec<String>,
+    clients: Vec<String>,
     models: Vec<String>,
 }
 
@@ -2413,7 +2413,7 @@ fn to_ts_token_contribution_data(graph: &tokscale_core::GraphResult) -> TsTokenC
             active_days: graph.summary.active_days,
             average_per_day: graph.summary.average_per_day,
             max_cost_in_single_day: graph.summary.max_cost_in_single_day,
-            sources: graph.summary.sources.clone(),
+            clients: graph.summary.clients.clone(),
             models: graph.summary.models.clone(),
         },
         years: graph
@@ -2447,11 +2447,11 @@ fn to_ts_token_contribution_data(graph: &tokscale_core::GraphResult) -> TsTokenC
                     cache_write: d.token_breakdown.cache_write,
                     reasoning: d.token_breakdown.reasoning,
                 },
-                sources: d
-                    .sources
+                clients: d
+                    .clients
                     .iter()
                     .map(|s| TsSourceContribution {
-                        source: s.source.clone(),
+                        client: s.client.clone(),
                         model_id: s.model_id.clone(),
                         provider_id: if s.provider_id.is_empty() {
                             None
@@ -2541,7 +2541,7 @@ fn prompt_star_repo() -> Result<()> {
 
 fn run_graph_command(
     output: Option<String>,
-    sources: Option<Vec<String>>,
+    clients: Option<Vec<String>>,
     since: Option<String>,
     until: Option<String>,
     year: Option<String>,
@@ -2553,7 +2553,7 @@ fn run_graph_command(
     use tokscale_core::{generate_graph, GroupBy, ReportOptions};
 
     let show_progress = output.is_some() && !no_spinner;
-    let include_cursor = sources
+    let include_cursor = clients
         .as_ref()
         .is_none_or(|s| s.iter().any(|src| src == "cursor"));
     let has_cursor_cache = cursor::has_cursor_usage_cache();
@@ -2577,7 +2577,7 @@ fn run_graph_command(
         .block_on(async {
             generate_graph(ReportOptions {
                 home_dir: None,
-                sources,
+                clients,
                 since,
                 until,
                 year,
@@ -2601,9 +2601,9 @@ fn run_graph_command(
         eprintln!(
             "{}",
             format!(
-                "  {} days, {} sources, {} models",
+                "  {} days, {} clients, {} models",
                 output_data.contributions.len(),
-                output_data.summary.sources.len(),
+                output_data.summary.clients.len(),
                 output_data.summary.models.len()
             )
             .bright_black()
@@ -2671,7 +2671,7 @@ struct SubmitMetrics {
 }
 
 fn run_submit_command(
-    sources: Option<Vec<String>>,
+    clients: Option<Vec<String>>,
     since: Option<String>,
     until: Option<String>,
     year: Option<String>,
@@ -2697,7 +2697,7 @@ fn run_submit_command(
 
     println!("\n  {}\n", "Tokscale - Submit Usage Data".cyan());
 
-    let include_cursor = sources
+    let include_cursor = clients
         .as_ref()
         .is_none_or(|s| s.iter().any(|src| src == "cursor"));
     let has_cursor_cache = cursor::has_cursor_usage_cache();
@@ -2727,7 +2727,7 @@ fn run_submit_command(
         .block_on(async {
             generate_graph(ReportOptions {
                 home_dir: None,
-                sources,
+                clients,
                 since,
                 until,
                 year,
@@ -2768,7 +2768,7 @@ fn run_submit_command(
     );
     println!(
         "{}",
-        format!("    Sources: {}", graph_result.summary.sources.join(", ")).bright_black()
+        format!("    Clients: {}", graph_result.summary.clients.join(", ")).bright_black()
     );
     println!(
         "{}",
@@ -3102,8 +3102,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_build_source_filter_all_false() {
-        let flags = SourceFlags {
+    fn test_build_client_filter_all_false() {
+        let flags = ClientFlags {
             opencode: false,
             claude: false,
             codex: false,
@@ -3114,12 +3114,12 @@ mod tests {
             openclaw: false,
             pi: false,
         };
-        assert_eq!(build_source_filter(flags), None);
+        assert_eq!(build_client_filter(flags), None);
     }
 
     #[test]
-    fn test_build_source_filter_single_source() {
-        let flags = SourceFlags {
+    fn test_build_client_filter_single_client() {
+        let flags = ClientFlags {
             opencode: true,
             claude: false,
             codex: false,
@@ -3131,14 +3131,14 @@ mod tests {
             pi: false,
         };
         assert_eq!(
-            build_source_filter(flags),
+            build_client_filter(flags),
             Some(vec!["opencode".to_string()])
         );
     }
 
     #[test]
-    fn test_build_source_filter_multiple_sources() {
-        let flags = SourceFlags {
+    fn test_build_client_filter_multiple_clients() {
+        let flags = ClientFlags {
             opencode: true,
             claude: true,
             codex: false,
@@ -3150,7 +3150,7 @@ mod tests {
             pi: true,
         };
         assert_eq!(
-            build_source_filter(flags),
+            build_client_filter(flags),
             Some(vec![
                 "opencode".to_string(),
                 "claude".to_string(),
@@ -3160,8 +3160,8 @@ mod tests {
     }
 
     #[test]
-    fn test_build_source_filter_all_sources() {
-        let flags = SourceFlags {
+    fn test_build_client_filter_all_clients() {
+        let flags = ClientFlags {
             opencode: true,
             claude: true,
             codex: true,
@@ -3172,7 +3172,7 @@ mod tests {
             openclaw: true,
             pi: true,
         };
-        let result = build_source_filter(flags);
+        let result = build_client_filter(flags);
         assert!(result.is_some());
         let sources = result.unwrap();
         assert_eq!(sources.len(), 9);
@@ -3289,53 +3289,53 @@ mod tests {
     }
 
     #[test]
-    fn test_capitalize_source_opencode() {
-        assert_eq!(capitalize_source("opencode"), "OpenCode");
+    fn test_capitalize_client_opencode() {
+        assert_eq!(capitalize_client("opencode"), "OpenCode");
     }
 
     #[test]
-    fn test_capitalize_source_claude() {
-        assert_eq!(capitalize_source("claude"), "Claude");
+    fn test_capitalize_client_claude() {
+        assert_eq!(capitalize_client("claude"), "Claude");
     }
 
     #[test]
-    fn test_capitalize_source_codex() {
-        assert_eq!(capitalize_source("codex"), "Codex");
+    fn test_capitalize_client_codex() {
+        assert_eq!(capitalize_client("codex"), "Codex");
     }
 
     #[test]
-    fn test_capitalize_source_cursor() {
-        assert_eq!(capitalize_source("cursor"), "Cursor");
+    fn test_capitalize_client_cursor() {
+        assert_eq!(capitalize_client("cursor"), "Cursor");
     }
 
     #[test]
-    fn test_capitalize_source_gemini() {
-        assert_eq!(capitalize_source("gemini"), "Gemini");
+    fn test_capitalize_client_gemini() {
+        assert_eq!(capitalize_client("gemini"), "Gemini");
     }
 
     #[test]
-    fn test_capitalize_source_amp() {
-        assert_eq!(capitalize_source("amp"), "Amp");
+    fn test_capitalize_client_amp() {
+        assert_eq!(capitalize_client("amp"), "Amp");
     }
 
     #[test]
-    fn test_capitalize_source_droid() {
-        assert_eq!(capitalize_source("droid"), "Droid");
+    fn test_capitalize_client_droid() {
+        assert_eq!(capitalize_client("droid"), "Droid");
     }
 
     #[test]
-    fn test_capitalize_source_openclaw() {
-        assert_eq!(capitalize_source("openclaw"), "openclaw");
+    fn test_capitalize_client_openclaw() {
+        assert_eq!(capitalize_client("openclaw"), "openclaw");
     }
 
     #[test]
-    fn test_capitalize_source_pi() {
-        assert_eq!(capitalize_source("pi"), "Pi");
+    fn test_capitalize_client_pi() {
+        assert_eq!(capitalize_client("pi"), "Pi");
     }
 
     #[test]
-    fn test_capitalize_source_unknown() {
-        assert_eq!(capitalize_source("unknown"), "unknown");
+    fn test_capitalize_client_unknown() {
+        assert_eq!(capitalize_client("unknown"), "unknown");
     }
 
     #[test]

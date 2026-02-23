@@ -4,7 +4,7 @@
 
 use crate::sessions::UnifiedMessage;
 use crate::{
-    DailyContribution, DailyTotals, DataSummary, GraphMeta, GraphResult, SourceContribution,
+    ClientContribution, DailyContribution, DailyTotals, DataSummary, GraphMeta, GraphResult,
     TokenBreakdown, YearSummary,
 };
 use rayon::prelude::*;
@@ -67,12 +67,12 @@ pub fn calculate_summary(contributions: &[DailyContribution]) -> DataSummary {
         .map(|c| c.totals.cost)
         .fold(0.0, f64::max);
 
-    let mut sources_set = std::collections::HashSet::with_capacity(5);
+    let mut clients_set = std::collections::HashSet::with_capacity(5);
     let mut models_set = std::collections::HashSet::with_capacity(20);
 
     for c in contributions {
-        for s in &c.sources {
-            sources_set.insert(s.source.clone());
+        for s in &c.clients {
+            clients_set.insert(s.client.clone());
             models_set.insert(s.model_id.clone());
         }
     }
@@ -88,7 +88,7 @@ pub fn calculate_summary(contributions: &[DailyContribution]) -> DataSummary {
             0.0
         },
         max_cost_in_single_day: max_cost,
-        sources: sources_set.into_iter().collect(),
+        clients: clients_set.into_iter().collect(),
         models: models_set.into_iter().collect(),
     }
 }
@@ -170,7 +170,7 @@ pub fn generate_graph_result(
 struct DayAccumulator {
     totals: DailyTotals,
     token_breakdown: TokenBreakdown,
-    sources: HashMap<String, SourceContribution>,
+    clients: HashMap<String, ClientContribution>,
 }
 
 impl Default for DayAccumulator {
@@ -178,7 +178,7 @@ impl Default for DayAccumulator {
         Self {
             totals: DailyTotals::default(),
             token_breakdown: TokenBreakdown::default(),
-            sources: HashMap::with_capacity(8),
+            clients: HashMap::with_capacity(8),
         }
     }
 }
@@ -215,17 +215,17 @@ impl DayAccumulator {
             .reasoning
             .saturating_add(msg.tokens.reasoning);
 
-        // Update source contribution
+        // Update client contribution
         let key = format!(
             "{}:{}",
-            msg.source,
+            msg.client,
             crate::normalize_model_for_grouping(&msg.model_id)
         );
-        let source = self
-            .sources
+        let client_entry = self
+            .clients
             .entry(key)
-            .or_insert_with(|| SourceContribution {
-                source: msg.source.clone(),
+            .or_insert_with(|| ClientContribution {
+                client: msg.client.clone(),
                 model_id: crate::normalize_model_for_grouping(&msg.model_id),
                 provider_id: msg.provider_id.clone(),
                 tokens: TokenBreakdown::default(),
@@ -233,30 +233,37 @@ impl DayAccumulator {
                 messages: 0,
             });
 
-        // Merge provider_id if different provider contributes to same source+model
-        if !source.provider_id.split(", ").any(|p| p == msg.provider_id) {
-            source.provider_id = format!("{}, {}", source.provider_id, msg.provider_id);
+        // Merge provider_id if different provider contributes to same client+model
+        if !client_entry
+            .provider_id
+            .split(", ")
+            .any(|p| p == msg.provider_id)
+        {
+            client_entry.provider_id = format!("{}, {}", client_entry.provider_id, msg.provider_id);
         }
 
-        source.tokens.input = source.tokens.input.saturating_add(msg.tokens.input);
-        source.tokens.output = source.tokens.output.saturating_add(msg.tokens.output);
-        source.tokens.cache_read = source
+        client_entry.tokens.input = client_entry.tokens.input.saturating_add(msg.tokens.input);
+        client_entry.tokens.output = client_entry.tokens.output.saturating_add(msg.tokens.output);
+        client_entry.tokens.cache_read = client_entry
             .tokens
             .cache_read
             .saturating_add(msg.tokens.cache_read);
-        source.tokens.cache_write = source
+        client_entry.tokens.cache_write = client_entry
             .tokens
             .cache_write
             .saturating_add(msg.tokens.cache_write);
-        source.tokens.reasoning = source.tokens.reasoning.saturating_add(msg.tokens.reasoning);
-        source.cost += msg.cost;
-        source.messages = source.messages.saturating_add(1);
+        client_entry.tokens.reasoning = client_entry
+            .tokens
+            .reasoning
+            .saturating_add(msg.tokens.reasoning);
+        client_entry.cost += msg.cost;
+        client_entry.messages = client_entry.messages.saturating_add(1);
 
         // Normalize provider order for deterministic output
-        let mut providers: Vec<&str> = source.provider_id.split(", ").collect();
+        let mut providers: Vec<&str> = client_entry.provider_id.split(", ").collect();
         providers.sort_unstable();
         providers.dedup();
-        source.provider_id = providers.join(", ");
+        client_entry.provider_id = providers.join(", ");
     }
 
     fn merge(&mut self, other: DayAccumulator) {
@@ -285,46 +292,52 @@ impl DayAccumulator {
             .reasoning
             .saturating_add(other.token_breakdown.reasoning);
 
-        for (key, source) in other.sources {
+        for (key, client_contrib) in other.clients {
             let entry = self
-                .sources
+                .clients
                 .entry(key)
-                .or_insert_with(|| SourceContribution {
-                    source: source.source.clone(),
-                    model_id: source.model_id.clone(),
-                    provider_id: source.provider_id.clone(),
+                .or_insert_with(|| ClientContribution {
+                    client: client_contrib.client.clone(),
+                    model_id: client_contrib.model_id.clone(),
+                    provider_id: client_contrib.provider_id.clone(),
                     tokens: TokenBreakdown::default(),
                     cost: 0.0,
                     messages: 0,
                 });
 
             // Merge provider_ids from parallel reduction
-            for provider in source.provider_id.split(", ") {
+            for provider in client_contrib.provider_id.split(", ") {
                 if !entry.provider_id.split(", ").any(|p| p == provider) {
                     entry.provider_id = format!("{}, {}", entry.provider_id, provider);
                 }
             }
 
-            entry.tokens.input = entry.tokens.input.saturating_add(source.tokens.input);
-            entry.tokens.output = entry.tokens.output.saturating_add(source.tokens.output);
+            entry.tokens.input = entry
+                .tokens
+                .input
+                .saturating_add(client_contrib.tokens.input);
+            entry.tokens.output = entry
+                .tokens
+                .output
+                .saturating_add(client_contrib.tokens.output);
             entry.tokens.cache_read = entry
                 .tokens
                 .cache_read
-                .saturating_add(source.tokens.cache_read);
+                .saturating_add(client_contrib.tokens.cache_read);
             entry.tokens.cache_write = entry
                 .tokens
                 .cache_write
-                .saturating_add(source.tokens.cache_write);
+                .saturating_add(client_contrib.tokens.cache_write);
             entry.tokens.reasoning = entry
                 .tokens
                 .reasoning
-                .saturating_add(source.tokens.reasoning);
-            entry.cost += source.cost;
-            entry.messages = entry.messages.saturating_add(source.messages);
+                .saturating_add(client_contrib.tokens.reasoning);
+            entry.cost += client_contrib.cost;
+            entry.messages = entry.messages.saturating_add(client_contrib.messages);
         }
 
         // Normalize provider order for deterministic output
-        for entry in self.sources.values_mut() {
+        for entry in self.clients.values_mut() {
             let mut providers: Vec<&str> = entry.provider_id.split(", ").collect();
             providers.sort_unstable();
             providers.dedup();
@@ -341,8 +354,8 @@ impl DayAccumulator {
             reasoning: self.token_breakdown.reasoning.max(0),
         };
 
-        let sources: Vec<SourceContribution> = self
-            .sources
+        let clients: Vec<ClientContribution> = self
+            .clients
             .into_values()
             .map(|mut s| {
                 s.tokens.input = s.tokens.input.max(0);
@@ -364,7 +377,7 @@ impl DayAccumulator {
             },
             intensity: 0,
             token_breakdown,
-            sources,
+            clients,
         }
     }
 }
@@ -414,7 +427,7 @@ mod tests {
         tokens: i64,
         cost: f64,
         model: &str,
-        source: &str,
+        client: &str,
     ) -> UnifiedMessage {
         // Parse date string to timestamp
         let datetime = format!("{}T00:00:00Z", date)
@@ -423,7 +436,7 @@ mod tests {
         let timestamp = datetime.timestamp_millis();
 
         UnifiedMessage {
-            source: source.to_string(),
+            client: client.to_string(),
             model_id: model.to_string(),
             provider_id: "test-provider".to_string(),
             session_id: "test-session".to_string(),
@@ -589,7 +602,7 @@ mod tests {
                 },
                 intensity: 0,
                 token_breakdown: TokenBreakdown::default(),
-                sources: Vec::new(),
+                clients: Vec::new(),
             },
             DailyContribution {
                 date: "2024-01-02".to_string(),
@@ -600,7 +613,7 @@ mod tests {
                 },
                 intensity: 0,
                 token_breakdown: TokenBreakdown::default(),
-                sources: Vec::new(),
+                clients: Vec::new(),
             },
         ];
 
@@ -687,7 +700,7 @@ mod tests {
             },
             intensity: 0,
             token_breakdown: TokenBreakdown::default(),
-            sources: Vec::new(),
+            clients: Vec::new(),
         }];
 
         let years = calculate_years(&contributions);
@@ -744,7 +757,7 @@ mod tests {
                 },
                 intensity: 0,
                 token_breakdown: TokenBreakdown::default(),
-                sources: Vec::new(),
+                clients: Vec::new(),
             },
             DailyContribution {
                 date: "2024-01-02".to_string(),
@@ -755,7 +768,7 @@ mod tests {
                 },
                 intensity: 0,
                 token_breakdown: TokenBreakdown::default(),
-                sources: Vec::new(),
+                clients: Vec::new(),
             },
         ];
 
@@ -776,7 +789,7 @@ mod tests {
                 },
                 intensity: 0,
                 token_breakdown: TokenBreakdown::default(),
-                sources: Vec::new(),
+                clients: Vec::new(),
             },
             DailyContribution {
                 date: "2024-01-02".to_string(),
@@ -787,7 +800,7 @@ mod tests {
                 },
                 intensity: 0,
                 token_breakdown: TokenBreakdown::default(),
-                sources: Vec::new(),
+                clients: Vec::new(),
             },
             DailyContribution {
                 date: "2024-01-03".to_string(),
@@ -798,7 +811,7 @@ mod tests {
                 },
                 intensity: 0,
                 token_breakdown: TokenBreakdown::default(),
-                sources: Vec::new(),
+                clients: Vec::new(),
             },
             DailyContribution {
                 date: "2024-01-04".to_string(),
@@ -809,7 +822,7 @@ mod tests {
                 },
                 intensity: 0,
                 token_breakdown: TokenBreakdown::default(),
-                sources: Vec::new(),
+                clients: Vec::new(),
             },
             DailyContribution {
                 date: "2024-01-05".to_string(),
@@ -820,7 +833,7 @@ mod tests {
                 },
                 intensity: 0,
                 token_breakdown: TokenBreakdown::default(),
-                sources: Vec::new(),
+                clients: Vec::new(),
             },
         ];
 
@@ -845,7 +858,7 @@ mod tests {
                 },
                 intensity: 0,
                 token_breakdown: TokenBreakdown::default(),
-                sources: Vec::new(),
+                clients: Vec::new(),
             },
             DailyContribution {
                 date: "2024-01-02".to_string(),
@@ -856,7 +869,7 @@ mod tests {
                 },
                 intensity: 0,
                 token_breakdown: TokenBreakdown::default(),
-                sources: Vec::new(),
+                clients: Vec::new(),
             },
             DailyContribution {
                 date: "2024-01-03".to_string(),
@@ -867,7 +880,7 @@ mod tests {
                 },
                 intensity: 0,
                 token_breakdown: TokenBreakdown::default(),
-                sources: Vec::new(),
+                clients: Vec::new(),
             },
             DailyContribution {
                 date: "2024-01-04".to_string(),
@@ -878,7 +891,7 @@ mod tests {
                 },
                 intensity: 0,
                 token_breakdown: TokenBreakdown::default(),
-                sources: Vec::new(),
+                clients: Vec::new(),
             },
         ];
 
@@ -899,16 +912,16 @@ mod tests {
 
         let result = aggregate_by_date(messages);
         assert_eq!(result.len(), 1);
-        assert_eq!(result[0].sources.len(), 2);
+        assert_eq!(result[0].clients.len(), 2);
 
-        // Verify both sources are present
-        let source_names: Vec<&str> = result[0]
-            .sources
+        // Verify both clients are present
+        let client_names: Vec<&str> = result[0]
+            .clients
             .iter()
-            .map(|s| s.source.as_str())
+            .map(|s| s.client.as_str())
             .collect();
-        assert!(source_names.contains(&"opencode"));
-        assert!(source_names.contains(&"claude"));
+        assert!(client_names.contains(&"opencode"));
+        assert!(client_names.contains(&"claude"));
     }
 
     #[test]

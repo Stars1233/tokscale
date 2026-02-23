@@ -7,17 +7,17 @@ use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::layout::Rect;
 
-use super::data::{DailyUsage, DataLoader, ModelUsage, Source, UsageData};
+use super::data::{Client, DailyUsage, DataLoader, ModelUsage, UsageData};
 use super::settings::Settings;
 use super::themes::{Theme, ThemeName};
-use super::ui::dialog::{DialogStack, SourcePickerDialog};
+use super::ui::dialog::{ClientPickerDialog, DialogStack};
 
 /// Configuration for TUI initialization
 pub struct TuiConfig {
     pub theme: String,
     pub refresh: u64,
     pub sessions_path: Option<String>,
-    pub sources: Option<Vec<String>>,
+    pub clients: Option<Vec<String>>,
     pub since: Option<String>,
     pub until: Option<String>,
     pub year: Option<String>,
@@ -95,7 +95,6 @@ pub struct ClickArea {
 #[derive(Debug, Clone)]
 pub enum ClickAction {
     Tab(Tab),
-
     Sort(SortField),
     GraphCell { week: usize, day: usize },
 }
@@ -108,7 +107,7 @@ pub struct App {
     pub data: UsageData,
     pub data_loader: DataLoader,
 
-    pub enabled_sources: Rc<RefCell<HashSet<Source>>>,
+    pub enabled_clients: Rc<RefCell<HashSet<Client>>>,
     pub group_by: Rc<RefCell<tokscale_core::GroupBy>>,
     pub sort_field: SortField,
     pub sort_direction: SortDirection,
@@ -151,27 +150,27 @@ impl App {
             .unwrap_or_else(|_| settings.theme_name());
         let theme = Theme::from_name(theme_name);
 
-        let mut enabled_sources = HashSet::new();
+        let mut enabled_clients = HashSet::new();
 
-        if let Some(ref cli_sources) = config.sources {
-            for source_str in cli_sources {
-                match source_str.as_str() {
-                    "opencode" => enabled_sources.insert(Source::OpenCode),
-                    "claude" => enabled_sources.insert(Source::Claude),
-                    "codex" => enabled_sources.insert(Source::Codex),
-                    "cursor" => enabled_sources.insert(Source::Cursor),
-                    "gemini" => enabled_sources.insert(Source::Gemini),
-                    "amp" => enabled_sources.insert(Source::Amp),
-                    "droid" => enabled_sources.insert(Source::Droid),
-                    "openclaw" => enabled_sources.insert(Source::OpenClaw),
-                    "pi" => enabled_sources.insert(Source::Pi),
-                    "kimi" => enabled_sources.insert(Source::Kimi),
+        if let Some(ref cli_clients) = config.clients {
+            for client_str in cli_clients {
+                match client_str.as_str() {
+                    "opencode" => enabled_clients.insert(Client::OpenCode),
+                    "claude" => enabled_clients.insert(Client::Claude),
+                    "codex" => enabled_clients.insert(Client::Codex),
+                    "cursor" => enabled_clients.insert(Client::Cursor),
+                    "gemini" => enabled_clients.insert(Client::Gemini),
+                    "amp" => enabled_clients.insert(Client::Amp),
+                    "droid" => enabled_clients.insert(Client::Droid),
+                    "openclaw" => enabled_clients.insert(Client::OpenClaw),
+                    "pi" => enabled_clients.insert(Client::Pi),
+                    "kimi" => enabled_clients.insert(Client::Kimi),
                     _ => false,
                 };
             }
         } else {
-            for source in Source::all() {
-                enabled_sources.insert(*source);
+            for client in Client::all() {
+                enabled_clients.insert(*client);
             }
         }
 
@@ -204,7 +203,7 @@ impl App {
             settings,
             data,
             data_loader,
-            enabled_sources: Rc::new(RefCell::new(enabled_sources)),
+            enabled_clients: Rc::new(RefCell::new(enabled_clients)),
             group_by: Rc::new(RefCell::new(tokscale_core::GroupBy::Model)),
             sort_field: SortField::Cost,
             sort_direction: SortDirection::Descending,
@@ -339,7 +338,7 @@ impl App {
                 self.export_to_json();
             }
             KeyCode::Char('s') => {
-                self.open_source_picker();
+                self.open_client_picker();
             }
             KeyCode::Char('g') => {
                 self.open_group_by_picker();
@@ -500,9 +499,9 @@ impl App {
         }
     }
 
-    fn open_source_picker(&mut self) {
-        let dialog = SourcePickerDialog::new(
-            self.enabled_sources.clone(),
+    fn open_client_picker(&mut self) {
+        let dialog = ClientPickerDialog::new(
+            self.enabled_clients.clone(),
             self.dialog_needs_reload.clone(),
         );
         self.dialog_stack.show(Box::new(dialog));
@@ -588,7 +587,7 @@ impl App {
             "models": self.data.models.iter().map(|m| serde_json::json!({
                 "model": m.model,
                 "provider": m.provider,
-                "source": m.source,
+                "client": m.client,
                 "tokens": {
                     "input": m.tokens.input,
                     "output": m.tokens.output,
@@ -648,7 +647,7 @@ impl App {
             a.model
                 .cmp(&b.model)
                 .then_with(|| a.provider.cmp(&b.provider))
-                .then_with(|| a.source.cmp(&b.source))
+                .then_with(|| a.client.cmp(&b.client))
         };
 
         match (self.sort_field, self.sort_direction) {
@@ -773,7 +772,7 @@ mod tests {
             theme: "blue".to_string(),
             refresh: 0,
             sessions_path: None,
-            sources: None,
+            clients: None,
             since: None,
             until: None,
             year: None,
@@ -798,7 +797,7 @@ mod tests {
             theme: "blue".to_string(),
             refresh: 0,
             sessions_path: None,
-            sources: None,
+            clients: None,
             since: None,
             until: None,
             year: None,
@@ -811,7 +810,7 @@ mod tests {
             ModelUsage {
                 model: "model1".to_string(),
                 provider: "provider1".to_string(),
-                source: "opencode".to_string(),
+                client: "opencode".to_string(),
                 tokens: TokenBreakdown::default(),
                 cost: 0.0,
                 session_count: 1,
@@ -819,7 +818,7 @@ mod tests {
             ModelUsage {
                 model: "model2".to_string(),
                 provider: "provider2".to_string(),
-                source: "opencode".to_string(),
+                client: "opencode".to_string(),
                 tokens: TokenBreakdown::default(),
                 cost: 0.0,
                 session_count: 1,
@@ -841,7 +840,7 @@ mod tests {
             theme: "blue".to_string(),
             refresh: 0,
             sessions_path: None,
-            sources: None,
+            clients: None,
             since: None,
             until: None,
             year: None,
@@ -854,7 +853,7 @@ mod tests {
             ModelUsage {
                 model: "model1".to_string(),
                 provider: "provider1".to_string(),
-                source: "opencode".to_string(),
+                client: "opencode".to_string(),
                 tokens: TokenBreakdown::default(),
                 cost: 0.0,
                 session_count: 1,
@@ -862,7 +861,7 @@ mod tests {
             ModelUsage {
                 model: "model2".to_string(),
                 provider: "provider2".to_string(),
-                source: "opencode".to_string(),
+                client: "opencode".to_string(),
                 tokens: TokenBreakdown::default(),
                 cost: 0.0,
                 session_count: 1,
@@ -884,7 +883,7 @@ mod tests {
             theme: "blue".to_string(),
             refresh: 0,
             sessions_path: None,
-            sources: None,
+            clients: None,
             since: None,
             until: None,
             year: None,
@@ -896,7 +895,7 @@ mod tests {
         app.data.models = vec![ModelUsage {
             model: "model1".to_string(),
             provider: "provider1".to_string(),
-            source: "opencode".to_string(),
+            client: "opencode".to_string(),
             tokens: TokenBreakdown::default(),
             cost: 0.0,
             session_count: 1,
@@ -921,7 +920,7 @@ mod tests {
             theme: "blue".to_string(),
             refresh: 0,
             sessions_path: None,
-            sources: None,
+            clients: None,
             since: None,
             until: None,
             year: None,
@@ -955,7 +954,7 @@ mod tests {
             theme: "blue".to_string(),
             refresh: 0,
             sessions_path: None,
-            sources: None,
+            clients: None,
             since: None,
             until: None,
             year: None,
@@ -973,7 +972,7 @@ mod tests {
             theme: "blue".to_string(),
             refresh: 0,
             sessions_path: None,
-            sources: None,
+            clients: None,
             since: None,
             until: None,
             year: None,
@@ -988,7 +987,7 @@ mod tests {
             .map(|i| ModelUsage {
                 model: format!("model{}", i),
                 provider: "provider".to_string(),
-                source: "opencode".to_string(),
+                client: "opencode".to_string(),
                 tokens: TokenBreakdown::default(),
                 cost: 0.0,
                 session_count: 1,

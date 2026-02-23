@@ -4,9 +4,14 @@
  */
 
 /**
- * Valid source identifiers
+ * Valid client identifiers
  */
-export type SourceType = "opencode" | "claude" | "codex" | "gemini" | "cursor" | "amp" | "droid" | "openclaw" | "pi" | "kimi";
+export type ClientType = "opencode" | "claude" | "codex" | "gemini" | "cursor" | "amp" | "droid" | "openclaw" | "pi" | "kimi";
+
+/**
+ * @deprecated Use ClientType instead
+ */
+export type SourceType = ClientType;
 
 /**
  * Token breakdown by category
@@ -20,11 +25,11 @@ export interface TokenBreakdown {
 }
 
 /**
- * Per-source contribution for a single day
+ * Per-client contribution for a single day
  */
-export interface SourceContribution {
-  /** Source identifier */
-  source: SourceType;
+export interface ClientContribution {
+  /** Client identifier */
+  client: ClientType;
 
   /** Exact model ID as reported by the source */
   modelId: string;
@@ -73,8 +78,8 @@ export interface DailyContribution {
   /** Token breakdown by category (aggregated across all sources) */
   tokenBreakdown: TokenBreakdown;
 
-  /** Per-source breakdown with model information */
-  sources: SourceContribution[];
+  /** Per-client breakdown with model information */
+  clients: ClientContribution[];
 }
 
 /**
@@ -119,8 +124,8 @@ export interface DataSummary {
   /** Maximum cost in a single day (used for intensity calculation) */
   maxCostInSingleDay: number;
 
-  /** All sources present in the data */
-  sources: SourceType[];
+  /** All clients present in the data */
+  clients: ClientType[];
 
   /** All unique model IDs across all sources */
   models: string[];
@@ -163,13 +168,18 @@ export interface TokenContributionData {
 
 /**
  * Unified message format for aggregation
- * Used internally to normalize data from different sources
+ * Used internally to normalize data from different clients
  */
 export interface UnifiedMessage {
-  source: SourceType;
+  client: ClientType;
   modelId: string;
   providerId?: string;
   timestampMs: number; // Unix milliseconds
   tokens: TokenBreakdown;
   cost: number;
 }
+
+/**
+ * @deprecated Use ClientContribution instead
+ */
+export type SourceContribution = ClientContribution;

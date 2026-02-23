@@ -11,26 +11,26 @@ use ratatui::{
     Frame,
 };
 
-use crate::tui::data::Source;
+use crate::tui::data::Client;
 use crate::tui::themes::Theme;
 
 use super::{DialogContent, DialogResult};
 
-pub struct SourcePickerDialog {
-    sources: Vec<Source>,
-    enabled: Rc<RefCell<HashSet<Source>>>,
+pub struct ClientPickerDialog {
+    clients: Vec<Client>,
+    enabled: Rc<RefCell<HashSet<Client>>>,
     needs_reload: Rc<RefCell<bool>>,
     selected: usize,
     filter: String,
     filtered_indices: Vec<usize>,
 }
 
-impl SourcePickerDialog {
-    pub fn new(enabled: Rc<RefCell<HashSet<Source>>>, needs_reload: Rc<RefCell<bool>>) -> Self {
-        let sources = Source::all().to_vec();
-        let filtered_indices: Vec<usize> = (0..sources.len()).collect();
+impl ClientPickerDialog {
+    pub fn new(enabled: Rc<RefCell<HashSet<Client>>>, needs_reload: Rc<RefCell<bool>>) -> Self {
+        let clients = Client::all().to_vec();
+        let filtered_indices: Vec<usize> = (0..clients.len()).collect();
         Self {
-            sources,
+            clients,
             enabled,
             needs_reload,
             selected: 0,
@@ -56,15 +56,15 @@ impl SourcePickerDialog {
 
     fn toggle_selected(&mut self) {
         if let Some(&idx) = self.filtered_indices.get(self.selected) {
-            let source = self.sources[idx];
+            let client = self.clients[idx];
             let mut enabled = self.enabled.borrow_mut();
-            let is_enabled = enabled.contains(&source);
+            let is_enabled = enabled.contains(&client);
 
             if is_enabled && enabled.len() > 1 {
-                enabled.remove(&source);
+                enabled.remove(&client);
                 *self.needs_reload.borrow_mut() = true;
             } else if !is_enabled {
-                enabled.insert(source);
+                enabled.insert(client);
                 *self.needs_reload.borrow_mut() = true;
             }
         }
@@ -73,10 +73,10 @@ impl SourcePickerDialog {
     fn rebuild_filter(&mut self) {
         let needle = self.filter.to_lowercase();
         if needle.is_empty() {
-            self.filtered_indices = (0..self.sources.len()).collect();
+            self.filtered_indices = (0..self.clients.len()).collect();
         } else {
             self.filtered_indices = self
-                .sources
+                .clients
                 .iter()
                 .enumerate()
                 .filter(|(_, s)| s.as_str().to_lowercase().contains(&needle))
@@ -89,7 +89,7 @@ impl SourcePickerDialog {
     }
 }
 
-impl DialogContent for SourcePickerDialog {
+impl DialogContent for ClientPickerDialog {
     fn desired_size(&self, viewport: Rect) -> (u16, u16) {
         let width = 50u16.min(viewport.width.saturating_sub(4));
         let height = 18u16.min(viewport.height.saturating_sub(4));
@@ -98,7 +98,7 @@ impl DialogContent for SourcePickerDialog {
 
     fn render(&self, frame: &mut Frame, area: Rect, theme: &Theme) {
         let block = Block::default()
-            .title(" Sources ")
+            .title(" Clients ")
             .borders(Borders::ALL)
             .border_style(Style::default().fg(theme.accent));
         let inner = block.inner(area);
@@ -146,13 +146,13 @@ impl DialogContent for SourcePickerDialog {
                 break;
             }
 
-            let source = self.sources[idx];
+            let client = self.clients[idx];
             let is_selected = flat_idx == self.selected;
-            let is_enabled = self.enabled.borrow().contains(&source);
+            let is_enabled = self.enabled.borrow().contains(&client);
 
             let checkbox = if is_enabled { "[●]" } else { "[ ]" };
-            let key_hint = format!("[{}]", source.key());
-            let name = source.as_str();
+            let key_hint = format!("[{}]", client.key());
+            let name = client.as_str();
 
             let usable = list_area.width.saturating_sub(4) as usize;
             let left = format!("{} {} {}", checkbox, key_hint, name);
@@ -211,14 +211,14 @@ impl DialogContent for SourcePickerDialog {
                 DialogResult::None
             }
             KeyCode::Char(c) => {
-                if let Some(source) = Source::from_key(c) {
+                if let Some(client) = Client::from_key(c) {
                     let mut enabled = self.enabled.borrow_mut();
-                    let is_enabled = enabled.contains(&source);
+                    let is_enabled = enabled.contains(&client);
                     if is_enabled && enabled.len() > 1 {
-                        enabled.remove(&source);
+                        enabled.remove(&client);
                         *self.needs_reload.borrow_mut() = true;
                     } else if !is_enabled {
-                        enabled.insert(source);
+                        enabled.insert(client);
                         *self.needs_reload.borrow_mut() = true;
                     }
                 } else {

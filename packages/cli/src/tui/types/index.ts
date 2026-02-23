@@ -2,12 +2,17 @@ import type { ColorPaletteName } from "../config/themes.js";
 
 export type TabType = "overview" | "model" | "daily" | "stats";
 export type SortType = "cost" | "tokens" | "date";
-export type SourceType = "opencode" | "claude" | "codex" | "cursor" | "gemini" | "amp" | "droid" | "openclaw" | "pi" | "kimi";
+export type ClientType = "opencode" | "claude" | "codex" | "cursor" | "gemini" | "amp" | "droid" | "openclaw" | "pi" | "kimi";
+
+/**
+ * @deprecated Use ClientType instead
+ */
+export type SourceType = ClientType;
 
 export type { ColorPaletteName };
 
 export interface ModelEntry {
-  source: string;
+  client: string;
   model: string;
   input: number;
   output: number;
@@ -116,7 +121,7 @@ export interface DailyModelBreakdown {
   totalTokens: number;
   models: Array<{
     modelId: string;
-    source: string;
+    client: string;
     tokens: {
       input: number;
       output: number;
@@ -131,7 +136,7 @@ export interface DailyModelBreakdown {
 
 export interface TUIOptions {
   initialTab?: TabType;
-  enabledSources?: SourceType[];
+  enabledSources?: ClientType[];
   sortBy?: SortType;
   sortDesc?: boolean;
   since?: string;
@@ -156,7 +161,7 @@ export const LAYOUT = {
   MAX_VISIBLE_BARS: 52,
 } as const;
 
-export const SOURCE_LABELS: Record<SourceType, string> = {
+export const SOURCE_LABELS: Record<ClientType, string> = {
   opencode: "OC",
   claude: "CC",
   codex: "CX",
@@ -170,4 +175,4 @@ export const SOURCE_LABELS: Record<SourceType, string> = {
 } as const;
 
 export const TABS: readonly TabType[] = ["overview", "model", "daily", "stats"] as const;
-export const ALL_SOURCES: readonly SourceType[] = ["opencode", "claude", "codex", "cursor", "gemini", "amp", "droid", "openclaw", "pi", "kimi"] as const;
+export const ALL_SOURCES: readonly ClientType[] = ["opencode", "claude", "codex", "cursor", "gemini", "amp", "droid", "openclaw", "pi", "kimi"] as const;

@@ -9,7 +9,7 @@ mod ui;
 
 pub use app::{App, Tab, TuiConfig};
 pub use cache::{is_cache_stale, load_cached_data, save_cached_data};
-pub use data::{DataLoader, Source, UsageData};
+pub use data::{DataLoader, Client, UsageData};
 pub use event::{Event, EventHandler};
 
 use std::collections::HashSet;
@@ -39,7 +39,7 @@ pub fn run(
     theme: &str,
     refresh: u64,
     debug: bool,
-    sources: Option<Vec<String>>,
+    clients: Option<Vec<String>>,
     since: Option<String>,
     until: Option<String>,
     year: Option<String>,
@@ -55,38 +55,38 @@ pub fn run(
         theme: theme.to_string(),
         refresh,
         sessions_path: None,
-        sources: sources.clone(),
+        clients: clients.clone(),
         since: since.clone(),
         until: until.clone(),
         year: year.clone(),
         initial_tab,
     };
 
-    let mut enabled_sources = HashSet::new();
-    if let Some(ref cli_sources) = sources {
-        for source_str in cli_sources {
-            match source_str.as_str() {
-                "opencode" => enabled_sources.insert(Source::OpenCode),
-                "claude" => enabled_sources.insert(Source::Claude),
-                "codex" => enabled_sources.insert(Source::Codex),
-                "cursor" => enabled_sources.insert(Source::Cursor),
-                "gemini" => enabled_sources.insert(Source::Gemini),
-                "amp" => enabled_sources.insert(Source::Amp),
-                "droid" => enabled_sources.insert(Source::Droid),
-                "openclaw" => enabled_sources.insert(Source::OpenClaw),
-                "pi" => enabled_sources.insert(Source::Pi),
-                "kimi" => enabled_sources.insert(Source::Kimi),
+    let mut enabled_clients = HashSet::new();
+    if let Some(ref cli_clients) = clients {
+        for client_str in cli_clients {
+            match client_str.as_str() {
+                "opencode" => enabled_clients.insert(Client::OpenCode),
+                "claude" => enabled_clients.insert(Client::Claude),
+                "codex" => enabled_clients.insert(Client::Codex),
+                "cursor" => enabled_clients.insert(Client::Cursor),
+                "gemini" => enabled_clients.insert(Client::Gemini),
+                "amp" => enabled_clients.insert(Client::Amp),
+                "droid" => enabled_clients.insert(Client::Droid),
+                "openclaw" => enabled_clients.insert(Client::OpenClaw),
+                "pi" => enabled_clients.insert(Client::Pi),
+                "kimi" => enabled_clients.insert(Client::Kimi),
                 _ => false,
             };
         }
     } else {
-        for source in Source::all() {
-            enabled_sources.insert(*source);
+        for client in Client::all() {
+            enabled_clients.insert(*client);
         }
     }
 
-    let cached_data = load_cached_data(&enabled_sources);
-    let cache_is_stale = cached_data.is_some() && is_cache_stale(&enabled_sources);
+    let cached_data = load_cached_data(&enabled_clients);
+    let cache_is_stale = cached_data.is_some() && is_cache_stale(&enabled_clients);
     let has_cached_data = cached_data.is_some();
 
     let original_hook = panic::take_hook();
@@ -128,19 +128,19 @@ pub fn run(
         app.set_background_loading(true);
 
         let tx = bg_tx.clone();
-        let bg_sources: Vec<Source> = enabled_sources.iter().copied().collect();
+        let bg_clients: Vec<Client> = enabled_clients.iter().copied().collect();
         let bg_since = since.clone();
         let bg_until = until.clone();
         let bg_year = year.clone();
-        let bg_enabled_sources = enabled_sources.clone();
+        let bg_enabled_clients = enabled_clients.clone();
         let bg_group_by = app.group_by.borrow().clone();
 
         thread::spawn(move || {
             let loader = DataLoader::with_filters(None, bg_since, bg_until, bg_year);
-            let result = loader.load(&bg_sources, &bg_group_by);
+            let result = loader.load(&bg_clients, &bg_group_by);
 
             if let Ok(ref data) = result {
-                save_cached_data(data, &bg_enabled_sources);
+                save_cached_data(data, &bg_enabled_clients);
             }
 
             let _ = tx.send(result);
@@ -237,18 +237,18 @@ fn run_loop_with_background(
             app.set_background_loading(true);
 
             let tx = bg_tx.clone();
-            let sources: Vec<Source> = app.enabled_sources.borrow().iter().copied().collect();
+            let clients: Vec<Client> = app.enabled_clients.borrow().iter().copied().collect();
             let since = app.data_loader.since.clone();
             let until = app.data_loader.until.clone();
             let year = app.data_loader.year.clone();
-            let enabled_sources = app.enabled_sources.borrow().clone();
+            let enabled_clients = app.enabled_clients.borrow().clone();
             let group_by = app.group_by.borrow().clone();
 
             thread::spawn(move || {
                 let loader = DataLoader::with_filters(None, since, until, year);
-                let result = loader.load(&sources, &group_by);
+                let result = loader.load(&clients, &group_by);
                 if let Ok(ref data) = result {
-                    save_cached_data(data, &enabled_sources);
+                    save_cached_data(data, &enabled_clients);
                 }
                 let _ = tx.send(result);
             });
@@ -282,35 +282,35 @@ pub fn test_data_loading() -> Result<()> {
     println!("Testing data loading...");
 
     let loader = DataLoader::new(None);
-    let all_sources = vec![
-        Source::OpenCode,
-        Source::Claude,
-        Source::Cursor,
-        Source::Gemini,
-        Source::Codex,
-        Source::Amp,
-        Source::Droid,
-        Source::OpenClaw,
-        Source::Pi,
+    let all_clients = vec![
+        Client::OpenCode,
+        Client::Claude,
+        Client::Cursor,
+        Client::Gemini,
+        Client::Codex,
+        Client::Amp,
+        Client::Droid,
+        Client::OpenClaw,
+        Client::Pi,
     ];
 
-    let data = loader.load(&all_sources, &tokscale_core::GroupBy::default())?;
+    let data = loader.load(&all_clients, &tokscale_core::GroupBy::default())?;
 
     println!("Loaded {} models", data.models.len());
     println!("Total cost: ${:.2}", data.total_cost);
 
-    println!("\nAll models (source:model):");
+    println!("\nAll models (client:model):");
     let mut models = data.models.clone();
     models.sort_by(|a, b| {
-        let source_cmp = a.source.cmp(&b.source);
-        if source_cmp == std::cmp::Ordering::Equal {
+        let client_cmp = a.client.cmp(&b.client);
+        if client_cmp == std::cmp::Ordering::Equal {
             a.model.cmp(&b.model)
         } else {
-            source_cmp
+            client_cmp
         }
     });
     for m in &models {
-        println!("{}:{}", m.source.to_lowercase(), m.model);
+        println!("{}:{}", m.client.to_lowercase(), m.model);
     }
 
     Ok(())
