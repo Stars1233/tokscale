@@ -8,6 +8,13 @@
 
 > A high-performance CLI tool and visualization dashboard for tracking token usage and costs across multiple AI coding agents.
 
+> [!TIP]
+>
+> I drop new open-source work every week. Don't miss the next one.
+>
+> | [<img alt="GitHub Follow" src="https://img.shields.io/github/followers/junhoyeo?style=flat-square&logo=github&labelColor=black&color=24292f" width="156px" />](https://github.com/junhoyeo) | Follow [@junhoyeo](https://github.com/junhoyeo) on GitHub for more projects. Hacking on AI, infra, and everything in between. |
+> | :-----| :----- |
+
 <div align="center">
 
 [![GitHub Release](https://img.shields.io/github/v/release/junhoyeo/tokscale?color=0073FF&labelColor=black&logo=github&style=flat-square)](https://github.com/junhoyeo/tokscale/releases)
