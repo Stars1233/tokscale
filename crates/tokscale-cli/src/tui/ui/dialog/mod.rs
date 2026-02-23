@@ -1,5 +1,5 @@
+pub mod group_by_picker;
 pub mod overlay;
-pub mod select;
 pub mod source_picker;
 pub mod stack;
 
@@ -8,7 +8,7 @@ use ratatui::{layout::Rect, Frame};
 
 use crate::tui::themes::Theme;
 
-pub use select::{DialogSelect, DialogSelectItem};
+pub use group_by_picker::GroupByPickerDialog;
 pub use source_picker::SourcePickerDialog;
 pub use stack::DialogStack;
 
