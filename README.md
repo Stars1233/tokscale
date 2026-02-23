@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Tokscale](./.github/assets/hero.png)](https://tokscale.ai)
+[![Tokscale](./.github/assets/hero-v2.png)](https://tokscale.ai)
 
 </div>
 

@@ -89,7 +89,7 @@ Version is stored in 3 places (all updated by CI):
 ```markdown
 <div align="center">
 
-[![Tokscale](https://github.com/junhoyeo/tokscale/raw/main/.github/assets/hero.png)](https://github.com/junhoyeo/tokscale)
+[![Tokscale](https://github.com/junhoyeo/tokscale/raw/main/.github/assets/hero-v2.png)](https://github.com/junhoyeo/tokscale)
 
 # `tokscale@vX.Y.Z` is here!
 </div>
