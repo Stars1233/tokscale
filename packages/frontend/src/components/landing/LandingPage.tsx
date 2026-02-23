@@ -35,6 +35,7 @@ const PageWrapper = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding: 0 16px;
 `;
 
 const PageInner = styled.div`

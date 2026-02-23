@@ -31,7 +31,7 @@ const FooterInner = styled.div`
   align-items: center;
   gap: 20px;
   padding-top: 16px;
-  border-top: 0.625px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 `;
 
 const FooterCopyright = styled.p`

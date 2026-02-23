@@ -122,6 +122,10 @@ const GlobeBackground = styled.div`
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+
+  @media (max-width: 900px) {
+    background-image: url("/assets/landing/worldwide-section-bg@mobile.svg");
+  }
 `;
 
 const GlobeFadeTop = styled.div`
@@ -261,11 +265,17 @@ const GlobeRightCol = styled.div`
 
 const TrophyVideo = styled.video`
   position: absolute;
-  left: 50%;
+
+  width: 396px;
+  height: 396px;
+  min-width: 396px;
+  min-height: 396px;
+  max-width: 396px;
+  max-height: 396px;
+
   top: 50%;
+  left: 50%;
   transform: translate(-50%, -50%);
-  width: 33%;
-  height: auto;
   object-fit: contain;
   pointer-events: none;
   z-index: 2;

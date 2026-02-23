@@ -89,7 +89,7 @@ export function HeroSection({ stargazersCount }: HeroSectionProps) {
             onMouseLeave={() => setIsHovered(false)}
             onMouseMove={handleMouseMove}
           >
-            <TrustedByLabel>Trusted by professionals at</TrustedByLabel>
+            <TrustedByLabel><IB>Trusted by</IB> <IB>professionals at</IB></TrustedByLabel>
             <TrustedByLogos>
               <TrustedByLogo
                 src="/assets/landing/trusted-by-microsoft.svg"
@@ -179,9 +179,10 @@ const HeroLeft = styled.div`
     width: 100%;
     height: 400px;
     border-right: none;
-    border-bottom: 1px solid #10233e;
+    /* border-bottom: 1px solid #10233e; */
     padding-bottom: 32px;
     padding-top: 60px;
+    overflow: visible;
   }
 `;
 
@@ -240,14 +241,22 @@ const HeroTopSection = styled.div`
   flex-direction: column;
   justify-content: flex-end;
   gap: 17px;
-  padding: 97px 0px 33px;
+  padding: 97px 40px 33px;
   background-image: url("/assets/landing/hero-trusted-bg.png");
   background-size: cover;
   background-position: center;
   border-bottom: 1px solid #10233e;
-
+  
   @media (max-width: 900px) {
-    padding: 60px 0px 24px;
+    padding: 64px 20px;
+    justify-content: center;
+
+    background-image: linear-gradient(to bottom, rgba(1, 17, 36, 0), #011124);
+    z-index: 1;
+  }
+
+  @media (max-width: 480px) {
+    padding: 28px 20px 48px
   }
 `;
 
@@ -255,10 +264,9 @@ const HeroContent = styled.div`
   display: flex;
   flex-direction: column;
   gap: 20px;
-  padding: 33px 40px 0px;
 
   @media (max-width: 900px) {
-    padding: 20px 24px 0px;
+    align-items: center;
   }
 `;
 
@@ -271,11 +279,11 @@ const HeroTitle = styled.h1`
   color: #ffffff;
 
   @media (max-width: 900px) {
-    font-size: 36px;
+    text-align: center;
   }
 
   @media (max-width: 480px) {
-    font-size: 28px;
+    font-size: 36px;
   }
 `;
 
@@ -332,8 +340,6 @@ const StarButton = styled.a`
   }
 
   @media (max-width: 480px) {
-    width: 170px;
-    height: 44px;
     padding: 0 20px;
   }
 `;
@@ -403,6 +409,7 @@ const TrustedBySection = styled.div`
 
   @media (max-width: 900px) {
     padding: 20px 20px 28px;
+    align-items: center;
   }
 `;
 
@@ -501,4 +508,8 @@ const TooltipLink = styled.a`
   &:hover {
     color: #3399ff;
   }
+`;
+
+const IB = styled.span`
+  display: inline-block;
 `;

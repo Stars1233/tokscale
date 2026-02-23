@@ -46,7 +46,8 @@ const DescriptionSectionWrapper = styled.div`
   flex-direction: column;
   align-items: center;
   gap: 48px;
-  padding: 60px 32px 100px;
+  padding: 100px 32px 120px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 1) 0%, rgba(1, 10, 21, 1) 50%);
 
   @media (max-width: 768px) {
     padding: 40px 20px 60px;
