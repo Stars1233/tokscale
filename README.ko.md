@@ -8,6 +8,13 @@
 
 > 여러 플랫폼에서 AI 코딩 어시스턴트의 **토큰 사용량과 비용**을 추적하는 고성능 CLI 도구 및 시각화 대시보드
 
+> [!TIP]
+>
+> 저는 매주 새로운 오픈소스 프로젝트를 공개합니다. 놓치지 마세요.
+>
+> | [<img alt="GitHub Follow" src="https://img.shields.io/github/followers/junhoyeo?style=flat-square&logo=github&labelColor=black&color=24292f" width="156px" />](https://github.com/junhoyeo) | GitHub에서 [@junhoyeo](https://github.com/junhoyeo)를 팔로우하고 더 많은 프로젝트를 만나보세요. AI, 인프라 등 다양한 분야를 다룹니다. |
+> | :-----| :----- |
+
 <div align="center">
 
 [![GitHub Release](https://img.shields.io/github/v/release/junhoyeo/tokscale?color=0073FF&labelColor=black&logo=github&style=flat-square)](https://github.com/junhoyeo/tokscale/releases)
