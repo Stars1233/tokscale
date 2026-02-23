@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 import { useCopy, useSquircleClip } from "../hooks";
 import { SquircleBorder } from "../components";
 
@@ -165,14 +165,15 @@ const QuickstartCardsRow = styled.div`
   background: #01070f;
   overflow: hidden;
 
-  @media (max-width: 768px) {
+  @media (max-width: 900px) {
     flex-direction: column;
   }
 `;
 
 const QuickstartCard = styled.div<{ $position: "left" | "right" }>`
   position: relative;
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -181,13 +182,26 @@ const QuickstartCard = styled.div<{ $position: "left" | "right" }>`
   min-height: ${({ $position }) =>
     $position === "left" ? "320px" : "320px"};
   ${({ $position }) =>
-    $position === "left" ? "border-right: 1px solid #10233e;" : ""}
+    $position === "left" && css`
+      border-right: 1px solid #10233e;
+    `}
 
-  @media (max-width: 768px) {
+  @media (max-width: 1000px) {
+    padding-left: 20px;
+    padding-right: 20px;
+    padding-bottom: 20px;
+  }
+
+  @media (max-width: 900px) {
     ${({ $position }) =>
-      $position === "left"
-        ? "border-right: none; border-bottom: 1px solid #10233e;"
-        : ""}
+      $position === "left" && css`
+      border-right: none;
+      border-bottom: 1px solid #10233e;
+    `}
+
+    padding-left: 32px;
+    padding-right: 32px;
+    padding-bottom: 32px;
   }
 `;
 
@@ -196,7 +210,6 @@ const CardPatternOverlay = styled.div<{ $position: "left" | "right" }>`
   left: 0;
   top: ${({ $position }) => ($position === "left" ? "120px" : "96px")};
   width: 100%;
-  max-width: 600px;
   height: 24px;
   background-image: url("/assets/landing/separator-pattern-slash.svg");
   background-size: 24px 24px;
@@ -225,6 +238,7 @@ const CardTitle = styled.h3`
   line-height: 1em;
   text-transform: uppercase;
   color: #ffffff;
+  z-index: 1;
 `;
 
 const CommandBox = styled.div`
@@ -261,6 +275,10 @@ const CommandText = styled.span`
   text-align: center;
   color: #ffffff;
   white-space: nowrap;
+
+  @media (max-width: 1000px) {
+    font-size: 16px;
+  }
 
   @media (max-width: 480px) {
     font-size: 14px;

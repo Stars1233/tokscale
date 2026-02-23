@@ -174,6 +174,10 @@ const HeroLeft = styled.div`
   overflow: hidden;
   padding-bottom: 64px;
 
+  @media (max-width: 1060px) {
+    flex: 1;
+  }
+
   @media (max-width: 900px) {
     flex: 0 0 auto;
     width: 100%;
