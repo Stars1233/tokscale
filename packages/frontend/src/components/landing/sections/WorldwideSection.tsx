@@ -1,13 +1,59 @@
 "use client";
-
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import styled from "styled-components";
 import { useSquircleClip } from "../hooks";
 import { SquircleBorder } from "../components";
 
+interface LeaderboardUser {
+  rank: number;
+  userId: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  totalTokens: number;
+  totalCost: number;
+  submissionCount: number;
+  lastSubmission: string;
+}
+
+function formatCompactNumber(n: number): string {
+  if (n >= 1_000_000_000)
+    return (n / 1_000_000_000).toFixed(1).replace(/\.0$/, "") + "B";
+  if (n >= 1_000_000)
+    return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
+  return n.toString();
+}
+
+function formatCompactCurrency(n: number): string {
+  if (n >= 1_000)
+    return "$" + (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
+  if (n >= 1) return "$" + n.toFixed(2);
+  return "$" + n.toFixed(4);
+}
 export function WorldwideSection() {
   const worldwideSection = useSquircleClip<HTMLDivElement>(32, 0.6, true, 1);
+  const [activeTab, setActiveTab] = useState<"tokens" | "cost">("tokens");
+  const [users, setUsers] = useState<LeaderboardUser[]>([]);
 
+  const fetchLeaderboard = useCallback(async (sortBy: "tokens" | "cost") => {
+    try {
+      const res = await fetch(
+        `/api/leaderboard?period=all&page=1&limit=3&sortBy=${sortBy}`
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      setUsers(data.users ?? []);
+    } catch {
+      setUsers([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLeaderboard(activeTab);
+  }, [activeTab, fetchLeaderboard]);
   return (
     <>
       {/* SVG clip-path def for globe section */}
@@ -29,11 +75,8 @@ export function WorldwideSection() {
           </defs>
         </svg>
       )}
-
       {/* Separator before Globe */}
       <GlobeSeparatorBar />
-
-      {/* Globe + Largest Group */}
       <GlobeSectionWrapper
         ref={worldwideSection.ref}
         style={{
@@ -53,7 +96,6 @@ export function WorldwideSection() {
             src="/assets/landing/trophy-cup-transparent.webm"
           />
         </GlobeImageWrapper>
-
         <GlobeContentStack>
           <GlobeBlueHeader>
             <GlobeHeaderText>
@@ -62,7 +104,6 @@ export function WorldwideSection() {
               OF TOKEN CONSUMERS
             </GlobeHeaderText>
           </GlobeBlueHeader>
-
           <GlobeTwoCol>
             <GlobeLeftCol>
               <GlobeLeftTitle>
@@ -74,7 +115,65 @@ export function WorldwideSection() {
                 <LeaderboardBtnText>Leaderboard</LeaderboardBtnText>
               </LeaderboardBtn>
             </GlobeLeftCol>
-            <GlobeRightCol />
+            <GlobeRightCol>
+              <LeaderboardWidget>
+                <WidgetHeader>
+                  <WidgetTitle>Top Users</WidgetTitle>
+                  <TabSwitcher>
+                    <Tab
+                      $active={activeTab === "tokens"}
+                      onClick={() => setActiveTab("tokens")}
+                    >
+                      Tokens
+                    </Tab>
+                    <Tab
+                      $active={activeTab === "cost"}
+                      onClick={() => setActiveTab("cost")}
+                    >
+                      Cost
+                    </Tab>
+                  </TabSwitcher>
+                </WidgetHeader>
+                <UserList>
+                  {users.map((user) => (
+                    <UserRow key={user.userId} href={`/u/${user.username}`}>
+                      <RankBadge data-rank={user.rank}>
+                        {user.rank === 1
+                          ? "🥇"
+                          : user.rank === 2
+                            ? "🥈"
+                            : "🥉"}
+                      </RankBadge>
+                      <UserAvatar
+                        src={
+                          user.avatarUrl ||
+                          `https://github.com/${user.username}.png`
+                        }
+                        alt={user.displayName || user.username}
+                        width={32}
+                        height={32}
+                        unoptimized
+                      />
+                      <UserInfo>
+                        <UserName>
+                          {user.displayName || user.username}
+                        </UserName>
+                        <UserHandle>@{user.username}</UserHandle>
+                      </UserInfo>
+                      <UserValue>
+                        {activeTab === "tokens"
+                          ? formatCompactNumber(user.totalTokens)
+                          : formatCompactCurrency(user.totalCost)}
+                      </UserValue>
+                    </UserRow>
+                  ))}
+                </UserList>
+                <ViewMoreLink href="/leaderboard">
+                  View Full Leaderboard
+                  <ViewMoreArrow>→</ViewMoreArrow>
+                </ViewMoreLink>
+              </LeaderboardWidget>
+            </GlobeRightCol>
           </GlobeTwoCol>
         </GlobeContentStack>
       </GlobeSectionWrapper>
@@ -252,14 +351,155 @@ const GlobeRightCol = styled.div`
   flex: 1;
   align-self: stretch;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: flex-start;
   padding: 0 32px;
   background: #020f1e;
   overflow: hidden;
-
   @media (max-width: 768px) {
-    min-height: 80px;
+    padding: 0 24px;
+  }
+`;
+
+const LeaderboardWidget = styled.div`
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 0;
+`;
+
+const WidgetHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const WidgetTitle = styled.span`
+  font-family: var(--font-figtree), "Figtree", sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  color: #ffffff;
+`;
+
+const TabSwitcher = styled.div`
+  display: flex;
+  gap: 2px;
+  background: #0a1929;
+  border-radius: 8px;
+  padding: 2px;
+`;
+
+const Tab = styled.button<{ $active: boolean }>`
+  font-family: var(--font-figtree), "Figtree", sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 5px 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: ${(p) => (p.$active ? "#ffffff" : "#6b7a90")};
+  background: ${(p) => (p.$active ? "#0073FF" : "transparent")};
+
+  &:hover {
+    color: #ffffff;
+  }
+`;
+
+const UserList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const UserRow = styled(Link)`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: background 0.15s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+`;
+
+const RankBadge = styled.span`
+  font-size: 18px;
+  width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+`;
+
+const UserAvatar = styled(Image)`
+  border-radius: 50%;
+  flex-shrink: 0;
+`;
+
+const UserInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+`;
+
+const UserName = styled.span`
+  font-family: var(--font-figtree), "Figtree", sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const UserHandle = styled.span`
+  font-family: var(--font-figtree), "Figtree", sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  color: #6b7a90;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const UserValue = styled.span`
+  font-family: var(--font-figtree), "Figtree", sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: #0073FF;
+  flex-shrink: 0;
+  margin-left: auto;
+`;
+
+const ViewMoreLink = styled(Link)`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  border-top: 1px solid #10233e;
+  text-decoration: none;
+  font-family: var(--font-figtree), "Figtree", sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: #6b7a90;
+  transition: color 0.15s;
+
+  &:hover {
+    color: #0073ff;
+  }
+`;
+
+const ViewMoreArrow = styled.span`
+  font-size: 16px;
+  transition: transform 0.15s;
+
+  ${ViewMoreLink}:hover & {
+    transform: translateX(3px);
   }
 `;
 
