@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import styled, { css, keyframes } from "styled-components";
 import { Avatar, ActionMenu, ActionList } from "@primer/react";
@@ -285,7 +286,7 @@ const MobileMenuPanel = styled.div<{ $isOpen: boolean }>`
   right: 0;
   bottom: 0;
   width: 100%;
-  max-width: 320px;
+
   z-index: 1000;
   background: #0D1117;
   display: flex;
@@ -303,12 +304,15 @@ const MobileMenuHeader = styled.div`
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 `;
 
-const MobileMenuLogoText = styled.span`
-  font-family: var(--font-figtree), 'Figtree', sans-serif;
-  font-weight: 800;
-  font-size: 18px;
-  color: #ffffff;
-  letter-spacing: -0.05em;
+const MobileMenuLogoWrapper = styled.div`
+  position: relative;
+  width: 140px;
+  height: 30px;
+  flex-shrink: 0;
+`;
+
+const MobileMenuLogoImage = styled(Image)`
+  object-fit: contain;
 `;
 
 const MobileCloseButton = styled.button`
@@ -657,7 +661,15 @@ export function Navigation() {
       <MobileMenuOverlay $isOpen={isMobileMenuOpen} onClick={closeMobileMenu} />
       <MobileMenuPanel $isOpen={isMobileMenuOpen} onClick={(e) => e.stopPropagation()}>
         <MobileMenuHeader>
-          <MobileMenuLogoText>tokscale</MobileMenuLogoText>
+          <Link href="/" onClick={closeMobileMenu} style={{ textDecoration: 'none' }}>
+            <MobileMenuLogoWrapper>
+              <MobileMenuLogoImage
+                src="/assets/hero-logo.svg"
+                alt="Tokscale"
+                fill
+              />
+            </MobileMenuLogoWrapper>
+          </Link>
           <MobileCloseButton onClick={closeMobileMenu} aria-label="Close menu">
             <CloseIcon />
           </MobileCloseButton>
