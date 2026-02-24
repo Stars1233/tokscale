@@ -10,15 +10,16 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
+use tokscale_core::ClientId;
 
-use crate::tui::data::Client;
+use crate::tui::client_ui;
 use crate::tui::themes::Theme;
 
 use super::{DialogContent, DialogResult};
 
 pub struct ClientPickerDialog {
-    clients: Vec<Client>,
-    enabled: Rc<RefCell<HashSet<Client>>>,
+    clients: Vec<ClientId>,
+    enabled: Rc<RefCell<HashSet<ClientId>>>,
     needs_reload: Rc<RefCell<bool>>,
     selected: usize,
     filter: String,
@@ -26,8 +27,8 @@ pub struct ClientPickerDialog {
 }
 
 impl ClientPickerDialog {
-    pub fn new(enabled: Rc<RefCell<HashSet<Client>>>, needs_reload: Rc<RefCell<bool>>) -> Self {
-        let clients = Client::all().to_vec();
+    pub fn new(enabled: Rc<RefCell<HashSet<ClientId>>>, needs_reload: Rc<RefCell<bool>>) -> Self {
+        let clients = ClientId::ALL.to_vec();
         let filtered_indices: Vec<usize> = (0..clients.len()).collect();
         Self {
             clients,
@@ -79,7 +80,11 @@ impl ClientPickerDialog {
                 .clients
                 .iter()
                 .enumerate()
-                .filter(|(_, s)| s.as_str().to_lowercase().contains(&needle))
+                .filter(|(_, s)| {
+                    client_ui::display_name(**s)
+                        .to_lowercase()
+                        .contains(&needle)
+                })
                 .map(|(i, _)| i)
                 .collect();
         }
@@ -151,8 +156,8 @@ impl DialogContent for ClientPickerDialog {
             let is_enabled = self.enabled.borrow().contains(&client);
 
             let checkbox = if is_enabled { "[●]" } else { "[ ]" };
-            let key_hint = format!("[{}]", client.key());
-            let name = client.as_str();
+            let key_hint = format!("[{}]", client_ui::hotkey(client));
+            let name = client_ui::display_name(client);
 
             let usable = list_area.width.saturating_sub(4) as usize;
             let left = format!("{} {} {}", checkbox, key_hint, name);
@@ -211,7 +216,7 @@ impl DialogContent for ClientPickerDialog {
                 DialogResult::None
             }
             KeyCode::Char(c) => {
-                if let Some(client) = Client::from_key(c) {
+                if let Some(client) = client_ui::from_hotkey(c) {
                     let mut enabled = self.enabled.borrow_mut();
                     let is_enabled = enabled.contains(&client);
                     if is_enabled && enabled.len() > 1 {

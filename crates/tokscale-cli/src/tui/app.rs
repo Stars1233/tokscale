@@ -6,8 +6,9 @@ use std::time::{Duration, Instant};
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::layout::Rect;
+use tokscale_core::ClientId;
 
-use super::data::{Client, DailyUsage, DataLoader, ModelUsage, UsageData};
+use super::data::{DailyUsage, DataLoader, ModelUsage, UsageData};
 use super::settings::Settings;
 use super::themes::{Theme, ThemeName};
 use super::ui::dialog::{ClientPickerDialog, DialogStack};
@@ -107,7 +108,7 @@ pub struct App {
     pub data: UsageData,
     pub data_loader: DataLoader,
 
-    pub enabled_clients: Rc<RefCell<HashSet<Client>>>,
+    pub enabled_clients: Rc<RefCell<HashSet<ClientId>>>,
     pub group_by: Rc<RefCell<tokscale_core::GroupBy>>,
     pub sort_field: SortField,
     pub sort_direction: SortDirection,
@@ -154,23 +155,13 @@ impl App {
 
         if let Some(ref cli_clients) = config.clients {
             for client_str in cli_clients {
-                match client_str.as_str() {
-                    "opencode" => enabled_clients.insert(Client::OpenCode),
-                    "claude" => enabled_clients.insert(Client::Claude),
-                    "codex" => enabled_clients.insert(Client::Codex),
-                    "cursor" => enabled_clients.insert(Client::Cursor),
-                    "gemini" => enabled_clients.insert(Client::Gemini),
-                    "amp" => enabled_clients.insert(Client::Amp),
-                    "droid" => enabled_clients.insert(Client::Droid),
-                    "openclaw" => enabled_clients.insert(Client::OpenClaw),
-                    "pi" => enabled_clients.insert(Client::Pi),
-                    "kimi" => enabled_clients.insert(Client::Kimi),
-                    _ => false,
-                };
+                if let Some(client) = ClientId::from_str(client_str) {
+                    enabled_clients.insert(client);
+                }
             }
         } else {
-            for client in Client::all() {
-                enabled_clients.insert(*client);
+            for client in ClientId::iter() {
+                enabled_clients.insert(client);
             }
         }
 

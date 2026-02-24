@@ -3,6 +3,7 @@ mod commands;
 mod cursor;
 mod tui;
 
+use crate::tui::client_ui;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use std::io::{self, IsTerminal, Write};
@@ -65,6 +66,9 @@ struct Cli {
     #[arg(long, help = "Show only Pi usage")]
     pi: bool,
 
+    #[arg(long, help = "Show only Kimi CLI usage")]
+    kimi: bool,
+
     #[arg(long, help = "Show only today's usage")]
     today: bool,
 
@@ -124,6 +128,8 @@ enum Commands {
         openclaw: bool,
         #[arg(long, help = "Show only Pi usage")]
         pi: bool,
+        #[arg(long, help = "Show only Kimi CLI usage")]
+        kimi: bool,
         #[arg(long, help = "Show only today's usage")]
         today: bool,
         #[arg(long, help = "Show last 7 days")]
@@ -172,6 +178,8 @@ enum Commands {
         openclaw: bool,
         #[arg(long, help = "Show only Pi usage")]
         pi: bool,
+        #[arg(long, help = "Show only Kimi CLI usage")]
+        kimi: bool,
         #[arg(long, help = "Show only today's usage")]
         today: bool,
         #[arg(long, help = "Show last 7 days")]
@@ -232,6 +240,8 @@ enum Commands {
         openclaw: bool,
         #[arg(long, help = "Show only Pi usage")]
         pi: bool,
+        #[arg(long, help = "Show only Kimi CLI usage")]
+        kimi: bool,
         #[arg(long, help = "Show only today's usage")]
         today: bool,
         #[arg(long, help = "Show last 7 days")]
@@ -269,6 +279,8 @@ enum Commands {
         openclaw: bool,
         #[arg(long, help = "Show only Pi usage")]
         pi: bool,
+        #[arg(long, help = "Show only Kimi CLI usage")]
+        kimi: bool,
         #[arg(long, help = "Show only today's usage")]
         today: bool,
         #[arg(long, help = "Show last 7 days")]
@@ -302,6 +314,8 @@ enum Commands {
         openclaw: bool,
         #[arg(long, help = "Include only Pi data")]
         pi: bool,
+        #[arg(long, help = "Include only Kimi CLI data")]
+        kimi: bool,
         #[arg(long, help = "Submit only today's usage")]
         today: bool,
         #[arg(long, help = "Submit last 7 days")]
@@ -357,6 +371,8 @@ enum Commands {
         openclaw: bool,
         #[arg(long, help = "Show only Pi usage")]
         pi: bool,
+        #[arg(long, help = "Show only Kimi CLI usage")]
+        kimi: bool,
         #[arg(
             long,
             help = "Display total tokens in abbreviated format (e.g., 7.14B)"
@@ -434,6 +450,7 @@ fn main() -> Result<()> {
             droid,
             openclaw,
             pi,
+            kimi,
             today,
             week,
             month,
@@ -460,6 +477,7 @@ fn main() -> Result<()> {
                 droid,
                 openclaw,
                 pi,
+                kimi,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             let year = normalize_year_filter(today, week, month, year);
@@ -502,6 +520,7 @@ fn main() -> Result<()> {
             droid,
             openclaw,
             pi,
+            kimi,
             today,
             week,
             month,
@@ -521,6 +540,7 @@ fn main() -> Result<()> {
                 droid,
                 openclaw,
                 pi,
+                kimi,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             let year = normalize_year_filter(today, week, month, year);
@@ -571,6 +591,7 @@ fn main() -> Result<()> {
             droid,
             openclaw,
             pi,
+            kimi,
             today,
             week,
             month,
@@ -590,6 +611,7 @@ fn main() -> Result<()> {
                 droid,
                 openclaw,
                 pi,
+                kimi,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             let year = normalize_year_filter(today, week, month, year);
@@ -605,6 +627,7 @@ fn main() -> Result<()> {
             droid,
             openclaw,
             pi,
+            kimi,
             today,
             week,
             month,
@@ -622,6 +645,7 @@ fn main() -> Result<()> {
                 droid,
                 openclaw,
                 pi,
+                kimi,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             let year = normalize_year_filter(today, week, month, year);
@@ -646,6 +670,7 @@ fn main() -> Result<()> {
             droid,
             openclaw,
             pi,
+            kimi,
             today,
             week,
             month,
@@ -664,6 +689,7 @@ fn main() -> Result<()> {
                 droid,
                 openclaw,
                 pi,
+                kimi,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             let year = normalize_year_filter(today, week, month, year);
@@ -688,6 +714,7 @@ fn main() -> Result<()> {
             droid,
             openclaw,
             pi,
+            kimi,
             short,
             agents,
             clients,
@@ -704,6 +731,7 @@ fn main() -> Result<()> {
                 droid,
                 openclaw,
                 pi,
+                kimi,
             });
             run_wrapped_command(
                 output,
@@ -727,6 +755,7 @@ fn main() -> Result<()> {
                 droid: cli.droid,
                 openclaw: cli.openclaw,
                 pi: cli.pi,
+                kimi: cli.kimi,
             });
             let (since, until) =
                 build_date_filter(cli.today, cli.week, cli.month, cli.since, cli.until);
@@ -790,37 +819,28 @@ struct ClientFlags {
     droid: bool,
     openclaw: bool,
     pi: bool,
+    kimi: bool,
 }
 
 fn build_client_filter(flags: ClientFlags) -> Option<Vec<String>> {
-    let mut clients = Vec::new();
-    if flags.opencode {
-        clients.push("opencode".to_string());
-    }
-    if flags.claude {
-        clients.push("claude".to_string());
-    }
-    if flags.codex {
-        clients.push("codex".to_string());
-    }
-    if flags.gemini {
-        clients.push("gemini".to_string());
-    }
-    if flags.cursor {
-        clients.push("cursor".to_string());
-    }
-    if flags.amp {
-        clients.push("amp".to_string());
-    }
-    if flags.droid {
-        clients.push("droid".to_string());
-    }
-    if flags.openclaw {
-        clients.push("openclaw".to_string());
-    }
-    if flags.pi {
-        clients.push("pi".to_string());
-    }
+    use tokscale_core::ClientId;
+
+    let clients: Vec<String> = [
+        (ClientId::OpenCode, flags.opencode),
+        (ClientId::Claude, flags.claude),
+        (ClientId::Codex, flags.codex),
+        (ClientId::Gemini, flags.gemini),
+        (ClientId::Cursor, flags.cursor),
+        (ClientId::Amp, flags.amp),
+        (ClientId::Droid, flags.droid),
+        (ClientId::OpenClaw, flags.openclaw),
+        (ClientId::Pi, flags.pi),
+        (ClientId::Kimi, flags.kimi),
+    ]
+    .into_iter()
+    .filter(|(_, enabled)| *enabled)
+    .map(|(client, _)| client.as_str().to_string())
+    .collect();
 
     if clients.is_empty() {
         None
@@ -1945,23 +1965,19 @@ fn capitalize_client(client: &str) -> String {
 }
 
 fn run_clients_command(json: bool) -> Result<()> {
-    use tokscale_core::{parse_local_clients, LocalParseOptions};
+    use tokscale_core::{parse_local_clients, ClientId, LocalParseOptions};
 
     let home_dir =
         dirs::home_dir().ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?;
 
     let parsed = parse_local_clients(LocalParseOptions {
         home_dir: Some(home_dir.to_string_lossy().to_string()),
-        clients: Some(vec![
-            "opencode".to_string(),
-            "claude".to_string(),
-            "codex".to_string(),
-            "gemini".to_string(),
-            "amp".to_string(),
-            "droid".to_string(),
-            "openclaw".to_string(),
-            "pi".to_string(),
-        ]),
+        clients: Some(
+            ClientId::iter()
+                .filter(|client| client.parse_local())
+                .map(|client| client.as_str().to_string())
+                .collect(),
+        ),
         since: None,
         until: None,
         year: None,
@@ -2005,164 +2021,80 @@ fn run_clients_command(json: bool) -> Result<()> {
         exists: bool,
     }
 
-    let clients = vec![
-        ClientRow {
-            client: "opencode".to_string(),
-            label: "OpenCode".to_string(),
-            sessions_path: home_dir
-                .join(".local/share/opencode/storage/message")
-                .to_string_lossy()
-                .to_string(),
-            sessions_path_exists: home_dir
-                .join(".local/share/opencode/storage/message")
-                .exists(),
-            legacy_paths: vec![],
-            message_count: parsed.opencode_count,
-            headless_supported: false,
-            headless_paths: vec![],
-            headless_message_count: 0,
-        },
-        ClientRow {
-            client: "claude".to_string(),
-            label: "Claude Code".to_string(),
-            sessions_path: home_dir
-                .join(".claude/projects")
-                .to_string_lossy()
-                .to_string(),
-            sessions_path_exists: home_dir.join(".claude/projects").exists(),
-            legacy_paths: vec![],
-            message_count: parsed.claude_count,
-            headless_supported: false,
-            headless_paths: vec![],
-            headless_message_count: 0,
-        },
-        ClientRow {
-            client: "codex".to_string(),
-            label: "Codex CLI".to_string(),
-            sessions_path: get_codex_home(&home_dir)
-                .join("sessions")
-                .to_string_lossy()
-                .to_string(),
-            sessions_path_exists: get_codex_home(&home_dir).join("sessions").exists(),
-            legacy_paths: vec![],
-            message_count: parsed.codex_count,
-            headless_supported: true,
-            headless_paths: headless_roots
-                .iter()
-                .map(|root| {
-                    let path = root.join("codex");
-                    HeadlessPath {
-                        path: path.to_string_lossy().to_string(),
-                        exists: path.exists(),
-                    }
-                })
-                .collect(),
-            headless_message_count: headless_codex_count,
-        },
-        ClientRow {
-            client: "gemini".to_string(),
-            label: "Gemini CLI".to_string(),
-            sessions_path: home_dir.join(".gemini/tmp").to_string_lossy().to_string(),
-            sessions_path_exists: home_dir.join(".gemini/tmp").exists(),
-            legacy_paths: vec![],
-            message_count: parsed.gemini_count,
-            headless_supported: false,
-            headless_paths: vec![],
-            headless_message_count: 0,
-        },
-        ClientRow {
-            client: "cursor".to_string(),
-            label: "Cursor IDE".to_string(),
-            sessions_path: home_dir
-                .join(".config/tokscale/cursor-cache")
-                .to_string_lossy()
-                .to_string(),
-            sessions_path_exists: home_dir.join(".config/tokscale/cursor-cache").exists(),
-            legacy_paths: vec![],
-            message_count: 0,
-            headless_supported: false,
-            headless_paths: vec![],
-            headless_message_count: 0,
-        },
-        ClientRow {
-            client: "amp".to_string(),
-            label: "Amp".to_string(),
-            sessions_path: home_dir
-                .join(".local/share/amp/threads")
-                .to_string_lossy()
-                .to_string(),
-            sessions_path_exists: home_dir.join(".local/share/amp/threads").exists(),
-            legacy_paths: vec![],
-            message_count: parsed.amp_count,
-            headless_supported: false,
-            headless_paths: vec![],
-            headless_message_count: 0,
-        },
-        ClientRow {
-            client: "droid".to_string(),
-            label: "Droid".to_string(),
-            sessions_path: home_dir
-                .join(".factory/sessions")
-                .to_string_lossy()
-                .to_string(),
-            sessions_path_exists: home_dir.join(".factory/sessions").exists(),
-            legacy_paths: vec![],
-            message_count: parsed.droid_count,
-            headless_supported: false,
-            headless_paths: vec![],
-            headless_message_count: 0,
-        },
-        ClientRow {
-            client: "openclaw".to_string(),
-            label: "OpenClaw".to_string(),
-            sessions_path: home_dir
-                .join(".openclaw/agents")
-                .to_string_lossy()
-                .to_string(),
-            sessions_path_exists: home_dir.join(".openclaw/agents").exists(),
-            legacy_paths: vec![
-                LegacyPath {
-                    path: home_dir
-                        .join(".clawdbot/agents")
-                        .to_string_lossy()
-                        .to_string(),
-                    exists: home_dir.join(".clawdbot/agents").exists(),
-                },
-                LegacyPath {
-                    path: home_dir
-                        .join(".moltbot/agents")
-                        .to_string_lossy()
-                        .to_string(),
-                    exists: home_dir.join(".moltbot/agents").exists(),
-                },
-                LegacyPath {
-                    path: home_dir
-                        .join(".moldbot/agents")
-                        .to_string_lossy()
-                        .to_string(),
-                    exists: home_dir.join(".moldbot/agents").exists(),
-                },
-            ],
-            message_count: parsed.openclaw_count,
-            headless_supported: false,
-            headless_paths: vec![],
-            headless_message_count: 0,
-        },
-        ClientRow {
-            client: "pi".to_string(),
-            label: "Pi".to_string(),
-            sessions_path: home_dir
-                .join(".pi/agent/sessions")
-                .to_string_lossy()
-                .to_string(),
-            sessions_path_exists: home_dir.join(".pi/agent/sessions").exists(),
-            legacy_paths: vec![],
-            message_count: parsed.pi_count,
-            headless_supported: false,
-            headless_paths: vec![],
-            headless_message_count: 0,
-        },
-    ];
+    let clients: Vec<ClientRow> = ClientId::iter()
+        .map(|client| {
+            let sessions_path = client.data().resolve_path(&home_dir.to_string_lossy());
+            let sessions_path_exists = Path::new(&sessions_path).exists();
+            let legacy_paths = if client == ClientId::OpenClaw {
+                vec![
+                    LegacyPath {
+                        path: home_dir
+                            .join(".clawdbot/agents")
+                            .to_string_lossy()
+                            .to_string(),
+                        exists: home_dir.join(".clawdbot/agents").exists(),
+                    },
+                    LegacyPath {
+                        path: home_dir
+                            .join(".moltbot/agents")
+                            .to_string_lossy()
+                            .to_string(),
+                        exists: home_dir.join(".moltbot/agents").exists(),
+                    },
+                    LegacyPath {
+                        path: home_dir
+                            .join(".moldbot/agents")
+                            .to_string_lossy()
+                            .to_string(),
+                        exists: home_dir.join(".moldbot/agents").exists(),
+                    },
+                ]
+            } else {
+                vec![]
+            };
+            let (headless_supported, headless_paths, headless_message_count) =
+                if client == ClientId::Codex {
+                    (
+                        true,
+                        headless_roots
+                            .iter()
+                            .map(|root| {
+                                let path = root.join(client.as_str());
+                                HeadlessPath {
+                                    path: path.to_string_lossy().to_string(),
+                                    exists: path.exists(),
+                                }
+                            })
+                            .collect(),
+                        headless_codex_count,
+                    )
+                } else {
+                    (false, vec![], 0)
+                };
+
+            let label = match client {
+                ClientId::Claude => "Claude Code",
+                ClientId::Codex => "Codex CLI",
+                ClientId::Gemini => "Gemini CLI",
+                ClientId::Cursor => "Cursor IDE",
+                ClientId::Kimi => "Kimi CLI",
+                _ => client_ui::display_name(client),
+            }
+            .to_string();
+
+            ClientRow {
+                client: client.as_str().to_string(),
+                label,
+                sessions_path,
+                sessions_path_exists,
+                legacy_paths,
+                message_count: parsed.counts.get(client),
+                headless_supported,
+                headless_paths,
+                headless_message_count,
+            }
+        })
+        .collect();
 
     if json {
         #[derive(serde::Serialize)]
@@ -2278,14 +2210,6 @@ fn get_headless_roots(home_dir: &Path) -> Vec<PathBuf> {
     }
 
     roots
-}
-
-fn get_codex_home(home_dir: &Path) -> PathBuf {
-    if let Ok(codex_home) = std::env::var("CODEX_HOME") {
-        PathBuf::from(codex_home)
-    } else {
-        home_dir.join(".codex")
-    }
 }
 
 fn describe_path(path: &str, exists: bool) -> String {
@@ -3113,6 +3037,7 @@ mod tests {
             droid: false,
             openclaw: false,
             pi: false,
+            kimi: false,
         };
         assert_eq!(build_client_filter(flags), None);
     }
@@ -3129,6 +3054,7 @@ mod tests {
             droid: false,
             openclaw: false,
             pi: false,
+            kimi: false,
         };
         assert_eq!(
             build_client_filter(flags),
@@ -3148,6 +3074,7 @@ mod tests {
             droid: false,
             openclaw: false,
             pi: true,
+            kimi: false,
         };
         assert_eq!(
             build_client_filter(flags),
@@ -3171,11 +3098,12 @@ mod tests {
             droid: true,
             openclaw: true,
             pi: true,
+            kimi: true,
         };
         let result = build_client_filter(flags);
         assert!(result.is_some());
         let sources = result.unwrap();
-        assert_eq!(sources.len(), 9);
+        assert_eq!(sources.len(), 10);
         assert!(sources.contains(&"opencode".to_string()));
         assert!(sources.contains(&"claude".to_string()));
         assert!(sources.contains(&"codex".to_string()));
@@ -3185,6 +3113,7 @@ mod tests {
         assert!(sources.contains(&"droid".to_string()));
         assert!(sources.contains(&"openclaw".to_string()));
         assert!(sources.contains(&"pi".to_string()));
+        assert!(sources.contains(&"kimi".to_string()));
     }
 
     #[test]

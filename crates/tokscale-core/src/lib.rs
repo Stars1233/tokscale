@@ -1,12 +1,14 @@
 #![deny(clippy::all)]
 
 mod aggregator;
+pub mod clients;
 mod parser;
 pub mod pricing;
 pub mod scanner;
 pub mod sessions;
 
 pub use aggregator::*;
+pub use clients::{ClientCounts, ClientDef, ClientId, PathRoot};
 pub use parser::*;
 pub use scanner::*;
 pub use sessions::UnifiedMessage;
@@ -123,19 +125,37 @@ pub struct ParsedMessage {
     pub agent: Option<String>,
 }
 
-#[derive(Debug, Clone)]
 pub struct ParsedMessages {
     pub messages: Vec<ParsedMessage>,
-    pub opencode_count: i32,
-    pub claude_count: i32,
-    pub codex_count: i32,
-    pub gemini_count: i32,
-    pub amp_count: i32,
-    pub droid_count: i32,
-    pub openclaw_count: i32,
-    pub pi_count: i32,
-    pub kimi_count: i32,
+    pub counts: ClientCounts,
     pub processing_time_ms: u32,
+}
+
+impl Clone for ParsedMessages {
+    fn clone(&self) -> Self {
+        let mut counts = ClientCounts::new();
+        for client in ClientId::iter() {
+            counts.set(client, self.counts.get(client));
+        }
+
+        Self {
+            messages: self.messages.clone(),
+            counts,
+            processing_time_ms: self.processing_time_ms,
+        }
+    }
+}
+
+impl std::fmt::Debug for ParsedMessages {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut debug = f.debug_struct("ParsedMessages");
+        debug.field("messages", &self.messages);
+        for client in ClientId::iter() {
+            debug.field(client.as_str(), &self.counts.get(client));
+        }
+        debug.field("processing_time_ms", &self.processing_time_ms);
+        debug.finish()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -311,7 +331,7 @@ fn parse_all_messages_with_pricing(
     }
 
     let opencode_messages: Vec<UnifiedMessage> = scan_result
-        .opencode_files
+        .get(ClientId::OpenCode)
         .par_iter()
         .filter_map(|path| {
             let mut msg = sessions::opencode::parse_opencode_file(path)?;
@@ -333,7 +353,7 @@ fn parse_all_messages_with_pricing(
     }));
 
     let claude_messages_raw: Vec<(String, UnifiedMessage)> = scan_result
-        .claude_files
+        .get(ClientId::Claude)
         .par_iter()
         .flat_map(|path| {
             sessions::claudecode::parse_claude_file(path)
@@ -363,7 +383,7 @@ fn parse_all_messages_with_pricing(
     all_messages.extend(claude_messages);
 
     let codex_messages: Vec<UnifiedMessage> = scan_result
-        .codex_files
+        .get(ClientId::Codex)
         .par_iter()
         .flat_map(|path| {
             sessions::codex::parse_codex_file(path)
@@ -385,7 +405,7 @@ fn parse_all_messages_with_pricing(
     all_messages.extend(codex_messages);
 
     let gemini_messages: Vec<UnifiedMessage> = scan_result
-        .gemini_files
+        .get(ClientId::Gemini)
         .par_iter()
         .flat_map(|path| {
             sessions::gemini::parse_gemini_file(path)
@@ -407,7 +427,7 @@ fn parse_all_messages_with_pricing(
     all_messages.extend(gemini_messages);
 
     let cursor_messages: Vec<UnifiedMessage> = scan_result
-        .cursor_files
+        .get(ClientId::Cursor)
         .par_iter()
         .flat_map(|path| {
             sessions::cursor::parse_cursor_file(path)
@@ -435,7 +455,7 @@ fn parse_all_messages_with_pricing(
     all_messages.extend(cursor_messages);
 
     let amp_messages: Vec<UnifiedMessage> = scan_result
-        .amp_files
+        .get(ClientId::Amp)
         .par_iter()
         .flat_map(|path| {
             sessions::amp::parse_amp_file(path)
@@ -463,7 +483,7 @@ fn parse_all_messages_with_pricing(
     all_messages.extend(amp_messages);
 
     let droid_messages: Vec<UnifiedMessage> = scan_result
-        .droid_files
+        .get(ClientId::Droid)
         .par_iter()
         .flat_map(|path| {
             sessions::droid::parse_droid_file(path)
@@ -485,7 +505,7 @@ fn parse_all_messages_with_pricing(
     all_messages.extend(droid_messages);
 
     let openclaw_messages: Vec<UnifiedMessage> = scan_result
-        .openclaw_files
+        .get(ClientId::OpenClaw)
         .par_iter()
         .flat_map(|path| {
             sessions::openclaw::parse_openclaw_transcript(path)
@@ -507,7 +527,7 @@ fn parse_all_messages_with_pricing(
     all_messages.extend(openclaw_messages);
 
     let pi_messages: Vec<UnifiedMessage> = scan_result
-        .pi_files
+        .get(ClientId::Pi)
         .par_iter()
         .flat_map(|path| {
             sessions::pi::parse_pi_file(path)
@@ -529,7 +549,7 @@ fn parse_all_messages_with_pricing(
     all_messages.extend(pi_messages);
 
     let kimi_messages: Vec<UnifiedMessage> = scan_result
-        .kimi_files
+        .get(ClientId::Kimi)
         .par_iter()
         .flat_map(|path| {
             sessions::kimi::parse_kimi_file(path)
@@ -558,19 +578,11 @@ pub async fn get_model_report(options: ReportOptions) -> Result<ModelReport, Str
 
     let home_dir = get_home_dir_string(&options.home_dir)?;
 
-    let clients = options.clients.clone().unwrap_or_else(|| {
-        vec![
-            "opencode".to_string(),
-            "claude".to_string(),
-            "codex".to_string(),
-            "gemini".to_string(),
-            "cursor".to_string(),
-            "amp".to_string(),
-            "droid".to_string(),
-            "openclaw".to_string(),
-            "pi".to_string(),
-            "kimi".to_string(),
-        ]
+    let clients: Vec<String> = options.clients.clone().unwrap_or_else(|| {
+        ClientId::ALL
+            .iter()
+            .map(|c| c.as_str().to_string())
+            .collect()
     });
 
     let pricing = pricing::PricingService::get_or_init().await?;
@@ -691,19 +703,11 @@ pub async fn get_monthly_report(options: ReportOptions) -> Result<MonthlyReport,
 
     let home_dir = get_home_dir_string(&options.home_dir)?;
 
-    let clients = options.clients.clone().unwrap_or_else(|| {
-        vec![
-            "opencode".to_string(),
-            "claude".to_string(),
-            "codex".to_string(),
-            "gemini".to_string(),
-            "cursor".to_string(),
-            "amp".to_string(),
-            "droid".to_string(),
-            "openclaw".to_string(),
-            "pi".to_string(),
-            "kimi".to_string(),
-        ]
+    let clients: Vec<String> = options.clients.clone().unwrap_or_else(|| {
+        ClientId::ALL
+            .iter()
+            .map(|c| c.as_str().to_string())
+            .collect()
     });
 
     let pricing = pricing::PricingService::get_or_init().await?;
@@ -763,19 +767,11 @@ pub async fn generate_graph(options: ReportOptions) -> Result<GraphResult, Strin
 
     let home_dir = get_home_dir_string(&options.home_dir)?;
 
-    let clients = options.clients.clone().unwrap_or_else(|| {
-        vec![
-            "opencode".to_string(),
-            "claude".to_string(),
-            "codex".to_string(),
-            "gemini".to_string(),
-            "cursor".to_string(),
-            "amp".to_string(),
-            "droid".to_string(),
-            "openclaw".to_string(),
-            "pi".to_string(),
-            "kimi".to_string(),
-        ]
+    let clients: Vec<String> = options.clients.clone().unwrap_or_else(|| {
+        ClientId::ALL
+            .iter()
+            .map(|c| c.as_str().to_string())
+            .collect()
     });
 
     let pricing = pricing::PricingService::get_or_init().await?;
@@ -828,28 +824,21 @@ pub fn parse_local_clients(options: LocalParseOptions) -> Result<ParsedMessages,
 
     let home_dir = get_home_dir_string(&options.home_dir)?;
 
-    let clients = options.clients.clone().unwrap_or_else(|| {
-        vec![
-            "opencode".to_string(),
-            "claude".to_string(),
-            "codex".to_string(),
-            "gemini".to_string(),
-            "amp".to_string(),
-            "droid".to_string(),
-            "openclaw".to_string(),
-            "pi".to_string(),
-            "kimi".to_string(),
-        ]
+    let clients: Vec<String> = options.clients.clone().unwrap_or_else(|| {
+        ClientId::iter()
+            .filter(|c| c.parse_local())
+            .map(|c| c.as_str().to_string())
+            .collect()
     });
 
-    let local_clients: Vec<String> = clients.into_iter().filter(|s| s != "cursor").collect();
-
-    let scan_result = scanner::scan_all_clients(&home_dir, &local_clients);
+    let scan_result = scanner::scan_all_clients(&home_dir, &clients);
     let headless_roots = scanner::headless_roots(&home_dir);
 
     let mut messages: Vec<ParsedMessage> = Vec::new();
 
     // Parse OpenCode: read both SQLite (1.2+) and legacy JSON, deduplicate by message ID
+    let mut counts = ClientCounts::new();
+
     let opencode_count: i32 = {
         let mut seen: HashSet<String> = HashSet::new();
         let mut count: i32 = 0;
@@ -873,7 +862,7 @@ pub fn parse_local_clients(options: LocalParseOptions) -> Result<ParsedMessages,
         }
 
         let json_msgs: Vec<(String, ParsedMessage)> = scan_result
-            .opencode_files
+            .get(ClientId::OpenCode)
             .par_iter()
             .filter_map(|path| {
                 let msg = sessions::opencode::parse_opencode_file(path)?;
@@ -891,9 +880,10 @@ pub fn parse_local_clients(options: LocalParseOptions) -> Result<ParsedMessages,
 
         count
     };
+    counts.set(ClientId::OpenCode, opencode_count);
 
     let claude_msgs_raw: Vec<(String, ParsedMessage)> = scan_result
-        .claude_files
+        .get(ClientId::Claude)
         .par_iter()
         .flat_map(|path| {
             sessions::claudecode::parse_claude_file(path)
@@ -913,10 +903,11 @@ pub fn parse_local_clients(options: LocalParseOptions) -> Result<ParsedMessages,
         .map(|(_, msg)| msg)
         .collect();
     let claude_count = claude_msgs.len() as i32;
+    counts.set(ClientId::Claude, claude_count);
     messages.extend(claude_msgs);
 
     let codex_msgs: Vec<ParsedMessage> = scan_result
-        .codex_files
+        .get(ClientId::Codex)
         .par_iter()
         .flat_map(|path| {
             let is_headless = is_headless_path(path, &headless_roots);
@@ -930,10 +921,11 @@ pub fn parse_local_clients(options: LocalParseOptions) -> Result<ParsedMessages,
         })
         .collect();
     let codex_count = codex_msgs.len() as i32;
+    counts.set(ClientId::Codex, codex_count);
     messages.extend(codex_msgs);
 
     let gemini_msgs: Vec<ParsedMessage> = scan_result
-        .gemini_files
+        .get(ClientId::Gemini)
         .par_iter()
         .flat_map(|path| {
             sessions::gemini::parse_gemini_file(path)
@@ -943,10 +935,11 @@ pub fn parse_local_clients(options: LocalParseOptions) -> Result<ParsedMessages,
         })
         .collect();
     let gemini_count = gemini_msgs.len() as i32;
+    counts.set(ClientId::Gemini, gemini_count);
     messages.extend(gemini_msgs);
 
     let amp_msgs: Vec<ParsedMessage> = scan_result
-        .amp_files
+        .get(ClientId::Amp)
         .par_iter()
         .flat_map(|path| {
             sessions::amp::parse_amp_file(path)
@@ -956,10 +949,11 @@ pub fn parse_local_clients(options: LocalParseOptions) -> Result<ParsedMessages,
         })
         .collect();
     let amp_count = amp_msgs.len() as i32;
+    counts.set(ClientId::Amp, amp_count);
     messages.extend(amp_msgs);
 
     let droid_msgs: Vec<ParsedMessage> = scan_result
-        .droid_files
+        .get(ClientId::Droid)
         .par_iter()
         .flat_map(|path| {
             sessions::droid::parse_droid_file(path)
@@ -969,10 +963,11 @@ pub fn parse_local_clients(options: LocalParseOptions) -> Result<ParsedMessages,
         })
         .collect();
     let droid_count = droid_msgs.len() as i32;
+    counts.set(ClientId::Droid, droid_count);
     messages.extend(droid_msgs);
 
     let openclaw_msgs: Vec<ParsedMessage> = scan_result
-        .openclaw_files
+        .get(ClientId::OpenClaw)
         .par_iter()
         .flat_map(|path| {
             sessions::openclaw::parse_openclaw_transcript(path)
@@ -982,10 +977,11 @@ pub fn parse_local_clients(options: LocalParseOptions) -> Result<ParsedMessages,
         })
         .collect();
     let openclaw_count = openclaw_msgs.len() as i32;
+    counts.set(ClientId::OpenClaw, openclaw_count);
     messages.extend(openclaw_msgs);
 
     let pi_msgs: Vec<ParsedMessage> = scan_result
-        .pi_files
+        .get(ClientId::Pi)
         .par_iter()
         .flat_map(|path| {
             sessions::pi::parse_pi_file(path)
@@ -995,11 +991,12 @@ pub fn parse_local_clients(options: LocalParseOptions) -> Result<ParsedMessages,
         })
         .collect();
     let pi_count = pi_msgs.len() as i32;
+    counts.set(ClientId::Pi, pi_count);
     messages.extend(pi_msgs);
 
     // Parse Kimi wire.jsonl files in parallel
     let kimi_msgs: Vec<ParsedMessage> = scan_result
-        .kimi_files
+        .get(ClientId::Kimi)
         .par_iter()
         .flat_map(|path| {
             sessions::kimi::parse_kimi_file(path)
@@ -1009,21 +1006,14 @@ pub fn parse_local_clients(options: LocalParseOptions) -> Result<ParsedMessages,
         })
         .collect();
     let kimi_count = kimi_msgs.len() as i32;
+    counts.set(ClientId::Kimi, kimi_count);
     messages.extend(kimi_msgs);
 
     let filtered = filter_parsed_messages(messages, &options);
 
     Ok(ParsedMessages {
         messages: filtered,
-        opencode_count,
-        claude_count,
-        codex_count,
-        gemini_count,
-        amp_count,
-        droid_count,
-        openclaw_count,
-        pi_count,
-        kimi_count,
+        counts,
         processing_time_ms: start.elapsed().as_millis() as u32,
     })
 }

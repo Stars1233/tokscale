@@ -8,7 +8,7 @@ use tokio::runtime::Runtime;
 
 use tokscale_core::pricing::PricingService;
 use tokscale_core::sessions::UnifiedMessage;
-use tokscale_core::{normalize_model_for_grouping, scanner, sessions, GroupBy};
+use tokscale_core::{normalize_model_for_grouping, scanner, sessions, ClientId, GroupBy};
 
 #[derive(Debug, Clone, Default)]
 pub struct TokenBreakdown {
@@ -80,98 +80,6 @@ pub struct UsageData {
     pub longest_streak: u32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Client {
-    OpenCode,
-    Claude,
-    Codex,
-    Cursor,
-    Gemini,
-    Amp,
-    Droid,
-    OpenClaw,
-    Pi,
-    Kimi,
-}
-
-impl Client {
-    pub fn all() -> &'static [Client] {
-        &[
-            Client::OpenCode,
-            Client::Claude,
-            Client::Codex,
-            Client::Cursor,
-            Client::Gemini,
-            Client::Amp,
-            Client::Droid,
-            Client::OpenClaw,
-            Client::Pi,
-            Client::Kimi,
-        ]
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Client::OpenCode => "OpenCode",
-            Client::Claude => "Claude",
-            Client::Codex => "Codex",
-            Client::Cursor => "Cursor",
-            Client::Gemini => "Gemini",
-            Client::Amp => "Amp",
-            Client::Droid => "Droid",
-            Client::OpenClaw => "OpenClaw",
-            Client::Pi => "Pi",
-            Client::Kimi => "Kimi",
-        }
-    }
-
-    pub fn key(&self) -> char {
-        match self {
-            Client::OpenCode => '1',
-            Client::Claude => '2',
-            Client::Codex => '3',
-            Client::Cursor => '4',
-            Client::Gemini => '5',
-            Client::Amp => '6',
-            Client::Droid => '7',
-            Client::OpenClaw => '8',
-            Client::Pi => '9',
-            Client::Kimi => '0',
-        }
-    }
-
-    pub fn from_key(key: char) -> Option<Client> {
-        match key {
-            '1' => Some(Client::OpenCode),
-            '2' => Some(Client::Claude),
-            '3' => Some(Client::Codex),
-            '4' => Some(Client::Cursor),
-            '5' => Some(Client::Gemini),
-            '6' => Some(Client::Amp),
-            '7' => Some(Client::Droid),
-            '8' => Some(Client::OpenClaw),
-            '9' => Some(Client::Pi),
-            '0' => Some(Client::Kimi),
-            _ => None,
-        }
-    }
-
-    fn to_core_client(self) -> &'static str {
-        match self {
-            Client::OpenCode => "opencode",
-            Client::Claude => "claude",
-            Client::Codex => "codex",
-            Client::Cursor => "cursor",
-            Client::Gemini => "gemini",
-            Client::Amp => "amp",
-            Client::Droid => "droid",
-            Client::OpenClaw => "openclaw",
-            Client::Pi => "pi",
-            Client::Kimi => "kimi",
-        }
-    }
-}
-
 pub struct DataLoader {
     _sessions_path: Option<PathBuf>,
     pub since: Option<String>,
@@ -203,7 +111,7 @@ impl DataLoader {
         }
     }
 
-    pub fn load(&self, enabled_clients: &[Client], group_by: &GroupBy) -> Result<UsageData> {
+    pub fn load(&self, enabled_clients: &[ClientId], group_by: &GroupBy) -> Result<UsageData> {
         let home = dirs::home_dir()
             .ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?
             .to_string_lossy()
@@ -215,7 +123,7 @@ impl DataLoader {
 
         let sources: Vec<String> = enabled_clients
             .iter()
-            .map(|s| s.to_core_client().to_string())
+            .map(|client| client.as_str().to_string())
             .collect();
 
         let scan_result = scanner::scan_all_clients(&home, &sources);
@@ -225,119 +133,114 @@ impl DataLoader {
         // OpenCode: read both SQLite (1.2+) and legacy JSON, deduplicate by message ID
         let mut opencode_seen: HashSet<String> = HashSet::new();
 
-        if enabled_clients.contains(&Client::OpenCode) {
-            if let Some(db_path) = &scan_result.opencode_db {
-                let sqlite_messages: Vec<UnifiedMessage> =
-                    sessions::opencode::parse_opencode_sqlite(db_path);
-                for msg in &sqlite_messages {
-                    if let Some(ref key) = msg.dedup_key {
-                        opencode_seen.insert(key.clone());
+        for client in enabled_clients.iter().copied() {
+            match client {
+                ClientId::OpenCode => {
+                    if let Some(db_path) = &scan_result.opencode_db {
+                        let sqlite_messages: Vec<UnifiedMessage> =
+                            sessions::opencode::parse_opencode_sqlite(db_path);
+                        for msg in &sqlite_messages {
+                            if let Some(ref key) = msg.dedup_key {
+                                opencode_seen.insert(key.clone());
+                            }
+                        }
+                        all_messages.extend(sqlite_messages);
                     }
+
+                    let json_messages: Vec<UnifiedMessage> = scan_result
+                        .get(ClientId::OpenCode)
+                        .par_iter()
+                        .filter_map(|path| sessions::opencode::parse_opencode_file(path))
+                        .collect();
+                    all_messages.extend(json_messages.into_iter().filter(|msg| {
+                        msg.dedup_key
+                            .as_ref()
+                            .is_none_or(|key| opencode_seen.insert(key.clone()))
+                    }));
                 }
-                all_messages.extend(sqlite_messages);
+                ClientId::Claude => {
+                    let msgs_raw: Vec<UnifiedMessage> = scan_result
+                        .get(ClientId::Claude)
+                        .par_iter()
+                        .flat_map(|path| sessions::claudecode::parse_claude_file(path))
+                        .collect();
+
+                    let mut seen_keys: HashSet<String> = HashSet::new();
+                    let msgs: Vec<UnifiedMessage> = msgs_raw
+                        .into_iter()
+                        .filter(|m| {
+                            m.dedup_key
+                                .as_ref()
+                                .is_none_or(|k| k.is_empty() || seen_keys.insert(k.clone()))
+                        })
+                        .collect();
+                    all_messages.extend(msgs);
+                }
+                ClientId::Codex => {
+                    let msgs: Vec<UnifiedMessage> = scan_result
+                        .get(ClientId::Codex)
+                        .par_iter()
+                        .flat_map(|path| sessions::codex::parse_codex_file(path))
+                        .collect();
+                    all_messages.extend(msgs);
+                }
+                ClientId::Cursor => {
+                    let msgs: Vec<UnifiedMessage> = scan_result
+                        .get(ClientId::Cursor)
+                        .par_iter()
+                        .flat_map(|path| sessions::cursor::parse_cursor_file(path))
+                        .collect();
+                    all_messages.extend(msgs);
+                }
+                ClientId::Gemini => {
+                    let msgs: Vec<UnifiedMessage> = scan_result
+                        .get(ClientId::Gemini)
+                        .par_iter()
+                        .flat_map(|path| sessions::gemini::parse_gemini_file(path))
+                        .collect();
+                    all_messages.extend(msgs);
+                }
+                ClientId::Amp => {
+                    let msgs: Vec<UnifiedMessage> = scan_result
+                        .get(ClientId::Amp)
+                        .par_iter()
+                        .flat_map(|path| sessions::amp::parse_amp_file(path))
+                        .collect();
+                    all_messages.extend(msgs);
+                }
+                ClientId::Droid => {
+                    let msgs: Vec<UnifiedMessage> = scan_result
+                        .get(ClientId::Droid)
+                        .par_iter()
+                        .flat_map(|path| sessions::droid::parse_droid_file(path))
+                        .collect();
+                    all_messages.extend(msgs);
+                }
+                ClientId::OpenClaw => {
+                    let msgs: Vec<UnifiedMessage> = scan_result
+                        .get(ClientId::OpenClaw)
+                        .par_iter()
+                        .flat_map(|path| sessions::openclaw::parse_openclaw_transcript(path))
+                        .collect();
+                    all_messages.extend(msgs);
+                }
+                ClientId::Pi => {
+                    let msgs: Vec<UnifiedMessage> = scan_result
+                        .get(ClientId::Pi)
+                        .par_iter()
+                        .flat_map(|path| sessions::pi::parse_pi_file(path))
+                        .collect();
+                    all_messages.extend(msgs);
+                }
+                ClientId::Kimi => {
+                    let msgs: Vec<UnifiedMessage> = scan_result
+                        .get(ClientId::Kimi)
+                        .par_iter()
+                        .flat_map(|path| sessions::kimi::parse_kimi_file(path))
+                        .collect();
+                    all_messages.extend(msgs);
+                }
             }
-
-            let json_messages: Vec<UnifiedMessage> = scan_result
-                .opencode_files
-                .par_iter()
-                .filter_map(|path| sessions::opencode::parse_opencode_file(path))
-                .collect();
-            all_messages.extend(json_messages.into_iter().filter(|msg| {
-                msg.dedup_key
-                    .as_ref()
-                    .is_none_or(|key| opencode_seen.insert(key.clone()))
-            }));
-        }
-
-        if enabled_clients.contains(&Client::Claude) {
-            let msgs_raw: Vec<UnifiedMessage> = scan_result
-                .claude_files
-                .par_iter()
-                .flat_map(|path| sessions::claudecode::parse_claude_file(path))
-                .collect();
-
-            let mut seen_keys: HashSet<String> = HashSet::new();
-            let msgs: Vec<UnifiedMessage> = msgs_raw
-                .into_iter()
-                .filter(|m| {
-                    m.dedup_key
-                        .as_ref()
-                        .is_none_or(|k| k.is_empty() || seen_keys.insert(k.clone()))
-                })
-                .collect();
-            all_messages.extend(msgs);
-        }
-
-        if enabled_clients.contains(&Client::Codex) {
-            let msgs: Vec<UnifiedMessage> = scan_result
-                .codex_files
-                .par_iter()
-                .flat_map(|path| sessions::codex::parse_codex_file(path))
-                .collect();
-            all_messages.extend(msgs);
-        }
-
-        if enabled_clients.contains(&Client::Cursor) {
-            let msgs: Vec<UnifiedMessage> = scan_result
-                .cursor_files
-                .par_iter()
-                .flat_map(|path| sessions::cursor::parse_cursor_file(path))
-                .collect();
-            all_messages.extend(msgs);
-        }
-
-        if enabled_clients.contains(&Client::Gemini) {
-            let msgs: Vec<UnifiedMessage> = scan_result
-                .gemini_files
-                .par_iter()
-                .flat_map(|path| sessions::gemini::parse_gemini_file(path))
-                .collect();
-            all_messages.extend(msgs);
-        }
-
-        if enabled_clients.contains(&Client::Amp) {
-            let msgs: Vec<UnifiedMessage> = scan_result
-                .amp_files
-                .par_iter()
-                .flat_map(|path| sessions::amp::parse_amp_file(path))
-                .collect();
-            all_messages.extend(msgs);
-        }
-
-        if enabled_clients.contains(&Client::Droid) {
-            let msgs: Vec<UnifiedMessage> = scan_result
-                .droid_files
-                .par_iter()
-                .flat_map(|path| sessions::droid::parse_droid_file(path))
-                .collect();
-            all_messages.extend(msgs);
-        }
-
-        if enabled_clients.contains(&Client::OpenClaw) {
-            let msgs: Vec<UnifiedMessage> = scan_result
-                .openclaw_files
-                .par_iter()
-                .flat_map(|path| sessions::openclaw::parse_openclaw_transcript(path))
-                .collect();
-            all_messages.extend(msgs);
-        }
-
-        if enabled_clients.contains(&Client::Pi) {
-            let msgs: Vec<UnifiedMessage> = scan_result
-                .pi_files
-                .par_iter()
-                .flat_map(|path| sessions::pi::parse_pi_file(path))
-                .collect();
-            all_messages.extend(msgs);
-        }
-
-        if enabled_clients.contains(&Client::Kimi) {
-            let msgs: Vec<UnifiedMessage> = scan_result
-                .kimi_files
-                .par_iter()
-                .flat_map(|path| sessions::kimi::parse_kimi_file(path))
-                .collect();
-            all_messages.extend(msgs);
         }
 
         if let Some(svc) = pricing {
@@ -414,8 +317,7 @@ impl DataLoader {
                     .split(", ")
                     .any(|p| p == msg.provider_id)
             {
-                model_entry.provider =
-                    format!("{}, {}", model_entry.provider, msg.provider_id);
+                model_entry.provider = format!("{}, {}", model_entry.provider, msg.provider_id);
             }
 
             model_entry.tokens.input = model_entry
@@ -722,61 +624,106 @@ mod tests {
 
     #[test]
     fn test_client_all() {
-        let clients = Client::all();
+        let clients = ClientId::ALL;
         assert_eq!(clients.len(), 10);
-        assert_eq!(clients[0], Client::OpenCode);
-        assert_eq!(clients[1], Client::Claude);
-        assert_eq!(clients[2], Client::Codex);
-        assert_eq!(clients[3], Client::Cursor);
-        assert_eq!(clients[4], Client::Gemini);
-        assert_eq!(clients[5], Client::Amp);
-        assert_eq!(clients[6], Client::Droid);
-        assert_eq!(clients[7], Client::OpenClaw);
-        assert_eq!(clients[8], Client::Pi);
-        assert_eq!(clients[9], Client::Kimi);
+        assert_eq!(clients[0], ClientId::OpenCode);
+        assert_eq!(clients[1], ClientId::Claude);
+        assert_eq!(clients[2], ClientId::Codex);
+        assert_eq!(clients[3], ClientId::Cursor);
+        assert_eq!(clients[4], ClientId::Gemini);
+        assert_eq!(clients[5], ClientId::Amp);
+        assert_eq!(clients[6], ClientId::Droid);
+        assert_eq!(clients[7], ClientId::OpenClaw);
+        assert_eq!(clients[8], ClientId::Pi);
+        assert_eq!(clients[9], ClientId::Kimi);
     }
 
     #[test]
     fn test_client_as_str() {
-        assert_eq!(Client::OpenCode.as_str(), "OpenCode");
-        assert_eq!(Client::Claude.as_str(), "Claude");
-        assert_eq!(Client::Codex.as_str(), "Codex");
-        assert_eq!(Client::Cursor.as_str(), "Cursor");
-        assert_eq!(Client::Gemini.as_str(), "Gemini");
-        assert_eq!(Client::Amp.as_str(), "Amp");
-        assert_eq!(Client::Droid.as_str(), "Droid");
-        assert_eq!(Client::OpenClaw.as_str(), "OpenClaw");
-        assert_eq!(Client::Pi.as_str(), "Pi");
-        assert_eq!(Client::Kimi.as_str(), "Kimi");
+        assert_eq!(
+            crate::tui::client_ui::display_name(ClientId::OpenCode),
+            "OpenCode"
+        );
+        assert_eq!(
+            crate::tui::client_ui::display_name(ClientId::Claude),
+            "Claude"
+        );
+        assert_eq!(
+            crate::tui::client_ui::display_name(ClientId::Codex),
+            "Codex"
+        );
+        assert_eq!(
+            crate::tui::client_ui::display_name(ClientId::Cursor),
+            "Cursor"
+        );
+        assert_eq!(
+            crate::tui::client_ui::display_name(ClientId::Gemini),
+            "Gemini"
+        );
+        assert_eq!(crate::tui::client_ui::display_name(ClientId::Amp), "Amp");
+        assert_eq!(
+            crate::tui::client_ui::display_name(ClientId::Droid),
+            "Droid"
+        );
+        assert_eq!(
+            crate::tui::client_ui::display_name(ClientId::OpenClaw),
+            "OpenClaw"
+        );
+        assert_eq!(crate::tui::client_ui::display_name(ClientId::Pi), "Pi");
+        assert_eq!(crate::tui::client_ui::display_name(ClientId::Kimi), "Kimi");
     }
 
     #[test]
     fn test_client_key() {
-        assert_eq!(Client::OpenCode.key(), '1');
-        assert_eq!(Client::Claude.key(), '2');
-        assert_eq!(Client::Codex.key(), '3');
-        assert_eq!(Client::Cursor.key(), '4');
-        assert_eq!(Client::Gemini.key(), '5');
-        assert_eq!(Client::Amp.key(), '6');
-        assert_eq!(Client::Droid.key(), '7');
-        assert_eq!(Client::OpenClaw.key(), '8');
-        assert_eq!(Client::Pi.key(), '9');
-        assert_eq!(Client::Kimi.key(), '0');
+        assert_eq!(crate::tui::client_ui::hotkey(ClientId::OpenCode), '1');
+        assert_eq!(crate::tui::client_ui::hotkey(ClientId::Claude), '2');
+        assert_eq!(crate::tui::client_ui::hotkey(ClientId::Codex), '3');
+        assert_eq!(crate::tui::client_ui::hotkey(ClientId::Cursor), '4');
+        assert_eq!(crate::tui::client_ui::hotkey(ClientId::Gemini), '5');
+        assert_eq!(crate::tui::client_ui::hotkey(ClientId::Amp), '6');
+        assert_eq!(crate::tui::client_ui::hotkey(ClientId::Droid), '7');
+        assert_eq!(crate::tui::client_ui::hotkey(ClientId::OpenClaw), '8');
+        assert_eq!(crate::tui::client_ui::hotkey(ClientId::Pi), '9');
+        assert_eq!(crate::tui::client_ui::hotkey(ClientId::Kimi), '0');
     }
 
     #[test]
     fn test_client_from_key() {
-        assert_eq!(Client::from_key('1'), Some(Client::OpenCode));
-        assert_eq!(Client::from_key('2'), Some(Client::Claude));
-        assert_eq!(Client::from_key('3'), Some(Client::Codex));
-        assert_eq!(Client::from_key('4'), Some(Client::Cursor));
-        assert_eq!(Client::from_key('5'), Some(Client::Gemini));
-        assert_eq!(Client::from_key('6'), Some(Client::Amp));
-        assert_eq!(Client::from_key('7'), Some(Client::Droid));
-        assert_eq!(Client::from_key('8'), Some(Client::OpenClaw));
-        assert_eq!(Client::from_key('9'), Some(Client::Pi));
-        assert_eq!(Client::from_key('0'), Some(Client::Kimi));
-        assert_eq!(Client::from_key('a'), None);
+        assert_eq!(
+            crate::tui::client_ui::from_hotkey('1'),
+            Some(ClientId::OpenCode)
+        );
+        assert_eq!(
+            crate::tui::client_ui::from_hotkey('2'),
+            Some(ClientId::Claude)
+        );
+        assert_eq!(
+            crate::tui::client_ui::from_hotkey('3'),
+            Some(ClientId::Codex)
+        );
+        assert_eq!(
+            crate::tui::client_ui::from_hotkey('4'),
+            Some(ClientId::Cursor)
+        );
+        assert_eq!(
+            crate::tui::client_ui::from_hotkey('5'),
+            Some(ClientId::Gemini)
+        );
+        assert_eq!(crate::tui::client_ui::from_hotkey('6'), Some(ClientId::Amp));
+        assert_eq!(
+            crate::tui::client_ui::from_hotkey('7'),
+            Some(ClientId::Droid)
+        );
+        assert_eq!(
+            crate::tui::client_ui::from_hotkey('8'),
+            Some(ClientId::OpenClaw)
+        );
+        assert_eq!(crate::tui::client_ui::from_hotkey('9'), Some(ClientId::Pi));
+        assert_eq!(
+            crate::tui::client_ui::from_hotkey('0'),
+            Some(ClientId::Kimi)
+        );
+        assert_eq!(crate::tui::client_ui::from_hotkey('a'), None);
     }
 
     #[test]
