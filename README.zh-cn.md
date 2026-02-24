@@ -10,6 +10,7 @@
 
 > [!TIP]
 >
+> **v2（ratatui 重写 + Windows 支持）即将推出！** <br />
 > 我每周都会发布新的开源项目。不要错过下一个。
 >
 > | [<img alt="GitHub Follow" src="https://img.shields.io/github/followers/junhoyeo?style=flat-square&logo=github&labelColor=black&color=24292f" width="156px" />](https://github.com/junhoyeo) | 在 GitHub 上关注 [@junhoyeo](https://github.com/junhoyeo) 获取更多项目。涉及 AI、基础设施等各个领域。 |

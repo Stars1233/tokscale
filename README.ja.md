@@ -10,6 +10,7 @@
 
 > [!TIP]
 >
+> **v2（ratatui リライト + Windows サポート）近日公開！** <br />
 > 毎週新しいオープンソースプロジェクトを公開しています。お見逃しなく。
 >
 > | [<img alt="GitHub Follow" src="https://img.shields.io/github/followers/junhoyeo?style=flat-square&logo=github&labelColor=black&color=24292f" width="156px" />](https://github.com/junhoyeo) | GitHubで[@junhoyeo](https://github.com/junhoyeo)をフォローして、他のプロジェクトもチェックしてください。AI、インフラ、その他様々な分野で開発しています。 |
