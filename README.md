@@ -579,6 +579,18 @@ Tokscale includes a social platform where you can share your usage data and comp
 - **GitHub Integration** - Login with your GitHub account
 - **Local Viewer** - View your data privately without submitting
 
+### GitHub Profile Embed Widget
+
+You can embed your public Tokscale stats directly in your GitHub profile README:
+
+```md
+[![Tokscale Stats](https://tokscale.ai/api/embed/<username>/svg)](https://tokscale.ai/u/<username>)
+```
+
+- Replace `<username>` with your GitHub username
+- Optional query params: `?theme=light` and `&compact=1`
+  - Example: `https://tokscale.ai/api/embed/<username>/svg?theme=light&compact=1`
+
 ### Getting Started
 
 1. **Login** - Run `tokscale login` to authenticate via GitHub
