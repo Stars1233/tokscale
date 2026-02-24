@@ -42,7 +42,7 @@ const THEMES: Record<EmbedTheme, ThemePalette> = {
 };
 
 const FIGTREE_FONT_STACK = "Figtree, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
-const FIGTREE_FONT_IMPORT = "https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700&display=swap";
+const FIGTREE_FONT_IMPORT = "https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700&amp;display=swap";
 
 function escapeXml(value: string): string {
   return value
@@ -103,6 +103,10 @@ function formatDateLabel(value: string | null): string {
   }).format(date)} (UTC)`;
 }
 
+// Approximate average character width for Figtree 15px semibold (weight 600).
+// Used to estimate rendered username width for dynamic display-name positioning.
+const APPROX_CHAR_WIDTH_15_SEMIBOLD = 9;
+
 function metric(x: number, label: string, value: string, palette: ThemePalette): string {
   return [
     `<text x="${x}" y="112" fill="${palette.muted}" font-size="12" font-family="${FIGTREE_FONT_STACK}">${label}</text>`,
@@ -132,6 +136,15 @@ export function renderProfileEmbedSvg(
   const updated = escapeXml(formatDateLabel(data.stats.updatedAt));
   const rankLabel = `Rank (${sortBy === "cost" ? "Cost" : "Tokens"})`;
 
+
+  // Dynamically position the display name after the username to prevent overlap.
+  // GitHub usernames can be up to 39 chars; at ~9px/char that's 360px which would
+  // overlap a fixed x=140/156. We estimate the username pixel width and place the
+  // display name after it with a small gap, hiding it if there's no room.
+  const usernameEstimatedWidth = username.length * APPROX_CHAR_WIDTH_15_SEMIBOLD;
+  const displayNameX = 24 + usernameEstimatedWidth + 8;
+  const showDisplayName = displayName && displayNameX + 40 < width;
+
   const compactMetrics = [
     metric(24, "Tokens", tokens, palette),
     metric(184, "Cost", cost, palette),
@@ -157,8 +170,8 @@ export function renderProfileEmbedSvg(
   <text x="24" y="36" fill="${palette.title}" font-size="18" font-weight="700" font-family="${FIGTREE_FONT_STACK}">Tokscale Stats</text>
   <text x="24" y="60" fill="${palette.text}" font-size="15" font-weight="600" font-family="${FIGTREE_FONT_STACK}">${escapeXml(username)}</text>
   ${
-    displayName
-      ? `<text x="${compact ? 140 : 156}" y="60" fill="${palette.muted}" font-size="13" font-family="${FIGTREE_FONT_STACK}">${displayName}</text>`
+    showDisplayName
+      ? `<text x="${displayNameX}" y="60" fill="${palette.muted}" font-size="13" font-family="${FIGTREE_FONT_STACK}">${displayName}</text>`
       : ""
   }
 

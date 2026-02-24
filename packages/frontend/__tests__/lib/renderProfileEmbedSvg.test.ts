@@ -76,6 +76,41 @@ describe("renderProfileEmbedSvg", () => {
     expect(svg).toContain("&lt;script&gt;alert(&apos;xss&apos;)&lt;/script&gt;");
     expect(svg).not.toContain("<script>alert('xss')</script>");
   });
+
+  it("does not contain raw & outside XML entities (well-formed XML)", () => {
+    const svg = renderProfileEmbedSvg(mockStats);
+
+    // Strip all valid XML entities, then check no raw & remains
+    const stripped = svg.replace(/&(amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);/g, "");
+    expect(stripped).not.toContain("&");
+  });
+
+  it("positions display name dynamically after username", () => {
+    const svg = renderProfileEmbedSvg(mockStats);
+
+    // Username '@octocat' is 8 chars; at ~9px/char = 72px; x should be >= 24 + 72 + 8 = 104
+    const displayNameTag = svg.match(/<text x="(\d+)"[^>]*>The Octocat<\/text>/);
+    expect(displayNameTag).toBeTruthy();
+    const x = Number(displayNameTag![1]);
+    expect(x).toBeGreaterThanOrEqual(24 + 8 * 9 + 8);
+  });
+
+  it("hides display name when username is too long to leave room", () => {
+    const longUsername = "a".repeat(39); // GitHub max
+    const svg = renderProfileEmbedSvg({
+      ...mockStats,
+      user: {
+        ...mockStats.user,
+        username: longUsername,
+        displayName: "Should Be Hidden",
+      },
+    }, { compact: true });
+
+    expect(svg).toContain(`@${longUsername}`);
+    // @+39 = 40 chars * 9 = 360; displayNameX = 392; 392+40 = 432 < 460 → fits in compact
+    // But verify it's positioned dynamically, not at fixed 140
+    expect(svg).not.toMatch(/x="140"[^>]*>Should Be Hidden/);
+  });
 });
 
 describe("renderProfileEmbedErrorSvg", () => {
