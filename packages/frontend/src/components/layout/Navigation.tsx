@@ -45,6 +45,14 @@ const NavContainer = styled.nav`
     max-width: 100%;
     gap: 2px;
   }
+
+  @media (max-width: ${MOBILE_BREAKPOINT}) {
+    left: 16px;
+    right: 16px;
+    transform: none;
+    width: calc(100% - 32px);
+    justify-content: space-between;
+  }
 `;
 
 const NavItemBase = styled.a<{ $isActive: boolean }>`
