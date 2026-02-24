@@ -1,5 +1,6 @@
 mod app;
 mod cache;
+pub mod client_ui;
 pub mod config;
 pub mod data;
 mod event;
@@ -9,7 +10,7 @@ mod ui;
 
 pub use app::{App, Tab, TuiConfig};
 pub use cache::{is_cache_stale, load_cached_data, save_cached_data};
-pub use data::{DataLoader, Client, UsageData};
+pub use data::{DataLoader, UsageData};
 pub use event::{Event, EventHandler};
 
 use std::collections::HashSet;
@@ -33,6 +34,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::prelude::*;
+use tokscale_core::ClientId;
 
 #[allow(clippy::too_many_arguments)]
 pub fn run(
@@ -65,23 +67,13 @@ pub fn run(
     let mut enabled_clients = HashSet::new();
     if let Some(ref cli_clients) = clients {
         for client_str in cli_clients {
-            match client_str.as_str() {
-                "opencode" => enabled_clients.insert(Client::OpenCode),
-                "claude" => enabled_clients.insert(Client::Claude),
-                "codex" => enabled_clients.insert(Client::Codex),
-                "cursor" => enabled_clients.insert(Client::Cursor),
-                "gemini" => enabled_clients.insert(Client::Gemini),
-                "amp" => enabled_clients.insert(Client::Amp),
-                "droid" => enabled_clients.insert(Client::Droid),
-                "openclaw" => enabled_clients.insert(Client::OpenClaw),
-                "pi" => enabled_clients.insert(Client::Pi),
-                "kimi" => enabled_clients.insert(Client::Kimi),
-                _ => false,
-            };
+            if let Some(client) = ClientId::from_str(client_str) {
+                enabled_clients.insert(client);
+            }
         }
     } else {
-        for client in Client::all() {
-            enabled_clients.insert(*client);
+        for client in ClientId::iter() {
+            enabled_clients.insert(client);
         }
     }
 
@@ -128,7 +120,7 @@ pub fn run(
         app.set_background_loading(true);
 
         let tx = bg_tx.clone();
-        let bg_clients: Vec<Client> = enabled_clients.iter().copied().collect();
+        let bg_clients: Vec<ClientId> = enabled_clients.iter().copied().collect();
         let bg_since = since.clone();
         let bg_until = until.clone();
         let bg_year = year.clone();
@@ -237,7 +229,7 @@ fn run_loop_with_background(
             app.set_background_loading(true);
 
             let tx = bg_tx.clone();
-            let clients: Vec<Client> = app.enabled_clients.borrow().iter().copied().collect();
+            let clients: Vec<ClientId> = app.enabled_clients.borrow().iter().copied().collect();
             let since = app.data_loader.since.clone();
             let until = app.data_loader.until.clone();
             let year = app.data_loader.year.clone();
@@ -283,15 +275,16 @@ pub fn test_data_loading() -> Result<()> {
 
     let loader = DataLoader::new(None);
     let all_clients = vec![
-        Client::OpenCode,
-        Client::Claude,
-        Client::Cursor,
-        Client::Gemini,
-        Client::Codex,
-        Client::Amp,
-        Client::Droid,
-        Client::OpenClaw,
-        Client::Pi,
+        ClientId::OpenCode,
+        ClientId::Claude,
+        ClientId::Cursor,
+        ClientId::Gemini,
+        ClientId::Codex,
+        ClientId::Amp,
+        ClientId::Droid,
+        ClientId::OpenClaw,
+        ClientId::Pi,
+        ClientId::Kimi,
     ];
 
     let data = loader.load(&all_clients, &tokscale_core::GroupBy::default())?;

@@ -10,10 +10,10 @@ use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
+use tokscale_core::ClientId;
 
 use super::data::{
-    Client, ContributionDay, DailyModelInfo, DailyUsage, GraphData, ModelUsage, TokenBreakdown,
-    UsageData,
+    ContributionDay, DailyModelInfo, DailyUsage, GraphData, ModelUsage, TokenBreakdown, UsageData,
 };
 
 /// Cache staleness threshold: 5 minutes (matches TS implementation)
@@ -300,12 +300,12 @@ impl TryFrom<CachedUsageData> for UsageData {
 }
 
 /// Check if clients match between enabled and cached
-fn clients_match(enabled_clients: &HashSet<Client>, cached_clients: &[String]) -> bool {
+fn clients_match(enabled_clients: &HashSet<ClientId>, cached_clients: &[String]) -> bool {
     if enabled_clients.len() != cached_clients.len() {
         return false;
     }
     for client in enabled_clients {
-        if !cached_clients.contains(&client.as_str().to_lowercase()) {
+        if !cached_clients.contains(&client.as_str().to_string()) {
             return false;
         }
     }
@@ -313,7 +313,7 @@ fn clients_match(enabled_clients: &HashSet<Client>, cached_clients: &[String]) -
 }
 
 /// Load cached TUI data from disk
-pub fn load_cached_data(enabled_clients: &HashSet<Client>) -> Option<UsageData> {
+pub fn load_cached_data(enabled_clients: &HashSet<ClientId>) -> Option<UsageData> {
     let cache_path = cache_file()?;
 
     if !cache_path.exists() {
@@ -334,7 +334,7 @@ pub fn load_cached_data(enabled_clients: &HashSet<Client>) -> Option<UsageData> 
 }
 
 /// Save TUI data to disk cache
-pub fn save_cached_data(data: &UsageData, enabled_clients: &HashSet<Client>) {
+pub fn save_cached_data(data: &UsageData, enabled_clients: &HashSet<ClientId>) {
     let Some(cache_path) = cache_file() else {
         return;
     };
@@ -355,7 +355,7 @@ pub fn save_cached_data(data: &UsageData, enabled_clients: &HashSet<Client>) {
         timestamp,
         enabled_clients: enabled_clients
             .iter()
-            .map(|s| s.as_str().to_lowercase())
+            .map(|s| s.as_str().to_string())
             .collect(),
         data: data.into(),
     };
@@ -376,7 +376,7 @@ pub fn save_cached_data(data: &UsageData, enabled_clients: &HashSet<Client>) {
 }
 
 /// Check if cache is stale (older than threshold)
-pub fn is_cache_stale(enabled_clients: &HashSet<Client>) -> bool {
+pub fn is_cache_stale(enabled_clients: &HashSet<ClientId>) -> bool {
     let Some(cache_path) = cache_file() else {
         return true;
     };
