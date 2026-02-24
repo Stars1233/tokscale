@@ -51,7 +51,24 @@ const NavContainer = styled.nav`
     right: 16px;
     transform: none;
     width: calc(100% - 32px);
+    height: auto;
+    flex-direction: column;
+    align-items: stretch;
+    border-radius: 20px;
+    overflow: hidden;
+  }
+`;
+
+const NavHeaderRow = styled.div`
+  display: contents;
+
+  @media (max-width: ${MOBILE_BREAKPOINT}) {
+    display: flex;
+    align-items: center;
     justify-content: space-between;
+    width: 100%;
+    height: 40px;
+    flex-shrink: 0;
   }
 `;
 
@@ -253,7 +270,6 @@ const DesktopAuthSection = styled.div`
   }
 `;
 
-
 const NavLogoLink = styled(Link)`
   display: none;
   flex-shrink: 0;
@@ -291,191 +307,154 @@ const HamburgerButton = styled.button`
   }
 `;
 
-const MobileMenuOverlay = styled.div<{ $isOpen: boolean }>`
-  position: fixed;
-  inset: 0;
-  z-index: 999;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  opacity: ${({ $isOpen }) => ($isOpen ? 1 : 0)};
-  pointer-events: ${({ $isOpen }) => ($isOpen ? "auto" : "none")};
-  transition: opacity 0.2s ease;
+
+const MobileDropdownWrapper = styled.div<{ $isOpen: boolean }>`
+  display: none;
+
+  @media (max-width: ${MOBILE_BREAKPOINT}) {
+    display: block;
+    max-height: ${({ $isOpen }) => ($isOpen ? "500px" : "0")};
+    overflow: hidden;
+    transition: max-height 0.25s ease-in-out;
+  }
 `;
 
-const MobileMenuPanel = styled.div<{ $isOpen: boolean }>`
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-
-  z-index: 1000;
-  background: #0D1117;
+const MobileDropdown = styled.div`
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  transform: ${({ $isOpen }) => ($isOpen ? "translateX(0)" : "translateX(100%)")};
-  transition: transform 0.25s ease;
-`;
-
-const MobileMenuHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-`;
-
-const MobileMenuLogoWrapper = styled.div`
-  position: relative;
-  width: 140px;
-  height: 30px;
-  flex-shrink: 0;
-`;
-
-const MobileMenuLogoImage = styled(Image)`
-  object-fit: contain;
-`;
-
-const MobileCloseButton = styled.button`
-  display: flex;
-  width: 32px;
-  height: 32px;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  color: #D9D9D9;
-  cursor: pointer;
-  padding: 0;
-  border-radius: 1000px;
-  transition: color 0.15s ease;
-
-  &:hover {
-    color: #ffffff;
-  }
-`;
-
-const MobileNavLinks = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding-top: 8px;
-`;
-
-const MobileNavLinkItem = styled(Link)<{ $isActive: boolean }>`
-  font-family: var(--font-figtree), 'Figtree', sans-serif;
-  font-weight: 700;
-  font-size: 18px;
-  text-transform: uppercase;
-  color: ${({ $isActive }) => ($isActive ? "#ffffff" : "#D9D9D9")};
-  background: ${({ $isActive }) => ($isActive ? "rgba(0, 115, 255, 0.1)" : "transparent")};
-  text-decoration: none;
-  padding: 16px 20px;
-  display: block;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  transition: all 0.15s ease;
-
-  &:hover {
-    color: #ffffff;
-    background: rgba(255, 255, 255, 0.04);
-  }
-`;
-
-const MobileNavLinkExternal = styled.a<{ $isActive: boolean }>`
-  font-family: var(--font-figtree), 'Figtree', sans-serif;
-  font-weight: 700;
-  font-size: 18px;
-  text-transform: uppercase;
-  color: ${({ $isActive }) => ($isActive ? "#ffffff" : "#D9D9D9")};
-  text-decoration: none;
-  padding: 16px 20px;
-  display: block;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  transition: all 0.15s ease;
-
-  &:hover {
-    color: #ffffff;
-    background: rgba(255, 255, 255, 0.04);
-  }
-`;
-
-const MobileAuthSection = styled.div`
-  padding: 20px;
+  gap: 4px;
+  padding: 8px 4px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  margin-top: auto;
+  width: 100%;
 `;
 
-const MobileSignInButton = styled.a`
+const DropdownNavLink = styled(Link)<{ $isActive: boolean }>`
+  font-family: var(--font-figtree), 'Figtree', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  text-transform: uppercase;
+  text-decoration: none;
+  padding: 10px 16px;
+  border-radius: 12px;
+  display: block;
+  transition: all 0.15s ease;
+
+  ${({ $isActive }) =>
+    $isActive
+      ? css`
+    background: rgba(0, 115, 255, 0.1);
+    color: #ffffff;
+  `
+      : css`
+    background: transparent;
+    color: #D9D9D9;
+
+    &:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+  `}
+`;
+
+const DropdownNavLinkExternal = styled.a<{ $isActive: boolean }>`
+  font-family: var(--font-figtree), 'Figtree', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  text-transform: uppercase;
+  text-decoration: none;
+  padding: 10px 16px;
+  border-radius: 12px;
+  display: block;
+  transition: all 0.15s ease;
+
+  ${({ $isActive }) =>
+    $isActive
+      ? css`
+    background: rgba(0, 115, 255, 0.1);
+    color: #ffffff;
+  `
+      : css`
+    background: transparent;
+    color: #D9D9D9;
+
+    &:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+  `}
+`;
+
+const DropdownDivider = styled.div`
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 4px 8px;
+`;
+
+const DropdownSignInButton = styled.a`
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: center;
   gap: 8px;
   width: 100%;
-  height: 44px;
+  height: 40px;
   background: #0073FF;
   border-radius: 12px;
   text-decoration: none;
   cursor: pointer;
   transition: opacity 0.15s ease;
+  margin: 0 0 4px;
 
   &:hover {
     opacity: 0.9;
   }
 `;
 
-const MobileSignInText = styled.span`
+const DropdownSignInText = styled.span`
   font-family: var(--font-figtree), 'Figtree', sans-serif;
   font-weight: 700;
-  font-size: 15px;
+  font-size: 14px;
   color: #ffffff;
 `;
 
-const MobileUserCard = styled.div`
+const DropdownUserCard = styled.div`
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 10px;
+  padding: 8px 16px;
 `;
 
-const MobileUserDetails = styled.div`
+const DropdownUserDetails = styled.div`
   flex: 1;
   min-width: 0;
 `;
 
-const MobileDisplayName = styled.p`
+const DropdownDisplayName = styled.p`
   font-family: var(--font-figtree), 'Figtree', sans-serif;
   font-weight: 600;
-  font-size: 15px;
+  font-size: 14px;
   color: #ffffff;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 `;
 
-const MobileUsername = styled.p`
-  font-size: 13px;
+const DropdownUsername = styled.p`
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.5);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 `;
 
-const MobileUserActions = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-`;
-
-const MobileUserAction = styled(Link)`
+const DropdownUserAction = styled(Link)`
   font-family: var(--font-figtree), 'Figtree', sans-serif;
   font-weight: 500;
   font-size: 14px;
   color: #D9D9D9;
   text-decoration: none;
-  padding: 10px 12px;
-  border-radius: 8px;
+  padding: 10px 16px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -492,15 +471,15 @@ const MobileUserAction = styled(Link)`
   }
 `;
 
-const MobileSignOutButton = styled.button`
+const DropdownSignOutButton = styled.button`
   font-family: var(--font-figtree), 'Figtree', sans-serif;
   font-weight: 500;
   font-size: 14px;
   color: #F85149;
   background: transparent;
   border: none;
-  padding: 10px 12px;
-  border-radius: 8px;
+  padding: 10px 16px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -561,37 +540,26 @@ export function Navigation() {
     setIsMobileMenuOpen(false);
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isMobileMenuOpen]);
-
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
   return (
-    <>
-      <NavContainer aria-label="Main navigation">
+    <NavContainer aria-label="Main navigation">
+      <NavHeaderRow>
         <NavLogoLink href="/" aria-label="Tokscale home">
           <NavLogoImage
             src="/assets/hero-logo.svg"
             alt="Tokscale"
-            width={154}
-            height={32}
+            width={100}
+            height={21}
             priority
           />
         </NavLogoLink>
 
         <HamburgerButton
-          onClick={() => setIsMobileMenuOpen(true)}
-          aria-label="Open menu"
+          onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+          aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
         >
-          <MenuIcon />
+          {isMobileMenuOpen ? <CloseIcon /> : <MenuIcon />}
         </HamburgerButton>
 
         <DesktopNavItems>
@@ -687,37 +655,21 @@ export function Navigation() {
             </SignInButton>
           )}
         </DesktopAuthSection>
-      </NavContainer>
+      </NavHeaderRow>
 
-      {/* Mobile Menu */}
-      <MobileMenuOverlay $isOpen={isMobileMenuOpen} onClick={closeMobileMenu} />
-      <MobileMenuPanel $isOpen={isMobileMenuOpen} onClick={(e) => e.stopPropagation()}>
-        <MobileMenuHeader>
-          <Link href="/" onClick={closeMobileMenu} style={{ textDecoration: 'none' }}>
-            <MobileMenuLogoWrapper>
-              <MobileMenuLogoImage
-                src="/assets/hero-logo.svg"
-                alt="Tokscale"
-                fill
-              />
-            </MobileMenuLogoWrapper>
-          </Link>
-          <MobileCloseButton onClick={closeMobileMenu} aria-label="Close menu">
-            <CloseIcon />
-          </MobileCloseButton>
-        </MobileMenuHeader>
 
-        <MobileNavLinks>
-          <MobileNavLinkItem href="/" $isActive={pathname === "/"} onClick={closeMobileMenu}>
+      <MobileDropdownWrapper $isOpen={isMobileMenuOpen}>
+        <MobileDropdown>
+          <DropdownNavLink href="/" $isActive={pathname === "/"} onClick={closeMobileMenu}>
             About
-          </MobileNavLinkItem>
-          <MobileNavLinkItem href="/leaderboard" $isActive={pathname === "/leaderboard"} onClick={closeMobileMenu}>
+          </DropdownNavLink>
+          <DropdownNavLink href="/leaderboard" $isActive={pathname === "/leaderboard"} onClick={closeMobileMenu}>
             Leaderboard
-          </MobileNavLinkItem>
-          <MobileNavLinkItem href="/profile" $isActive={pathname === "/profile" || pathname.startsWith("/u/")} onClick={closeMobileMenu}>
+          </DropdownNavLink>
+          <DropdownNavLink href="/profile" $isActive={pathname === "/profile" || pathname.startsWith("/u/")} onClick={closeMobileMenu}>
             Profile
-          </MobileNavLinkItem>
-          <MobileNavLinkExternal
+          </DropdownNavLink>
+          <DropdownNavLinkExternal
             href="https://github.com/junhoyeo/tokscale"
             target="_blank"
             rel="noopener noreferrer"
@@ -725,55 +677,53 @@ export function Navigation() {
             onClick={closeMobileMenu}
           >
             GitHub ↗
-          </MobileNavLinkExternal>
-        </MobileNavLinks>
+          </DropdownNavLinkExternal>
 
-        <MobileAuthSection>
+          <DropdownDivider />
+
           {isLoading ? null : user ? (
             <>
-              <MobileUserCard>
+              <DropdownUserCard>
                 <Avatar
                   src={user.avatarUrl || `https://github.com/${user.username}.png`}
                   alt={user.username}
-                  size={40}
+                  size={32}
                 />
-                <MobileUserDetails>
-                  <MobileDisplayName>{user.displayName || user.username}</MobileDisplayName>
-                  <MobileUsername>@{user.username}</MobileUsername>
-                </MobileUserDetails>
-              </MobileUserCard>
-              <MobileUserActions>
-                <MobileUserAction href={`/u/${user.username}`} onClick={closeMobileMenu}>
-                  <PersonIcon size={16} />
-                  Your Profile
-                </MobileUserAction>
-                <MobileUserAction href="/settings" onClick={closeMobileMenu}>
-                  <GearIcon size={16} />
-                  Settings
-                </MobileUserAction>
-                <MobileSignOutButton
-                  onClick={async () => {
-                    await fetch("/api/auth/logout", { method: "POST" });
-                    setUser(null);
-                    closeMobileMenu();
-                    window.location.href = "/leaderboard";
-                  }}
-                >
-                  <SignOutIcon size={16} />
-                  Sign Out
-                </MobileSignOutButton>
-              </MobileUserActions>
+                <DropdownUserDetails>
+                  <DropdownDisplayName>{user.displayName || user.username}</DropdownDisplayName>
+                  <DropdownUsername>@{user.username}</DropdownUsername>
+                </DropdownUserDetails>
+              </DropdownUserCard>
+              <DropdownUserAction href={`/u/${user.username}`} onClick={closeMobileMenu}>
+                <PersonIcon size={16} />
+                Your Profile
+              </DropdownUserAction>
+              <DropdownUserAction href="/settings" onClick={closeMobileMenu}>
+                <GearIcon size={16} />
+                Settings
+              </DropdownUserAction>
+              <DropdownSignOutButton
+                onClick={async () => {
+                  await fetch("/api/auth/logout", { method: "POST" });
+                  setUser(null);
+                  closeMobileMenu();
+                  window.location.href = "/leaderboard";
+                }}
+              >
+                <SignOutIcon size={16} />
+                Sign Out
+              </DropdownSignOutButton>
             </>
           ) : (
-            <MobileSignInButton href="/api/auth/github">
+            <DropdownSignInButton href="/api/auth/github">
               <SignInIcon>
                 <GitHubIcon />
               </SignInIcon>
-              <MobileSignInText>Sign in with GitHub</MobileSignInText>
-            </MobileSignInButton>
+              <DropdownSignInText>Sign in with GitHub</DropdownSignInText>
+            </DropdownSignInButton>
           )}
-        </MobileAuthSection>
-      </MobileMenuPanel>
-    </>
+        </MobileDropdown>
+      </MobileDropdownWrapper>
+    </NavContainer>
   );
 }
