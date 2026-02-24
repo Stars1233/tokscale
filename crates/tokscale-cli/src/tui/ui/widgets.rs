@@ -1,5 +1,7 @@
 use ratatui::prelude::*;
+use tokscale_core::ClientId;
 
+use crate::tui::client_ui;
 use crate::tui::config::TokscaleConfig;
 
 pub fn format_tokens_compact(tokens: u64) -> String {
@@ -118,18 +120,14 @@ pub fn get_client_display_name(client: &str) -> String {
     if let Some(name) = config.get_client_display_name(client) {
         return name.to_string();
     }
-    match client.to_lowercase().as_str() {
-        "opencode" => "OpenCode".to_string(),
-        "claude" => "Claude".to_string(),
-        "codex" => "Codex".to_string(),
-        "cursor" => "Cursor".to_string(),
-        "gemini" => "Gemini".to_string(),
-        "amp" => "Amp".to_string(),
-        "droid" => "Droid".to_string(),
-        "openclaw" => "🦞 OpenClaw".to_string(),
-        "pi" => "Pi".to_string(),
-        _ => client.to_string(),
+    let client_lower = client.to_lowercase();
+    if client_lower == ClientId::OpenClaw.as_str() {
+        return "🦞 OpenClaw".to_string();
     }
+    if let Some(client_id) = ClientId::from_str(&client_lower) {
+        return client_ui::display_name(client_id).to_string();
+    }
+    client.to_string()
 }
 
 pub fn get_provider_display_name(provider: &str) -> String {

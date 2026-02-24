@@ -3,90 +3,53 @@
 //! Uses walkdir with rayon for parallel directory traversal.
 
 use rayon::prelude::*;
+use std::collections::HashSet;
 use std::path::PathBuf;
 use walkdir::WalkDir;
 
-/// Session client type
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SessionType {
-    OpenCode,
-    Claude,
-    Codex,
-    Gemini,
-    Cursor,
-    Amp,
-    Droid,
-    OpenClaw,
-    Pi,
-    Kimi,
-}
+use crate::clients::ClientId;
 
 /// Result of scanning all session directories
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct ScanResult {
-    pub opencode_files: Vec<PathBuf>,
+    pub files: [Vec<PathBuf>; ClientId::COUNT],
     pub opencode_db: Option<PathBuf>,
     /// Path to the OpenCode legacy JSON directory (for migration cache stat checks)
     pub opencode_json_dir: Option<PathBuf>,
-    pub claude_files: Vec<PathBuf>,
-    pub codex_files: Vec<PathBuf>,
-    pub gemini_files: Vec<PathBuf>,
-    pub cursor_files: Vec<PathBuf>,
-    pub amp_files: Vec<PathBuf>,
-    pub droid_files: Vec<PathBuf>,
-    pub openclaw_files: Vec<PathBuf>,
-    pub pi_files: Vec<PathBuf>,
-    pub kimi_files: Vec<PathBuf>,
+}
+
+impl Default for ScanResult {
+    fn default() -> Self {
+        Self {
+            files: std::array::from_fn(|_| Vec::new()),
+            opencode_db: None,
+            opencode_json_dir: None,
+        }
+    }
 }
 
 impl ScanResult {
+    pub fn get(&self, client: ClientId) -> &Vec<PathBuf> {
+        &self.files[client as usize]
+    }
+
+    pub fn get_mut(&mut self, client: ClientId) -> &mut Vec<PathBuf> {
+        &mut self.files[client as usize]
+    }
+
     /// Get total number of files found
     pub fn total_files(&self) -> usize {
-        self.opencode_files.len()
-            + self.claude_files.len()
-            + self.codex_files.len()
-            + self.gemini_files.len()
-            + self.cursor_files.len()
-            + self.amp_files.len()
-            + self.droid_files.len()
-            + self.openclaw_files.len()
-            + self.pi_files.len()
-            + self.kimi_files.len()
+        self.files.iter().map(|v| v.len()).sum()
     }
 
     /// Get all files as a single vector
-    pub fn all_files(&self) -> Vec<(SessionType, PathBuf)> {
+    pub fn all_files(&self) -> Vec<(ClientId, PathBuf)> {
         let mut result = Vec::with_capacity(self.total_files());
 
-        for path in &self.opencode_files {
-            result.push((SessionType::OpenCode, path.clone()));
-        }
-        for path in &self.claude_files {
-            result.push((SessionType::Claude, path.clone()));
-        }
-        for path in &self.codex_files {
-            result.push((SessionType::Codex, path.clone()));
-        }
-        for path in &self.gemini_files {
-            result.push((SessionType::Gemini, path.clone()));
-        }
-        for path in &self.cursor_files {
-            result.push((SessionType::Cursor, path.clone()));
-        }
-        for path in &self.amp_files {
-            result.push((SessionType::Amp, path.clone()));
-        }
-        for path in &self.droid_files {
-            result.push((SessionType::Droid, path.clone()));
-        }
-        for path in &self.openclaw_files {
-            result.push((SessionType::OpenClaw, path.clone()));
-        }
-        for path in &self.pi_files {
-            result.push((SessionType::Pi, path.clone()));
-        }
-        for path in &self.kimi_files {
-            result.push((SessionType::Kimi, path.clone()));
+        for client in ClientId::iter() {
+            for path in self.get(client) {
+                result.push((client, path.clone()));
+            }
         }
 
         result
@@ -180,24 +143,34 @@ pub fn scan_directory(root: &str, pattern: &str) -> Vec<PathBuf> {
 pub fn scan_all_clients(home_dir: &str, clients: &[String]) -> ScanResult {
     let mut result = ScanResult::default();
 
-    let include_all = clients.is_empty();
-    let include_opencode = include_all || clients.iter().any(|s| s == "opencode");
-    let include_claude = include_all || clients.iter().any(|s| s == "claude");
-    let include_codex = include_all || clients.iter().any(|s| s == "codex");
-    let include_gemini = include_all || clients.iter().any(|s| s == "gemini");
-    let include_cursor = include_all || clients.iter().any(|s| s == "cursor");
-    let include_amp = include_all || clients.iter().any(|s| s == "amp");
-    let include_droid = include_all || clients.iter().any(|s| s == "droid");
-    let include_openclaw = include_all || clients.iter().any(|s| s == "openclaw");
-    let include_pi = include_all || clients.iter().any(|s| s == "pi");
-    let include_kimi = include_all || clients.iter().any(|s| s == "kimi");
+    let enabled: HashSet<ClientId> = if clients.is_empty() {
+        ClientId::iter().collect()
+    } else {
+        clients
+            .iter()
+            .filter_map(|s| ClientId::from_str(s))
+            .collect()
+    };
 
     let headless_roots = headless_roots(home_dir);
 
     // Define scan tasks
-    let mut tasks: Vec<(SessionType, String, &str)> = Vec::new();
+    let mut tasks: Vec<(ClientId, String, &str)> = Vec::new();
 
-    if include_opencode {
+    for client_id in &enabled {
+        if matches!(
+            client_id,
+            ClientId::OpenCode | ClientId::Codex | ClientId::OpenClaw
+        ) {
+            continue;
+        }
+
+        let def = client_id.data();
+        let path = def.resolve_path(home_dir);
+        tasks.push((*client_id, path, def.pattern));
+    }
+
+    if enabled.contains(&ClientId::OpenCode) {
         let xdg_data =
             std::env::var("XDG_DATA_HOME").unwrap_or_else(|_| format!("{}/.local/share", home_dir));
 
@@ -208,114 +181,82 @@ pub fn scan_all_clients(home_dir: &str, clients: &[String]) -> ScanResult {
         }
 
         // OpenCode legacy: JSON files at ~/.local/share/opencode/storage/message/*/*.json
-        let opencode_path = format!("{}/opencode/storage/message", xdg_data);
+        let opencode_path = ClientId::OpenCode.data().resolve_path(home_dir);
         result.opencode_json_dir = Some(PathBuf::from(&opencode_path));
-        tasks.push((SessionType::OpenCode, opencode_path, "*.json"));
+        tasks.push((
+            ClientId::OpenCode,
+            opencode_path,
+            ClientId::OpenCode.data().pattern,
+        ));
     }
 
-    if include_claude {
-        // Claude: ~/.claude/projects/**/*.jsonl
-        let claude_path = format!("{}/.claude/projects", home_dir);
-        tasks.push((SessionType::Claude, claude_path, "*.jsonl"));
-    }
-
-    if include_codex {
+    if enabled.contains(&ClientId::Codex) {
         // Codex: ~/.codex/sessions/**/*.jsonl
         let codex_home =
             std::env::var("CODEX_HOME").unwrap_or_else(|_| format!("{}/.codex", home_dir));
-        let codex_path = format!("{}/sessions", codex_home);
-        tasks.push((SessionType::Codex, codex_path, "*.jsonl"));
+        let codex_path = ClientId::Codex.data().resolve_path(home_dir);
+        tasks.push((ClientId::Codex, codex_path, ClientId::Codex.data().pattern));
 
         // Codex archived sessions: ~/.codex/archived_sessions/**/*.jsonl
         let codex_archived_path = format!("{}/archived_sessions", codex_home);
-        tasks.push((SessionType::Codex, codex_archived_path, "*.jsonl"));
+        tasks.push((
+            ClientId::Codex,
+            codex_archived_path,
+            ClientId::Codex.data().pattern,
+        ));
 
         // Codex headless: <headless_root>/codex/*.jsonl
         for root in &headless_roots {
             let codex_headless_path = root.join("codex");
             let path = codex_headless_path.to_string_lossy().to_string();
-            tasks.push((SessionType::Codex, path, "*.jsonl"));
+            tasks.push((ClientId::Codex, path, ClientId::Codex.data().pattern));
         }
     }
 
-    if include_gemini {
-        // Gemini: ~/.gemini/tmp/*/chats/session-*.json
-        let gemini_path = format!("{}/.gemini/tmp", home_dir);
-        tasks.push((SessionType::Gemini, gemini_path, "session-*.json"));
-    }
-
-    if include_cursor {
-        // Cursor: ~/.config/tokscale/cursor-cache/*.csv (migrated from ~/.tokscale)
-        let cursor_path = format!("{}/.config/tokscale/cursor-cache", home_dir);
-        // Only scan Cursor usage CSVs to avoid counting unrelated CSVs.
-        tasks.push((SessionType::Cursor, cursor_path, "usage*.csv"));
-    }
-
-    if include_amp {
-        // Amp: ~/.local/share/amp/threads/T-*.json
-        let xdg_data =
-            std::env::var("XDG_DATA_HOME").unwrap_or_else(|_| format!("{}/.local/share", home_dir));
-        let amp_path = format!("{}/amp/threads", xdg_data);
-        tasks.push((SessionType::Amp, amp_path, "T-*.json"));
-    }
-
-    if include_droid {
-        // Droid: ~/.factory/sessions/*.settings.json
-        let droid_path = format!("{}/.factory/sessions", home_dir);
-        tasks.push((SessionType::Droid, droid_path, "*.settings.json"));
-    }
-
-    if include_openclaw {
+    if enabled.contains(&ClientId::OpenClaw) {
         // OpenClaw transcripts: ~/.openclaw/agents/**/*.jsonl
-        let openclaw_path = format!("{}/.openclaw/agents", home_dir);
-        tasks.push((SessionType::OpenClaw, openclaw_path, "*.jsonl"));
+        let openclaw_path = ClientId::OpenClaw.data().resolve_path(home_dir);
+        tasks.push((
+            ClientId::OpenClaw,
+            openclaw_path,
+            ClientId::OpenClaw.data().pattern,
+        ));
 
         // Legacy paths (Clawd -> Moltbot -> OpenClaw rebrand history)
         let clawdbot_path = format!("{}/.clawdbot/agents", home_dir);
-        tasks.push((SessionType::OpenClaw, clawdbot_path, "*.jsonl"));
+        tasks.push((
+            ClientId::OpenClaw,
+            clawdbot_path,
+            ClientId::OpenClaw.data().pattern,
+        ));
 
         let moltbot_path = format!("{}/.moltbot/agents", home_dir);
-        tasks.push((SessionType::OpenClaw, moltbot_path, "*.jsonl"));
+        tasks.push((
+            ClientId::OpenClaw,
+            moltbot_path,
+            ClientId::OpenClaw.data().pattern,
+        ));
 
         let moldbot_path = format!("{}/.moldbot/agents", home_dir);
-        tasks.push((SessionType::OpenClaw, moldbot_path, "*.jsonl"));
-    }
-
-    if include_pi {
-        // Pi (badlogic/pi-mono): ~/.pi/agent/sessions/**/*.jsonl
-        let pi_path = format!("{}/.pi/agent/sessions", home_dir);
-        tasks.push((SessionType::Pi, pi_path, "*.jsonl"));
-    }
-
-    if include_kimi {
-        // Kimi CLI: ~/.kimi/sessions/**/wire.jsonl
-        let kimi_path = format!("{}/.kimi/sessions", home_dir);
-        tasks.push((SessionType::Kimi, kimi_path, "wire.jsonl"));
+        tasks.push((
+            ClientId::OpenClaw,
+            moldbot_path,
+            ClientId::OpenClaw.data().pattern,
+        ));
     }
 
     // Execute scans in parallel
-    let scan_results: Vec<(SessionType, Vec<PathBuf>)> = tasks
+    let scan_results: Vec<(ClientId, Vec<PathBuf>)> = tasks
         .into_par_iter()
-        .map(|(session_type, path, pattern)| {
+        .map(|(client_id, path, pattern)| {
             let files = scan_directory(&path, pattern);
-            (session_type, files)
+            (client_id, files)
         })
         .collect();
 
     // Aggregate results
-    for (session_type, files) in scan_results {
-        match session_type {
-            SessionType::OpenCode => result.opencode_files.extend(files),
-            SessionType::Claude => result.claude_files.extend(files),
-            SessionType::Codex => result.codex_files.extend(files),
-            SessionType::Gemini => result.gemini_files.extend(files),
-            SessionType::Cursor => result.cursor_files.extend(files),
-            SessionType::Amp => result.amp_files.extend(files),
-            SessionType::Droid => result.droid_files.extend(files),
-            SessionType::OpenClaw => result.openclaw_files.extend(files),
-            SessionType::Pi => result.pi_files.extend(files),
-            SessionType::Kimi => result.kimi_files.extend(files),
-        }
+    for (client_id, files) in scan_results {
+        result.get_mut(client_id).extend(files);
     }
 
     result
@@ -331,55 +272,58 @@ mod tests {
 
     fn restore_env(var: &str, previous: Option<String>) {
         match previous {
-            Some(value) => std::env::set_var(var, value),
-            None => std::env::remove_var(var),
+            Some(value) => unsafe { std::env::set_var(var, value) },
+            None => unsafe { std::env::remove_var(var) },
         }
     }
 
     #[test]
     fn test_scan_result_total_files() {
-        let result = ScanResult {
-            opencode_files: vec![PathBuf::from("a.json"), PathBuf::from("b.json")],
-            opencode_db: None,
-            opencode_json_dir: None,
-            claude_files: vec![PathBuf::from("c.jsonl")],
-            codex_files: vec![],
-            gemini_files: vec![PathBuf::from("d.json")],
-            cursor_files: vec![],
-            amp_files: vec![],
-            droid_files: vec![],
-            openclaw_files: vec![],
-            pi_files: vec![PathBuf::from("e.jsonl")],
-            kimi_files: vec![],
-        };
+        let mut result = ScanResult::default();
+        result
+            .get_mut(ClientId::OpenCode)
+            .push(PathBuf::from("a.json"));
+        result
+            .get_mut(ClientId::OpenCode)
+            .push(PathBuf::from("b.json"));
+        result
+            .get_mut(ClientId::Claude)
+            .push(PathBuf::from("c.jsonl"));
+        result
+            .get_mut(ClientId::Gemini)
+            .push(PathBuf::from("d.json"));
+        result.get_mut(ClientId::Pi).push(PathBuf::from("e.jsonl"));
         assert_eq!(result.total_files(), 5);
     }
 
     #[test]
     fn test_scan_result_all_files() {
-        let result = ScanResult {
-            opencode_files: vec![PathBuf::from("a.json")],
-            opencode_db: None,
-            opencode_json_dir: None,
-            claude_files: vec![PathBuf::from("b.jsonl")],
-            codex_files: vec![PathBuf::from("c.jsonl")],
-            gemini_files: vec![PathBuf::from("d.json")],
-            cursor_files: vec![PathBuf::from("e.csv")],
-            amp_files: vec![],
-            droid_files: vec![],
-            openclaw_files: vec![],
-            pi_files: vec![PathBuf::from("f.jsonl")],
-            kimi_files: vec![],
-        };
+        let mut result = ScanResult::default();
+        result
+            .get_mut(ClientId::OpenCode)
+            .push(PathBuf::from("a.json"));
+        result
+            .get_mut(ClientId::Claude)
+            .push(PathBuf::from("b.jsonl"));
+        result
+            .get_mut(ClientId::Codex)
+            .push(PathBuf::from("c.jsonl"));
+        result
+            .get_mut(ClientId::Gemini)
+            .push(PathBuf::from("d.json"));
+        result
+            .get_mut(ClientId::Cursor)
+            .push(PathBuf::from("e.csv"));
+        result.get_mut(ClientId::Pi).push(PathBuf::from("f.jsonl"));
 
         let all = result.all_files();
         assert_eq!(all.len(), 6);
-        assert_eq!(all[0], (SessionType::OpenCode, PathBuf::from("a.json")));
-        assert_eq!(all[1], (SessionType::Claude, PathBuf::from("b.jsonl")));
-        assert_eq!(all[2], (SessionType::Codex, PathBuf::from("c.jsonl")));
-        assert_eq!(all[3], (SessionType::Gemini, PathBuf::from("d.json")));
-        assert_eq!(all[4], (SessionType::Cursor, PathBuf::from("e.csv")));
-        assert_eq!(all[5], (SessionType::Pi, PathBuf::from("f.jsonl")));
+        assert_eq!(all[0], (ClientId::OpenCode, PathBuf::from("a.json")));
+        assert_eq!(all[1], (ClientId::Claude, PathBuf::from("b.jsonl")));
+        assert_eq!(all[2], (ClientId::Codex, PathBuf::from("c.jsonl")));
+        assert_eq!(all[3], (ClientId::Cursor, PathBuf::from("e.csv")));
+        assert_eq!(all[4], (ClientId::Gemini, PathBuf::from("d.json")));
+        assert_eq!(all[5], (ClientId::Pi, PathBuf::from("f.jsonl")));
     }
 
     #[test]
@@ -390,9 +334,9 @@ mod tests {
     }
 
     #[test]
-    fn test_session_type_equality() {
-        assert_eq!(SessionType::OpenCode, SessionType::OpenCode);
-        assert_ne!(SessionType::OpenCode, SessionType::Claude);
+    fn test_client_id_equality() {
+        assert_eq!(ClientId::OpenCode, ClientId::OpenCode);
+        assert_ne!(ClientId::OpenCode, ClientId::Claude);
     }
 
     #[test]
@@ -558,7 +502,7 @@ mod tests {
     #[serial]
     fn test_headless_roots_default() {
         let previous = std::env::var("TOKSCALE_HEADLESS_DIR").ok();
-        std::env::remove_var("TOKSCALE_HEADLESS_DIR");
+        unsafe { std::env::remove_var("TOKSCALE_HEADLESS_DIR") };
 
         let home = "/tmp/tokscale-test-home";
         let roots = headless_roots(home);
@@ -579,7 +523,7 @@ mod tests {
     #[serial]
     fn test_headless_roots_override() {
         let previous = std::env::var("TOKSCALE_HEADLESS_DIR").ok();
-        std::env::set_var("TOKSCALE_HEADLESS_DIR", "/custom/headless");
+        unsafe { std::env::set_var("TOKSCALE_HEADLESS_DIR", "/custom/headless") };
 
         let roots = headless_roots("/tmp/home");
         assert_eq!(roots, vec![PathBuf::from("/custom/headless")]);
@@ -597,13 +541,13 @@ mod tests {
         setup_mock_opencode_dir(home);
 
         // Set XDG_DATA_HOME for the test
-        std::env::set_var("XDG_DATA_HOME", home.join(".local/share"));
+        unsafe { std::env::set_var("XDG_DATA_HOME", home.join(".local/share")) };
 
         let result = scan_all_clients(home.to_str().unwrap(), &["opencode".to_string()]);
-        assert_eq!(result.opencode_files.len(), 1);
-        assert!(result.claude_files.is_empty());
-        assert!(result.codex_files.is_empty());
-        assert!(result.gemini_files.is_empty());
+        assert_eq!(result.get(ClientId::OpenCode).len(), 1);
+        assert!(result.get(ClientId::Claude).is_empty());
+        assert!(result.get(ClientId::Codex).is_empty());
+        assert!(result.get(ClientId::Gemini).is_empty());
 
         restore_env("XDG_DATA_HOME", previous_xdg);
     }
@@ -615,9 +559,9 @@ mod tests {
         setup_mock_pi_dir(home);
 
         let result = scan_all_clients(home.to_str().unwrap(), &["pi".to_string()]);
-        assert_eq!(result.pi_files.len(), 1);
-        assert!(result.opencode_files.is_empty());
-        assert!(result.claude_files.is_empty());
+        assert_eq!(result.get(ClientId::Pi).len(), 1);
+        assert!(result.get(ClientId::OpenCode).is_empty());
+        assert!(result.get(ClientId::Claude).is_empty());
     }
 
     #[test]
@@ -627,8 +571,8 @@ mod tests {
         setup_mock_claude_dir(home);
 
         let result = scan_all_clients(home.to_str().unwrap(), &["claude".to_string()]);
-        assert_eq!(result.claude_files.len(), 1);
-        assert!(result.opencode_files.is_empty());
+        assert_eq!(result.get(ClientId::Claude).len(), 1);
+        assert!(result.get(ClientId::OpenCode).is_empty());
     }
 
     #[test]
@@ -638,8 +582,8 @@ mod tests {
         setup_mock_gemini_dir(home);
 
         let result = scan_all_clients(home.to_str().unwrap(), &["gemini".to_string()]);
-        assert_eq!(result.gemini_files.len(), 1);
-        assert!(result.opencode_files.is_empty());
+        assert_eq!(result.get(ClientId::Gemini).len(), 1);
+        assert!(result.get(ClientId::OpenCode).is_empty());
     }
 
     #[test]
@@ -649,8 +593,8 @@ mod tests {
         setup_mock_openclaw_dir(home);
 
         let result = scan_all_clients(home.to_str().unwrap(), &["openclaw".to_string()]);
-        assert_eq!(result.openclaw_files.len(), 1);
-        assert!(result.openclaw_files[0].ends_with("session-abc.jsonl"));
+        assert_eq!(result.get(ClientId::OpenClaw).len(), 1);
+        assert!(result.get(ClientId::OpenClaw)[0].ends_with("session-abc.jsonl"));
     }
 
     #[test]
@@ -666,17 +610,17 @@ mod tests {
             &["claude".to_string(), "gemini".to_string()],
         );
 
-        assert_eq!(result.claude_files.len(), 1);
-        assert_eq!(result.gemini_files.len(), 1);
-        assert!(result.opencode_files.is_empty());
-        assert!(result.codex_files.is_empty());
+        assert_eq!(result.get(ClientId::Claude).len(), 1);
+        assert_eq!(result.get(ClientId::Gemini).len(), 1);
+        assert!(result.get(ClientId::OpenCode).is_empty());
+        assert!(result.get(ClientId::Codex).is_empty());
     }
 
     #[test]
     #[serial]
     fn test_scan_all_clients_headless_paths() {
         let previous_headless = std::env::var("TOKSCALE_HEADLESS_DIR").ok();
-        std::env::remove_var("TOKSCALE_HEADLESS_DIR");
+        unsafe { std::env::remove_var("TOKSCALE_HEADLESS_DIR") };
 
         let dir = TempDir::new().unwrap();
         let home = dir.path();
@@ -699,9 +643,9 @@ mod tests {
             ],
         );
 
-        assert!(result.claude_files.is_empty());
-        assert_eq!(result.codex_files.len(), 1);
-        assert!(result.gemini_files.is_empty());
+        assert!(result.get(ClientId::Claude).is_empty());
+        assert_eq!(result.get(ClientId::Codex).len(), 1);
+        assert!(result.get(ClientId::Gemini).is_empty());
 
         restore_env("TOKSCALE_HEADLESS_DIR", previous_headless);
     }
@@ -716,10 +660,10 @@ mod tests {
         setup_mock_codex_dir(home);
 
         // Set CODEX_HOME environment variable
-        std::env::set_var("CODEX_HOME", home.join(".codex"));
+        unsafe { std::env::set_var("CODEX_HOME", home.join(".codex")) };
 
         let result = scan_all_clients(home.to_str().unwrap(), &["codex".to_string()]);
-        assert_eq!(result.codex_files.len(), 1);
+        assert_eq!(result.get(ClientId::Codex).len(), 1);
 
         restore_env("CODEX_HOME", previous_codex);
     }
@@ -733,11 +677,11 @@ mod tests {
         let home = dir.path();
         setup_mock_codex_archived_dir(home);
 
-        std::env::set_var("CODEX_HOME", home.join(".codex"));
+        unsafe { std::env::set_var("CODEX_HOME", home.join(".codex")) };
 
         let result = scan_all_clients(home.to_str().unwrap(), &["codex".to_string()]);
-        assert_eq!(result.codex_files.len(), 1);
-        assert!(result.codex_files[0].ends_with("archived.jsonl"));
+        assert_eq!(result.get(ClientId::Codex).len(), 1);
+        assert!(result.get(ClientId::Codex)[0].ends_with("archived.jsonl"));
 
         restore_env("CODEX_HOME", previous_codex);
     }
@@ -752,10 +696,10 @@ mod tests {
         setup_mock_codex_dir(home);
         setup_mock_codex_archived_dir(home);
 
-        std::env::set_var("CODEX_HOME", home.join(".codex"));
+        unsafe { std::env::set_var("CODEX_HOME", home.join(".codex")) };
 
         let result = scan_all_clients(home.to_str().unwrap(), &["codex".to_string()]);
-        assert_eq!(result.codex_files.len(), 2);
+        assert_eq!(result.get(ClientId::Codex).len(), 2);
 
         restore_env("CODEX_HOME", previous_codex);
     }
@@ -767,9 +711,9 @@ mod tests {
         setup_mock_kimi_dir(home);
 
         let result = scan_all_clients(home.to_str().unwrap(), &["kimi".to_string()]);
-        assert_eq!(result.kimi_files.len(), 1);
-        assert!(result.kimi_files[0].ends_with("wire.jsonl"));
-        assert!(result.opencode_files.is_empty());
-        assert!(result.claude_files.is_empty());
+        assert_eq!(result.get(ClientId::Kimi).len(), 1);
+        assert!(result.get(ClientId::Kimi)[0].ends_with("wire.jsonl"));
+        assert!(result.get(ClientId::OpenCode).is_empty());
+        assert!(result.get(ClientId::Claude).is_empty());
     }
 }
