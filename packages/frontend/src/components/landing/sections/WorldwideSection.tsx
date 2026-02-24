@@ -64,7 +64,7 @@ export function WorldwideSection({
           clipPath: worldwideSection.clipPath || undefined,
         }}
       >
-        <SquircleBorder def={worldwideSection.borderDef} />
+        <SquircleBorder def={worldwideSection.borderDef} color="#0073FF" />
         <GlobeImageWrapper>
           <GlobeBackground />
           <GlobeFadeTop />
@@ -167,9 +167,9 @@ const GlobeSeparatorBar = styled.div`
   background-image: url("/assets/landing/separator-pattern-slash.svg");
   background-size: 24px 24px;
   background-repeat: repeat;
-  border-top: 1px solid #10233E;
-  border-left: 1px solid #10233E;
-  border-right: 1px solid #10233E;
+  border-top: 1px solid #0073FF;
+  border-left: 1px solid #0073FF;
+  border-right: 1px solid #0073FF;
   border-bottom: none;
 `;
 
@@ -242,8 +242,8 @@ const GlobeBlueHeader = styled.div`
   justify-content: center;
   padding: 20px 32px;
   background: #0073ff;
-  border-left: 1px solid #10233e;
-  border-right: 1px solid #10233e;
+  border-left: 1px solid #0073FF;
+  border-right: 1px solid #0073FF;
 `;
 
 const GlobeHeaderText = styled.span`
@@ -330,11 +330,11 @@ const GlobeRightCol = styled.div`
   display: flex;
   align-items: stretch;
   justify-content: flex-start;
-  padding: 0 32px;
+  padding: 0 16px;
   background: #020f1e;
   overflow: hidden;
   @media (max-width: 768px) {
-    padding: 0 24px;
+    padding: 0 16px;
   }
 `;
 
@@ -347,6 +347,9 @@ const LeaderboardWidget = styled.div`
 `;
 
 const WidgetHeader = styled.div`
+  padding-left: 12px;
+  padding-right: 8px;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -395,6 +398,7 @@ const UserRow = styled(Link)`
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
+  padding-right: 14px;
   border-radius: 10px;
   text-decoration: none;
   transition: background 0.15s;
