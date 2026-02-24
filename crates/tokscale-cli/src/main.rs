@@ -3,8 +3,8 @@ mod commands;
 mod cursor;
 mod tui;
 
-use anyhow::Result;
 use crate::tui::client_ui;
+use anyhow::Result;
 use clap::{Parser, Subcommand};
 use std::io::{self, IsTerminal, Write};
 use std::path::{Path, PathBuf};

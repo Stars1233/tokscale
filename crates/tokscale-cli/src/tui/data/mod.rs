@@ -317,8 +317,7 @@ impl DataLoader {
                     .split(", ")
                     .any(|p| p == msg.provider_id)
             {
-                model_entry.provider =
-                    format!("{}, {}", model_entry.provider, msg.provider_id);
+                model_entry.provider = format!("{}, {}", model_entry.provider, msg.provider_id);
             }
 
             model_entry.tokens.input = model_entry
@@ -641,13 +640,31 @@ mod tests {
 
     #[test]
     fn test_client_as_str() {
-        assert_eq!(crate::tui::client_ui::display_name(ClientId::OpenCode), "OpenCode");
-        assert_eq!(crate::tui::client_ui::display_name(ClientId::Claude), "Claude");
-        assert_eq!(crate::tui::client_ui::display_name(ClientId::Codex), "Codex");
-        assert_eq!(crate::tui::client_ui::display_name(ClientId::Cursor), "Cursor");
-        assert_eq!(crate::tui::client_ui::display_name(ClientId::Gemini), "Gemini");
+        assert_eq!(
+            crate::tui::client_ui::display_name(ClientId::OpenCode),
+            "OpenCode"
+        );
+        assert_eq!(
+            crate::tui::client_ui::display_name(ClientId::Claude),
+            "Claude"
+        );
+        assert_eq!(
+            crate::tui::client_ui::display_name(ClientId::Codex),
+            "Codex"
+        );
+        assert_eq!(
+            crate::tui::client_ui::display_name(ClientId::Cursor),
+            "Cursor"
+        );
+        assert_eq!(
+            crate::tui::client_ui::display_name(ClientId::Gemini),
+            "Gemini"
+        );
         assert_eq!(crate::tui::client_ui::display_name(ClientId::Amp), "Amp");
-        assert_eq!(crate::tui::client_ui::display_name(ClientId::Droid), "Droid");
+        assert_eq!(
+            crate::tui::client_ui::display_name(ClientId::Droid),
+            "Droid"
+        );
         assert_eq!(
             crate::tui::client_ui::display_name(ClientId::OpenClaw),
             "OpenClaw"
@@ -672,19 +689,40 @@ mod tests {
 
     #[test]
     fn test_client_from_key() {
-        assert_eq!(crate::tui::client_ui::from_hotkey('1'), Some(ClientId::OpenCode));
-        assert_eq!(crate::tui::client_ui::from_hotkey('2'), Some(ClientId::Claude));
-        assert_eq!(crate::tui::client_ui::from_hotkey('3'), Some(ClientId::Codex));
-        assert_eq!(crate::tui::client_ui::from_hotkey('4'), Some(ClientId::Cursor));
-        assert_eq!(crate::tui::client_ui::from_hotkey('5'), Some(ClientId::Gemini));
+        assert_eq!(
+            crate::tui::client_ui::from_hotkey('1'),
+            Some(ClientId::OpenCode)
+        );
+        assert_eq!(
+            crate::tui::client_ui::from_hotkey('2'),
+            Some(ClientId::Claude)
+        );
+        assert_eq!(
+            crate::tui::client_ui::from_hotkey('3'),
+            Some(ClientId::Codex)
+        );
+        assert_eq!(
+            crate::tui::client_ui::from_hotkey('4'),
+            Some(ClientId::Cursor)
+        );
+        assert_eq!(
+            crate::tui::client_ui::from_hotkey('5'),
+            Some(ClientId::Gemini)
+        );
         assert_eq!(crate::tui::client_ui::from_hotkey('6'), Some(ClientId::Amp));
-        assert_eq!(crate::tui::client_ui::from_hotkey('7'), Some(ClientId::Droid));
+        assert_eq!(
+            crate::tui::client_ui::from_hotkey('7'),
+            Some(ClientId::Droid)
+        );
         assert_eq!(
             crate::tui::client_ui::from_hotkey('8'),
             Some(ClientId::OpenClaw)
         );
         assert_eq!(crate::tui::client_ui::from_hotkey('9'), Some(ClientId::Pi));
-        assert_eq!(crate::tui::client_ui::from_hotkey('0'), Some(ClientId::Kimi));
+        assert_eq!(
+            crate::tui::client_ui::from_hotkey('0'),
+            Some(ClientId::Kimi)
+        );
         assert_eq!(crate::tui::client_ui::from_hotkey('a'), None);
     }
 
