@@ -245,6 +245,25 @@ const DesktopAuthSection = styled.div`
   }
 `;
 
+
+const NavLogoLink = styled(Link)`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 8px 0 12px;
+  text-decoration: none;
+  flex-shrink: 0;
+
+  @media (max-width: ${MOBILE_BREAKPOINT}) {
+    display: none;
+  }
+`;
+
+const NavLogoImage = styled(Image)`
+  object-fit: contain;
+`;
+
 const HamburgerButton = styled.button`
   display: none;
   width: 32px;
@@ -555,6 +574,16 @@ export function Navigation() {
   return (
     <>
       <NavContainer aria-label="Main navigation">
+        <NavLogoLink href="/" aria-label="Tokscale home">
+          <NavLogoImage
+            src="/assets/hero-logo.svg"
+            alt="Tokscale"
+            width={96}
+            height={20}
+            priority
+          />
+        </NavLogoLink>
+
         <HamburgerButton
           onClick={() => setIsMobileMenuOpen(true)}
           aria-label="Open menu"
