@@ -247,10 +247,11 @@ const DesktopAuthSection = styled.div`
 
 
 const NavLogoLink = styled(Link)`
-  display: flex;
+  display: none;
   flex-shrink: 0;
+
   @media (max-width: ${MOBILE_BREAKPOINT}) {
-    display: none;
+    display: flex;
   }
 `;
 
