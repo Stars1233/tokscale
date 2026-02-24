@@ -24,12 +24,16 @@ function normalizeSubmissionData(data: unknown): void {
   for (const contribution of obj.contributions) {
     if (!contribution || typeof contribution !== "object") continue;
     const day = contribution as Record<string, unknown>;
-    if (!Array.isArray(day.sources)) continue;
-
-    for (const source of day.sources) {
-      if (!source || typeof source !== "object") continue;
-      const s = source as Record<string, unknown>;
-
+    // Handle both legacy "sources" and new "clients" formats
+    const items = Array.isArray(day.sources)
+      ? day.sources
+      : Array.isArray(day.clients)
+      ? day.clients
+      : null;
+    if (!items) continue;
+    for (const entry of items) {
+      if (!entry || typeof entry !== "object") continue;
+      const s = entry as Record<string, unknown>;
       if (s.modelId == null || typeof s.modelId !== "string") {
         s.modelId = "unknown";
       } else {
