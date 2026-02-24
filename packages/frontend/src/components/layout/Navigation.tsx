@@ -248,13 +248,7 @@ const DesktopAuthSection = styled.div`
 
 const NavLogoLink = styled(Link)`
   display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 32px;
-  padding: 0 8px 0 12px;
-  text-decoration: none;
   flex-shrink: 0;
-
   @media (max-width: ${MOBILE_BREAKPOINT}) {
     display: none;
   }
@@ -578,8 +572,8 @@ export function Navigation() {
           <NavLogoImage
             src="/assets/hero-logo.svg"
             alt="Tokscale"
-            width={96}
-            height={20}
+            width={154}
+            height={32}
             priority
           />
         </NavLogoLink>
