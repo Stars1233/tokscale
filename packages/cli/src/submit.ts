@@ -69,7 +69,7 @@ interface SubmitResponse {
       end: string;
     };
     activeDays: number;
-    sources: string[];
+    clients: string[];
   };
   warnings?: string[];
   error?: string;
