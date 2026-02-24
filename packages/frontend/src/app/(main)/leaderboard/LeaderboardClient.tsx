@@ -3,8 +3,7 @@
 import { useState, useEffect, useRef, useMemo, memo, useCallback } from "react";
 import { useRouter } from "nextjs-toploader/app";
 import styled from "styled-components";
-import { Pagination, Avatar } from "@primer/react";
-import { CopyIcon, CheckIcon } from "@primer/octicons-react";
+import { CopyIcon, CheckIcon } from "@/components/ui/Icons";
 import { TabBar } from "@/components/TabBar";
 import { LeaderboardSkeleton } from "@/components/Skeleton";
 import { formatCurrency, formatNumber } from "@/lib/utils";
@@ -672,6 +671,57 @@ const HoverTooltip = styled.span`
   }
 `;
 
+const PaginationNav = styled.nav`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+`;
+
+const PageButton = styled.button<{ $active?: boolean }>`
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid ${({ $active }) => $active ? '#0073FF' : 'var(--color-border-default)'};
+  background: ${({ $active }) => $active ? '#0073FF' : 'transparent'};
+  color: ${({ $active }) => $active ? '#fff' : 'var(--color-fg-muted)'};
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 150ms;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover:not(:disabled) {
+    border-color: #0073FF;
+    color: ${({ $active }) => $active ? '#fff' : 'var(--color-fg-default)'};
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+`;
+
+const PageEllipsis = styled.span`
+  min-width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-fg-muted);
+  font-size: 13px;
+`;
+
+const PaginationPages = styled.div`
+  display: none;
+  gap: 4px;
+
+  @media (min-width: 768px) {
+    display: flex;
+  }
+`;
+
 export type Period = "all" | "month" | "week";
 
 export interface LeaderboardUser {
@@ -753,10 +803,12 @@ const LeaderboardRow = memo(function LeaderboardRow({
       </TableCell>
       <TableCell>
         <UserContainer>
-          <Avatar
+          <img
             src={user.avatarUrl || `https://github.com/${user.username}.png`}
             alt={user.username}
-            size={40}
+            width={40}
+            height={40}
+            style={{ borderRadius: "50%", objectFit: "cover", flexShrink: 0, boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.1)" }}
           />
           <UserInfo>
             <UserDisplayName>
@@ -954,10 +1006,12 @@ export default function LeaderboardClient({ initialData, currentUser, initialSor
       {currentUser && currentUserRank && (
         <CurrentUserCard>
           <CurrentUserInfo>
-            <Avatar
+            <img
               src={currentUser.avatarUrl || `https://github.com/${currentUser.username}.png`}
               alt={currentUser.username}
-              size={48}
+              width={48}
+              height={48}
+              style={{ borderRadius: "50%", objectFit: "cover", flexShrink: 0, boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.1)" }}
             />
             <CurrentUserDetails>
               <CurrentUserName>
@@ -1073,12 +1127,51 @@ export default function LeaderboardClient({ initialData, currentUser, initialSor
                     {Math.min(data.pagination.page * data.pagination.limit, data.pagination.totalUsers)} of{" "}
                     {data.pagination.totalUsers}
                   </PaginationText>
-                  <Pagination
-                    pageCount={data.pagination.totalPages}
-                    currentPage={data.pagination.page}
-                    onPageChange={(_, pageNum) => setPage(pageNum)}
-                    showPages={{ narrow: false, regular: true, wide: true }}
-                  />
+                  <PaginationNav>
+                    <PageButton
+                      disabled={data.pagination.page <= 1}
+                      onClick={() => setPage(data.pagination.page - 1)}
+                      aria-label="Previous page"
+                    >
+                      ←
+                    </PageButton>
+                    <PaginationPages>
+                      {(() => {
+                        const pages: React.ReactNode[] = [];
+                        const total = data.pagination.totalPages;
+                        const current = data.pagination.page;
+                        const delta = 2;
+                        const visible = new Set<number>();
+                        visible.add(1);
+                        visible.add(total);
+                        for (let i = Math.max(2, current - delta); i <= Math.min(total - 1, current + delta); i++) {
+                          visible.add(i);
+                        }
+
+                        const sorted = Array.from(visible).sort((a, b) => a - b);
+                        let last = 0;
+                        for (const p of sorted) {
+                          if (last && p - last > 1) {
+                            pages.push(<PageEllipsis key={`e${p}`}>…</PageEllipsis>);
+                          }
+                          pages.push(
+                            <PageButton key={p} $active={p === current} onClick={() => setPage(p)}>
+                              {p}
+                            </PageButton>
+                          );
+                          last = p;
+                        }
+                        return pages;
+                      })()}
+                    </PaginationPages>
+                    <PageButton
+                      disabled={data.pagination.page >= data.pagination.totalPages}
+                      onClick={() => setPage(data.pagination.page + 1)}
+                      aria-label="Next page"
+                    >
+                      →
+                    </PageButton>
+                  </PaginationNav>
                 </PaginationContainer>
               )}
             </>

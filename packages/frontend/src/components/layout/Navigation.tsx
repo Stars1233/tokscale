@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import styled, { css, keyframes } from "styled-components";
-import { Avatar, ActionMenu, ActionList } from "@primer/react";
-import { PersonIcon, GearIcon, SignOutIcon } from "@primer/octicons-react";
+import { PersonIcon, GearIcon, SignOutIcon } from "@/components/ui/Icons";
 
 interface User {
   id: string;
@@ -161,21 +160,14 @@ const LoadingSkeleton = styled.div`
   flex-shrink: 0;
 `;
 
-const UserInfoContainer = styled.div`
-  padding-left: 12px;
-  padding-right: 12px;
-  padding-top: 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid;
-`;
-
 const DisplayName = styled.p`
   font-size: 14px;
   font-weight: 500;
+  color: var(--color-fg-default, #e6edf3);
 `;
-
 const Username = styled.p`
   font-size: 12px;
+  color: var(--color-fg-muted, #848d97);
 `;
 
 const SignInButton = styled.a`
@@ -254,6 +246,79 @@ const ProfileButton = styled.button`
   &:hover {
     opacity: 0.9;
   }
+`;
+
+const MenuWrapper = styled.div`
+  position: relative;
+`;
+
+const MenuOverlay = styled.div`
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 220px;
+  background: #1A212A;
+  border: 1px solid #1E2733;
+  border-radius: 12px;
+  overflow: hidden;
+  z-index: 100;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+`;
+
+const MenuUserInfo = styled.div`
+  padding: 12px;
+  border-bottom: 1px solid var(--color-border-default, #30363d);
+`;
+
+const MenuDivider = styled.div`
+  height: 1px;
+  background: var(--color-border-default, #30363d);
+`;
+
+const MenuItem = styled(Link)<{ $danger?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: ${({ $danger }) => $danger ? '#F85149' : 'var(--color-fg-default, #e6edf3)'};
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 150ms;
+  &:hover {
+    background: ${({ $danger }) => $danger ? 'rgba(248, 81, 73, 0.1)' : 'rgba(255, 255, 255, 0.05)'};
+  }
+`;
+
+const MenuItemButton = styled.button<{ $danger?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  width: 100%;
+  color: ${({ $danger }) => $danger ? '#F85149' : 'var(--color-fg-default, #e6edf3)'};
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 150ms;
+  background: none;
+  border: none;
+  text-align: left;
+  &:hover {
+    background: ${({ $danger }) => $danger ? 'rgba(248, 81, 73, 0.1)' : 'rgba(255, 255, 255, 0.05)'};
+  }
+`;
+
+const MenuIconSlot = styled.span`
+  display: flex;
+  align-items: center;
+  color: var(--color-fg-muted, #848d97);
+`;
+
+const AvatarImg = styled.img`
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
 `;
 
 const DesktopNavItems = styled.div`
@@ -521,6 +586,67 @@ const CloseIcon = () => (
   </svg>
 );
 
+function UserMenu({ user, onSignOut }: { user: User; onSignOut: () => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const handleClose = useCallback(() => setIsOpen(false), []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        handleClose();
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen, handleClose]);
+
+  return (
+    <MenuWrapper ref={menuRef}>
+      <ProfileButton
+        aria-label={`User menu for ${user.username}`}
+        aria-expanded={isOpen}
+        aria-haspopup="true"
+        onClick={() => setIsOpen((v) => !v)}
+      >
+        <AvatarImg
+          src={user.avatarUrl || `https://github.com/${user.username}.png`}
+          alt={user.username}
+          width={32}
+          height={32}
+          style={{ width: "100%", height: "100%" }}
+        />
+      </ProfileButton>
+      {isOpen && (
+        <MenuOverlay>
+          <MenuUserInfo>
+            <DisplayName>{user.displayName || user.username}</DisplayName>
+            <Username>@{user.username}</Username>
+          </MenuUserInfo>
+          <div style={{ padding: "4px 0" }}>
+            <MenuItem href={`/u/${user.username}`} onClick={handleClose}>
+              <MenuIconSlot><PersonIcon /></MenuIconSlot>
+              Your Profile
+            </MenuItem>
+            <MenuItem href="/settings" onClick={handleClose}>
+              <MenuIconSlot><GearIcon /></MenuIconSlot>
+              Settings
+            </MenuItem>
+          </div>
+          <MenuDivider />
+          <div style={{ padding: "4px 0" }}>
+            <MenuItemButton $danger onClick={() => { handleClose(); onSignOut(); }}>
+              <MenuIconSlot><SignOutIcon /></MenuIconSlot>
+              Sign Out
+            </MenuItemButton>
+          </div>
+        </MenuOverlay>
+      )}
+    </MenuWrapper>
+  );
+}
+
 export function Navigation() {
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
@@ -590,64 +716,11 @@ export function Navigation() {
           {isLoading ? (
             <LoadingSkeleton />
           ) : user ? (
-            <ActionMenu>
-              <ActionMenu.Anchor>
-                <ProfileButton aria-label={`User menu for ${user.username}`}>
-                  <Avatar
-                    src={user.avatarUrl || `https://github.com/${user.username}.png`}
-                    alt={user.username}
-                    size={128}
-                    style={{ width: "100%", height: "100%" }}
-                  />
-                </ProfileButton>
-              </ActionMenu.Anchor>
-              <ActionMenu.Overlay width="medium">
-                <ActionList>
-                  <ActionList.Group>
-                    <UserInfoContainer
-                      style={{ borderColor: "var(--color-border-default)" }}
-                    >
-                      <DisplayName style={{ color: "var(--color-fg-default)" }}>
-                        {user.displayName || user.username}
-                      </DisplayName>
-                      <Username style={{ color: "var(--color-fg-muted)" }}>
-                        @{user.username}
-                      </Username>
-                    </UserInfoContainer>
-                  </ActionList.Group>
-                  <ActionList.Group>
-                    <ActionList.LinkItem href={`/u/${user.username}`}>
-                      <ActionList.LeadingVisual>
-                        <PersonIcon />
-                      </ActionList.LeadingVisual>
-                      Your Profile
-                    </ActionList.LinkItem>
-                    <ActionList.LinkItem href="/settings">
-                      <ActionList.LeadingVisual>
-                        <GearIcon />
-                      </ActionList.LeadingVisual>
-                      Settings
-                    </ActionList.LinkItem>
-                  </ActionList.Group>
-                  <ActionList.Divider />
-                  <ActionList.Group>
-                    <ActionList.Item
-                      variant="danger"
-                      onSelect={async () => {
-                        await fetch("/api/auth/logout", { method: "POST" });
-                        setUser(null);
-                        window.location.href = "/leaderboard";
-                      }}
-                    >
-                      <ActionList.LeadingVisual>
-                        <SignOutIcon />
-                      </ActionList.LeadingVisual>
-                      Sign Out
-                    </ActionList.Item>
-                  </ActionList.Group>
-                </ActionList>
-              </ActionMenu.Overlay>
-            </ActionMenu>
+            <UserMenu user={user} onSignOut={async () => {
+              await fetch("/api/auth/logout", { method: "POST" });
+              setUser(null);
+              window.location.href = "/leaderboard";
+            }} />
           ) : (
             <SignInButton href="/api/auth/github" aria-label="Sign in with GitHub">
               <SignInIcon>
@@ -687,10 +760,12 @@ export function Navigation() {
           {isLoading ? null : user ? (
             <>
               <DropdownUserCard>
-                <Avatar
+                <AvatarImg
                   src={user.avatarUrl || `https://github.com/${user.username}.png`}
                   alt={user.username}
-                  size={32}
+                  width={32}
+                  height={32}
+                  style={{ width: "32px", height: "32px" }}
                 />
                 <DropdownUserDetails>
                   <DropdownDisplayName>{user.displayName || user.username}</DropdownDisplayName>
