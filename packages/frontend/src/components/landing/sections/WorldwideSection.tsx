@@ -174,10 +174,6 @@ export function WorldwideSection({
                     </UserRow>
                   ))}
                 </UserList>
-                <ViewMoreLink href="/leaderboard">
-                  View Full Leaderboard
-                  <ViewMoreArrow>→</ViewMoreArrow>
-                </ViewMoreLink>
               </LeaderboardWidget>
             </GlobeRightCol>
           </GlobeTwoCol>
@@ -371,13 +367,13 @@ const LeaderboardWidget = styled.div`
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 24px 0;
+  gap: 8px;
+  padding: 16px 0;
 `;
 
 const WidgetHeader = styled.div`
-  padding-left: 12px;
-  padding-right: 8px;
+  padding-left: 8px;
+  padding-right: 0;
 
   display: flex;
   align-items: center;
@@ -387,8 +383,9 @@ const WidgetHeader = styled.div`
 const WidgetTitle = styled.span`
   font-family: var(--font-figtree), "Figtree", sans-serif;
   font-weight: 700;
-  font-size: 18px;
-  color: #ffffff;
+  font-size: 17px;
+  color: #5c7ba4;
+  text-transform: uppercase;
 `;
 
 const TabSwitcher = styled.div`
@@ -419,7 +416,6 @@ const Tab = styled.button<{ $active: boolean }>`
 const UserList = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 4px;
 `;
 
 const UserRow = styled(Link)`
@@ -530,34 +526,6 @@ const UserValue = styled.span`
   color: #0073FF;
   flex-shrink: 0;
   margin-left: auto;
-`;
-
-const ViewMoreLink = styled(Link)`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px;
-  border-top: 1px solid #10233e;
-  text-decoration: none;
-  font-family: var(--font-figtree), "Figtree", sans-serif;
-  font-weight: 600;
-  font-size: 14px;
-  color: #6b7a90;
-  transition: color 0.15s;
-
-  &:hover {
-    color: #0073ff;
-  }
-`;
-
-const ViewMoreArrow = styled.span`
-  font-size: 16px;
-  transition: transform 0.15s;
-
-  ${ViewMoreLink}:hover & {
-    transform: translateX(3px);
-  }
 `;
 
 const TrophyVideo = styled.video`

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import styled, { css } from "styled-components";
+import styled, { css, keyframes } from "styled-components";
 import { useCopy, useSquircleClip } from "../hooks";
 import { SquircleBorder } from "../components";
 
@@ -100,7 +100,7 @@ export function QuickstartSection() {
               <CommandBox>
                 <CommandInputArea>
                   <CommandText>bunx tokscale@latest submit</CommandText>
-                  <GradientAccent />
+                  <GradientAccent $delay />
                 </CommandInputArea>
                 <CopyBtn onClick={submit.copy}>
                   <CopyBtnText>{submit.copied ? "Copied!" : "Copy"}</CopyBtnText>
@@ -254,6 +254,7 @@ const CommandBox = styled.div`
 `;
 
 const CommandInputArea = styled.div`
+  position: relative;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -281,8 +282,18 @@ const CommandText = styled.span`
   }
 `;
 
-const GradientAccent = styled.div`
-  flex-shrink: 0;
+const cursorSweep = keyframes`
+  0%, 100% {
+    left: 0;
+  }
+  50% {
+    left: calc(100% - 25px);
+  }
+`;
+const GradientAccent = styled.div<{ $delay?: boolean }>`
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 25px;
   height: 36px;
   background: linear-gradient(
@@ -291,6 +302,9 @@ const GradientAccent = styled.div`
     rgba(1, 127, 255, 0.14) 50%,
     rgba(26, 27, 28, 0) 100%
   );
+  animation: ${cursorSweep} 6s ease-in-out infinite;
+  animation-delay: ${({ $delay }) => ($delay ? '-2s' : '0s')};
+  pointer-events: none;
 `;
 
 const CopyBtn = styled.button`
