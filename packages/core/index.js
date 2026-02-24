@@ -536,17 +536,13 @@ if (!nativeBinding || process.env.NAPI_RS_FORCE_WASI) {
       wasiBindingError = err
     }
   }
-  if (!nativeBinding || process.env.NAPI_RS_FORCE_WASI) {
+  if (!nativeBinding) {
     try {
       wasiBinding = require('@tokscale/core-wasm32-wasi')
       nativeBinding = wasiBinding
     } catch (err) {
       if (process.env.NAPI_RS_FORCE_WASI) {
-        if (!wasiBindingError) {
-          wasiBindingError = err
-        } else {
-          wasiBindingError.cause = err
-        }
+        wasiBindingError.cause = err
         loadErrors.push(err)
       }
     }
@@ -581,5 +577,6 @@ module.exports.finalizeMonthlyReport = nativeBinding.finalizeMonthlyReport
 module.exports.finalizeReport = nativeBinding.finalizeReport
 module.exports.finalizeReportAndGraph = nativeBinding.finalizeReportAndGraph
 module.exports.lookupPricing = nativeBinding.lookupPricing
-module.exports.parseLocalSources = nativeBinding.parseLocalSources
+module.exports.parseLocalClients = nativeBinding.parseLocalClients || nativeBinding.parseLocalSources
+module.exports.parseLocalSources = nativeBinding.parseLocalSources || nativeBinding.parseLocalClients
 module.exports.version = nativeBinding.version

@@ -2,11 +2,18 @@
 
 <div align="center">
 
-[![Tokscale](./.github/assets/hero.png)](https://tokscale.ai)
+[![Tokscale](./.github/assets/hero-v2.png)](https://tokscale.ai)
 
 </div>
 
 > 複数のプラットフォームでAIコーディングアシスタントのトークン使用量とコストを追跡するための高性能CLIツールと可視化ダッシュボード。
+
+> [!TIP]
+>
+> 毎週新しいオープンソースプロジェクトを公開しています。お見逃しなく。
+>
+> | [<img alt="GitHub Follow" src="https://img.shields.io/github/followers/junhoyeo?style=flat-square&logo=github&labelColor=black&color=24292f" width="156px" />](https://github.com/junhoyeo) | GitHubで[@junhoyeo](https://github.com/junhoyeo)をフォローして、他のプロジェクトもチェックしてください。AI、インフラ、その他様々な分野で開発しています。 |
+> | :-----| :----- |
 
 <div align="center">
 
@@ -217,8 +224,9 @@ tokscale models --json > report.json   # ファイルに保存
 - **キーボードナビゲーション**:
   - `1-4`または`←/→/Tab`: ビュー切り替え
   - `↑/↓`: リスト操作
-  - `c/n/t`: コスト/名前/トークンでソート
-  - `1-0`: ソーストグル（OpenCode/Claude/Codex/Cursor/Gemini/Amp/Droid/OpenClaw/Pi/Kimi）
+  - `c/d/t`: コスト/日付/トークンでソート
+  - `s`: ソース選択ダイアログを開く
+  - `g`: グループ基準選択ダイアログを開く（モデル、クライアント+モデル、クライアント+プロバイダー+モデル）
   - `p`: 9色テーマを循環
   - `r`: データ更新
   - `e`: JSONにエクスポート
@@ -226,6 +234,38 @@ tokscale models --json > report.json   # ファイルに保存
 - **マウスサポート**: タブ、ボタン、フィルターをクリック
 - **テーマ**: Green、Halloween、Teal、Blue、Pink、Purple、Orange、Monochrome、YlGnBu
 - **設定の永続化**: テーマ設定は`~/.config/tokscale/tui-settings.json`に保存
+
+### グループ基準戦略
+
+TUIで`g`を押すか、`--light`/`--json`モードで`--group-by`を使用してモデル行の集計方法を制御します：
+
+| 戦略 | フラグ | TUIデフォルト | 効果 |
+|------|--------|-------------|------|
+| **モデル** | `--group-by model` | ✅ | モデルごとに1行 — すべてのクライアントとプロバイダーを統合 |
+| **クライアント + モデル** | `--group-by client,model` | | クライアント-モデルペアごとに1行 |
+| **クライアント + プロバイダー + モデル** | `--group-by client,provider,model` | | 最も詳細 — 統合なし |
+
+**`--group-by model`**（最も統合）
+
+| クライアント | プロバイダー | モデル | コスト |
+|------------|------------|--------|--------|
+| OpenCode, Claude, Amp | github-copilot, anthropic | claude-opus-4-5 | $2,424 |
+| OpenCode, Claude | anthropic, github-copilot | claude-sonnet-4-5 | $1,332 |
+
+**`--group-by client,model`**（CLIデフォルト）
+
+| クライアント | プロバイダー | モデル | コスト |
+|------------|------------|--------|--------|
+| OpenCode | github-copilot, anthropic | claude-opus-4-5 | $1,368 |
+| Claude | anthropic | claude-opus-4-5 | $970 |
+
+**`--group-by client,provider,model`**（最も詳細）
+
+| クライアント | プロバイダー | モデル | コスト |
+|------------|------------|--------|--------|
+| OpenCode | github-copilot | claude-opus-4-5 | $1,200 |
+| OpenCode | anthropic | claude-opus-4-5 | $168 |
+| Claude | anthropic | claude-opus-4-5 | $970 |
 
 ### プラットフォーム別フィルタリング
 

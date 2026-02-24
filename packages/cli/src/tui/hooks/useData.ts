@@ -1,6 +1,6 @@
 import { createSignal, createEffect, on, type Accessor } from "solid-js";
 import type {
-  SourceType,
+  ClientType,
   SortType,
   ModelEntry,
   DailyEntry,
@@ -144,21 +144,21 @@ function calculateLongestSession(messages: Array<{ sessionId: string; timestampM
 }
 
 async function loadData(
-  enabledSources: Set<SourceType>, 
+  enabledSources: Set<ClientType>, 
   dateFilters?: DateFilters,
   setPhase?: (phase: LoadingPhase) => void
 ): Promise<TUIData> {
-  const sources = Array.from(enabledSources);
-  const localSources = sources.filter(s => s !== "cursor");
-  const includeCursor = sources.includes("cursor");
+  const clients = Array.from(enabledSources);
+  const localClients = clients.filter(s => s !== "cursor");
+  const includeCursor = clients.includes("cursor");
   const { since, until, year, sinceTs, untilTs } = dateFilters ?? {};
 
   setPhase?.("parsing-sources");
   
   const phase1Results = await Promise.allSettled([
     includeCursor && isCursorLoggedIn() ? syncCursorCache() : Promise.resolve({ synced: false, rows: 0, error: undefined }),
-    localSources.length > 0
-      ? parseLocalSourcesAsync({ sources: localSources as SourceType[], since, until, year, sinceTs, untilTs })
+    localClients.length > 0
+      ? parseLocalSourcesAsync({ clients: localClients as ClientType[], since, until, year, sinceTs, untilTs })
       : Promise.resolve({ messages: [], opencodeCount: 0, claudeCount: 0, codexCount: 0, geminiCount: 0, ampCount: 0, droidCount: 0, openclawCount: 0, piCount: 0, kimiCount: 0, processingTimeMs: 0 } as ParsedMessages),
   ]);
 
@@ -202,7 +202,7 @@ async function loadData(
 
   const settings = loadSettings();
   const allModelEntries: ModelEntry[] = report.entries.map(e => ({
-    source: e.source,
+    client: e.client,
     model: e.model,
     input: e.input,
     output: e.output,
@@ -346,9 +346,9 @@ async function loadData(
       dailyModelMap.set(dateStr, new Map());
     }
     const modelMap = dailyModelMap.get(dateStr)!;
-    for (const source of contrib.sources) {
-      const modelId = source.modelId;
-      const tokens = source.tokens.input + source.tokens.output + source.tokens.cacheRead;
+    for (const client of contrib.clients) {
+      const modelId = client.modelId;
+      const tokens = client.tokens.input + client.tokens.output + client.tokens.cacheRead;
       modelMap.set(modelId, (modelMap.get(modelId) || 0) + tokens);
     }
   }
@@ -412,18 +412,18 @@ async function loadData(
   for (const contrib of graph.contributions) {
     const dateStr = contrib.date;
     
-    const models = contrib.sources.map((source: { modelId: string; source: string; tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; reasoning?: number }; cost: number; messages: number }) => ({
-      modelId: source.modelId,
-      source: source.source,
+    const models = contrib.clients.map((client: { modelId: string; client: string; tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; reasoning?: number }; cost: number; messages: number }) => ({
+      modelId: client.modelId,
+      client: client.client,
       tokens: {
-        input: source.tokens.input,
-        output: source.tokens.output,
-        cacheRead: source.tokens.cacheRead,
-        cacheWrite: source.tokens.cacheWrite,
-        reasoning: source.tokens.reasoning || 0,
+        input: client.tokens.input,
+        output: client.tokens.output,
+        cacheRead: client.tokens.cacheRead,
+        cacheWrite: client.tokens.cacheWrite,
+        reasoning: client.tokens.reasoning || 0,
       },
-      cost: source.cost,
-      messages: source.messages,
+      cost: client.cost,
+      messages: client.messages,
     }));
     
     const existing = dailyBreakdowns.get(dateStr);
@@ -457,7 +457,7 @@ async function loadData(
   };
 }
 
-export function useData(enabledSources: Accessor<Set<SourceType>>, dateFilters?: DateFilters) {
+export function useData(enabledSources: Accessor<Set<ClientType>>, dateFilters?: DateFilters) {
   const initialSources = enabledSources();
   const initialCachedData = loadCachedData(initialSources);
   const initialCacheIsStale = initialCachedData ? isCacheStale(initialSources) : true;
@@ -485,7 +485,7 @@ export function useData(enabledSources: Accessor<Set<SourceType>>, dateFilters?:
     setRefreshTrigger(prev => prev + 1);
   };
 
-  const doLoad = (sources: Set<SourceType>, skipCacheCheck = false) => {
+  const doLoad = (sources: Set<ClientType>, skipCacheCheck = false) => {
     ++currentRequestId; // Invalidate any in-flight requests immediately
     const shouldSkipCache = skipCacheCheck || forceRefresh();
     

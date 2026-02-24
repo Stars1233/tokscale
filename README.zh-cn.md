@@ -2,11 +2,18 @@
 
 <div align="center">
 
-[![Tokscale](./.github/assets/hero.png)](https://tokscale.ai)
+[![Tokscale](./.github/assets/hero-v2.png)](https://tokscale.ai)
 
 </div>
 
 > 高性能 CLI 工具和可视化仪表板，用于跟踪多个平台上 AI 编程助手的 Token 使用量和成本。
+
+> [!TIP]
+>
+> 我每周都会发布新的开源项目。不要错过下一个。
+>
+> | [<img alt="GitHub Follow" src="https://img.shields.io/github/followers/junhoyeo?style=flat-square&logo=github&labelColor=black&color=24292f" width="156px" />](https://github.com/junhoyeo) | 在 GitHub 上关注 [@junhoyeo](https://github.com/junhoyeo) 获取更多项目。涉及 AI、基础设施等各个领域。 |
+> | :-----| :----- |
 
 <div align="center">
 
@@ -217,8 +224,9 @@ tokscale models --json > report.json   # 保存到文件
 - **键盘导航**：
   - `1-4` 或 `←/→/Tab`：切换视图
   - `↑/↓`：导航列表
-  - `c/n/t`：按成本/名称/Token 排序
-  - `1-0`：切换来源（OpenCode/Claude/Codex/Cursor/Gemini/Amp/Droid/OpenClaw/Pi/Kimi）
+  - `c/d/t`：按成本/日期/Token 排序
+  - `s`：打开来源选择对话框
+  - `g`：打开分组方式选择对话框（模型、客户端+模型、客户端+提供商+模型）
   - `p`：循环 9 种颜色主题
   - `r`：刷新数据
   - `e`：导出为 JSON
@@ -226,6 +234,38 @@ tokscale models --json > report.json   # 保存到文件
 - **鼠标支持**：点击标签、按钮和筛选器
 - **主题**：Green、Halloween、Teal、Blue、Pink、Purple、Orange、Monochrome、YlGnBu
 - **设置持久化**：主题偏好保存到 `~/.config/tokscale/tui-settings.json`
+
+### 分组策略
+
+在 TUI 中按 `g` 或在 `--light`/`--json` 模式下使用 `--group-by` 来控制模型行的聚合方式：
+
+| 策略 | 标志 | TUI 默认 | 效果 |
+|------|------|---------|------|
+| **模型** | `--group-by model` | ✅ | 每个模型一行 — 合并所有客户端和提供商 |
+| **客户端 + 模型** | `--group-by client,model` | | 每个客户端-模型对一行 |
+| **客户端 + 提供商 + 模型** | `--group-by client,provider,model` | | 最详细 — 不合并 |
+
+**`--group-by model`**（最精简）
+
+| 客户端 | 提供商 | 模型 | 费用 |
+|--------|--------|------|------|
+| OpenCode, Claude, Amp | github-copilot, anthropic | claude-opus-4-5 | $2,424 |
+| OpenCode, Claude | anthropic, github-copilot | claude-sonnet-4-5 | $1,332 |
+
+**`--group-by client,model`**（CLI 默认）
+
+| 客户端 | 提供商 | 模型 | 费用 |
+|--------|--------|------|------|
+| OpenCode | github-copilot, anthropic | claude-opus-4-5 | $1,368 |
+| Claude | anthropic | claude-opus-4-5 | $970 |
+
+**`--group-by client,provider,model`**（最详细）
+
+| 客户端 | 提供商 | 模型 | 费用 |
+|--------|--------|------|------|
+| OpenCode | github-copilot | claude-opus-4-5 | $1,200 |
+| OpenCode | anthropic | claude-opus-4-5 | $168 |
+| Claude | anthropic | claude-opus-4-5 | $970 |
 
 ### 按平台筛选
 

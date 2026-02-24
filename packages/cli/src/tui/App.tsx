@@ -253,7 +253,7 @@ export function App(props: AppProps) {
         });
         const entry = sorted[selectedIndex()];
         if (entry) {
-          textToCopy = `${entry.source} ${entry.model}: ${entry.total.toLocaleString()} tokens, $${entry.cost.toFixed(2)}`;
+          textToCopy = `${entry.client} ${entry.model}: ${entry.total.toLocaleString()} tokens, $${entry.cost.toFixed(2)}`;
         }
       } else if (tab === "daily") {
         const sorted = [...d.dailyEntries].sort((a, b) => {

@@ -1,4 +1,4 @@
-import type { SourceType } from "../types/index.js";
+import type { ClientType } from "../types/index.js";
 
 export const PROVIDER_COLORS = {
   anthropic: "#FF6B35",
@@ -52,7 +52,7 @@ export function getModelColor(modelId: string): string {
   return color;
 }
 
-export const SOURCE_COLORS: Record<SourceType, string> = {
+export const SOURCE_COLORS: Record<ClientType, string> = {
   opencode: "#22c55e",
   claude: "#f97316",
   codex: "#3b82f6",
@@ -65,11 +65,11 @@ export const SOURCE_COLORS: Record<SourceType, string> = {
   kimi: "#8B5CF6",
 };
 
-export function getSourceColor(source: SourceType | string): string {
-  return SOURCE_COLORS[source as SourceType] || "#888888";
+export function getClientColor(source: ClientType | string): string {
+  return SOURCE_COLORS[source as ClientType] || "#888888";
 }
 
-export function getSourceDisplayName(source: string): string {
+export function getClientDisplayName(source: string): string {
   if (source === "droid") return "Droid";
   if (source === "openclaw") return "OpenClaw";
   if (source === "pi") return "Pi";

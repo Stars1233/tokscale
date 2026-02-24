@@ -76,7 +76,7 @@ interface SubmitResponse {
   details?: string[];
 }
 
-type SourceType = "opencode" | "claude" | "codex" | "gemini" | "cursor" | "amp" | "droid" | "openclaw" | "pi" | "kimi";
+type ClientType = "opencode" | "claude" | "codex" | "gemini" | "cursor" | "amp" | "droid" | "openclaw" | "pi" | "kimi";
 
 async function checkGhCliExists(): Promise<boolean> {
   try {
@@ -220,34 +220,34 @@ export async function submit(options: SubmitOptions = {}): Promise<void> {
   console.log(pc.gray("  Scanning local session data..."));
 
   const hasFilter = options.opencode || options.claude || options.codex || options.gemini || options.cursor || options.amp || options.droid || options.openclaw || options.pi || options.kimi;
-  let sources: SourceType[] | undefined;
+  let clients: ClientType[] | undefined;
   let includeCursor = true;
   if (hasFilter) {
-    sources = [];
-    if (options.opencode) sources.push("opencode");
-    if (options.claude) sources.push("claude");
-    if (options.codex) sources.push("codex");
-    if (options.gemini) sources.push("gemini");
-    if (options.cursor) sources.push("cursor");
-    if (options.amp) sources.push("amp");
-    if (options.droid) sources.push("droid");
-    if (options.openclaw) sources.push("openclaw");
-    if (options.pi) sources.push("pi");
-    if (options.kimi) sources.push("kimi");
-    includeCursor = sources.includes("cursor");
+    clients = [];
+    if (options.opencode) clients.push("opencode");
+    if (options.claude) clients.push("claude");
+    if (options.codex) clients.push("codex");
+    if (options.gemini) clients.push("gemini");
+    if (options.cursor) clients.push("cursor");
+    if (options.amp) clients.push("amp");
+    if (options.droid) clients.push("droid");
+    if (options.openclaw) clients.push("openclaw");
+    if (options.pi) clients.push("pi");
+    if (options.kimi) clients.push("kimi");
+    includeCursor = clients.includes("cursor");
   }
 
-  // Filter out cursor from local sources (it's handled separately via sync)
-  const localSources = sources?.filter((s): s is Exclude<SourceType, "cursor"> => s !== "cursor");
+  // Filter out cursor from local clients (it's handled separately via sync)
+  const localClients = clients?.filter((s): s is Exclude<ClientType, "cursor"> => s !== "cursor");
   const { sinceTs, untilTs } = getTimestampFilters(options.since, options.until);
 
   let data: TokenContributionData;
   try {
-    // Two-phase processing (same as TUI) for consistency:
-    // Phase 1: Parse local sources + sync cursor in parallel
-    const [localMessages, cursorSync] = await Promise.all([
-      parseLocalSourcesAsync({
-        sources: localSources,
+     // Two-phase processing (same as TUI) for consistency:
+     // Phase 1: Parse local clients + sync cursor in parallel
+     const [localMessages, cursorSync] = await Promise.all([
+       parseLocalSourcesAsync({
+          clients: localClients,
         since: options.since,
         until: options.until,
         year: options.year,
@@ -290,7 +290,7 @@ export async function submit(options: SubmitOptions = {}): Promise<void> {
   console.log(pc.gray(`    Active days: ${data.summary.activeDays}`));
   console.log(pc.gray(`    Total tokens: ${data.summary.totalTokens.toLocaleString()}`));
   console.log(pc.gray(`    Total cost: ${formatCurrency(data.summary.totalCost)}`));
-  console.log(pc.gray(`    Sources: ${data.summary.sources.join(", ")}`));
+  console.log(pc.gray(`    Clients: ${data.summary.clients.join(", ")}`));
   console.log(pc.gray(`    Models: ${data.summary.models.length} models`));
   console.log();
 
