@@ -640,6 +640,38 @@ const SortLabel = styled.span`
   font-weight: 500;
 `;
 
+
+const HoverTooltip = styled.span`
+  position: relative;
+  cursor: default;
+
+  &::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #111B2C;
+    color: #e5e5e5;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0;
+    white-space: nowrap;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.06);
+    z-index: 1000;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+
+  &:hover::after {
+    opacity: 1;
+  }
+`;
+
 export type Period = "all" | "month" | "week";
 
 export interface LeaderboardUser {
@@ -895,14 +927,18 @@ export default function LeaderboardClient({ initialData, currentUser, initialSor
           </StatCard>
           <StatCard>
             <StatLabel>Total Tokens</StatLabel>
-            <StatValuePrimary title={data.stats.totalTokens.toLocaleString('en-US')}>
-              {formatNumber(data.stats.totalTokens)}
+            <StatValuePrimary>
+              <HoverTooltip data-tooltip={data.stats.totalTokens.toLocaleString('en-US')}>
+                {formatNumber(data.stats.totalTokens)}
+              </HoverTooltip>
             </StatValuePrimary>
           </StatCard>
           <StatCard>
             <StatLabel>Total Cost</StatLabel>
-            <StatValue title={data.stats.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 })}>
-              {formatCurrency(data.stats.totalCost)}
+            <StatValue>
+              <HoverTooltip data-tooltip={data.stats.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 })}>
+                {formatCurrency(data.stats.totalCost)}
+              </HoverTooltip>
             </StatValue>
           </StatCard>
         </StatsGrid>
@@ -939,14 +975,18 @@ export default function LeaderboardClient({ initialData, currentUser, initialSor
             </CurrentUserStat>
             <CurrentUserStat>
               <CurrentUserStatLabel>Tokens</CurrentUserStatLabel>
-              <CurrentUserStatValue title={currentUserRank.totalTokens.toLocaleString('en-US')}>
-                {formatNumber(currentUserRank.totalTokens)}
+              <CurrentUserStatValue>
+                <HoverTooltip data-tooltip={currentUserRank.totalTokens.toLocaleString('en-US')}>
+                  {formatNumber(currentUserRank.totalTokens)}
+                </HoverTooltip>
               </CurrentUserStatValue>
             </CurrentUserStat>
             <CurrentUserStat>
               <CurrentUserStatLabel>Cost</CurrentUserStatLabel>
-              <CurrentUserStatValue title={currentUserRank.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 })}>
-                {formatCurrency(currentUserRank.totalCost)}
+              <CurrentUserStatValue>
+                <HoverTooltip data-tooltip={currentUserRank.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 })}>
+                  {formatCurrency(currentUserRank.totalCost)}
+                </HoverTooltip>
               </CurrentUserStatValue>
             </CurrentUserStat>
           </CurrentUserStats>

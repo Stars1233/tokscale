@@ -200,6 +200,10 @@ function recalculateSummary(
 }
 
 export function formatTokenCount(count: number): string {
+  if (count >= 1_000_000_000_000) {
+    const val = (count / 1_000_000_000_000).toFixed(3).replace(/\.?0+$/, '');
+    return `${val}T`;
+  }
   if (count >= 1_000_000_000) return `${(count / 1_000_000_000).toFixed(1)}B`;
   if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
   if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
