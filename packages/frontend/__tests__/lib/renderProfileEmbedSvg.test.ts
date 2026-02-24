@@ -96,7 +96,7 @@ describe("renderProfileEmbedSvg", () => {
   });
 
   it("hides display name when username is too long to leave room", () => {
-    const longUsername = "a".repeat(39); // GitHub max
+    const longUsername = "a".repeat(50); // long enough to exhaust available width
     const svg = renderProfileEmbedSvg({
       ...mockStats,
       user: {
@@ -105,11 +105,7 @@ describe("renderProfileEmbedSvg", () => {
         displayName: "Should Be Hidden",
       },
     }, { compact: true });
-
-    expect(svg).toContain(`@${longUsername}`);
-    // @+39 = 40 chars * 9 = 360; displayNameX = 392; 392+40 = 432 < 460 → fits in compact
-    // But verify it's positioned dynamically, not at fixed 140
-    expect(svg).not.toMatch(/x="140"[^>]*>Should Be Hidden/);
+    expect(svg).not.toContain("Should Be Hidden");
   });
 });
 
