@@ -56,6 +56,8 @@ const NavContainer = styled.nav`
     align-items: stretch;
     border-radius: 20px;
     overflow: hidden;
+    border: 1px solid #10233E;
+    background: rgba(0, 0, 0, 0.5);
   }
 `;
 
@@ -275,6 +277,7 @@ const NavLogoLink = styled(Link)`
   flex-shrink: 0;
 
   @media (max-width: ${MOBILE_BREAKPOINT}) {
+    padding-left: 8px;
     display: flex;
   }
 `;
