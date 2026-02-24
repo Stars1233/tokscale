@@ -107,10 +107,17 @@ function formatDateLabel(value: string | null): string {
 // Used to estimate rendered username width for dynamic display-name positioning.
 const APPROX_CHAR_WIDTH_15_SEMIBOLD = 9;
 
-function metric(x: number, label: string, value: string, palette: ThemePalette): string {
+function getRankColor(rank: number | null, palette: ThemePalette): string {
+  if (rank === 1) return "#EAB308";
+  if (rank === 2) return "#9CA3AF";
+  if (rank === 3) return "#D97706";
+  return palette.text;
+}
+
+function metric(x: number, label: string, value: string, palette: ThemePalette, valueColor?: string): string {
   return [
     `<text x="${x}" y="112" fill="${palette.muted}" font-size="12" font-family="${FIGTREE_FONT_STACK}">${label}</text>`,
-    `<text x="${x}" y="136" fill="${palette.text}" font-size="20" font-weight="700" font-family="${FIGTREE_FONT_STACK}">${escapeXml(value)}</text>`,
+    `<text x="${x}" y="136" fill="${valueColor ?? palette.text}" font-size="20" font-weight="700" font-family="${FIGTREE_FONT_STACK}">${escapeXml(value)}</text>`,
   ].join("");
 }
 
@@ -145,10 +152,12 @@ export function renderProfileEmbedSvg(
   const displayNameX = 24 + usernameEstimatedWidth + 8;
   const showDisplayName = displayName && displayNameX + 40 < width;
 
+  const costColor = theme === "dark" ? "#3FB950" : "#1a7f37";
+  const rankColor = getRankColor(data.stats.rank, palette);
   const metrics = [
-    metric(compact ? 24 : 24, "Tokens", tokens, palette),
-    metric(compact ? 184 : 194, "Cost", cost, palette),
-    metric(compact ? 344 : 364, compact ? "Rank" : rankLabel, rank, palette),
+    metric(compact ? 24 : 24, "Tokens", tokens, palette, palette.accent),
+    metric(compact ? 184 : 194, "Cost", cost, palette, costColor),
+    metric(compact ? 344 : 364, compact ? "Rank" : rankLabel, rank, palette, rankColor),
   ].join("");
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tokscale profile stats for ${escapeXml(username)}">

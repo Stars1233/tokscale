@@ -64,6 +64,25 @@ describe("renderProfileEmbedSvg", () => {
     expect(costSvg).toContain("Rank (Cost)");
   });
 
+
+  it("applies accent color to tokens, green to cost, and medal color to rank", () => {
+    const svg = renderProfileEmbedSvg(mockStats);
+
+    // Tokens value should use dark accent
+    expect(svg).toContain('fill="#58a6ff"');
+    // Cost value should use dark green
+    expect(svg).toContain('fill="#3FB950"');
+    // Rank #3 should use bronze
+    expect(svg).toContain('fill="#D97706"');
+  });
+
+  it("uses gold color for rank #1", () => {
+    const svg = renderProfileEmbedSvg({
+      ...mockStats,
+      stats: { ...mockStats.stats, rank: 1 },
+    });
+    expect(svg).toContain('fill="#EAB308"');
+  });
   it("escapes XML in user-provided text", () => {
     const svg = renderProfileEmbedSvg({
       ...mockStats,
