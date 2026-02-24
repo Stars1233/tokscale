@@ -588,8 +588,12 @@ You can embed your public Tokscale stats directly in your GitHub profile README:
 ```
 
 - Replace `<username>` with your GitHub username
-- Optional query params: `?theme=light` and `&compact=1`
-  - Example: `https://tokscale.ai/api/embed/<username>/svg?theme=light&compact=1`
+- Optional query params:
+  - `theme=light` for a light theme
+  - `sort=tokens` (default) or `sort=cost` to control ranking basis
+  - `compact=1` to use compact layout + compact number notation (e.g., `1.2M`, `$3.4K`)
+- Example:
+  - `https://tokscale.ai/api/embed/<username>/svg?theme=light&sort=cost&compact=1`
 
 ### Getting Started
 

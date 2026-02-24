@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserEmbedStats } from "@/lib/embed/getUserEmbedStats";
+import { getUserEmbedStats, type EmbedSortBy } from "@/lib/embed/getUserEmbedStats";
 import {
   renderProfileEmbedErrorSvg,
   renderProfileEmbedSvg,
@@ -16,6 +16,11 @@ function parseTheme(searchParams: URLSearchParams): EmbedTheme {
 function parseCompact(searchParams: URLSearchParams): boolean {
   const value = searchParams.get("compact");
   return value === "1" || value === "true";
+}
+
+function parseSort(searchParams: URLSearchParams): EmbedSortBy {
+  const value = searchParams.get("sort");
+  return value === "cost" ? "cost" : "tokens";
 }
 
 function createSvgResponse(svg: string, init?: { status?: number; cacheControl?: string }) {
@@ -41,6 +46,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
   const theme = parseTheme(searchParams);
   const compact = parseCompact(searchParams);
+  const sortBy = parseSort(searchParams);
 
   if (!isValidGitHubUsername(username)) {
     const svg = renderProfileEmbedErrorSvg("Invalid username format", { theme, compact: true });
@@ -48,7 +54,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 
   try {
-    const data = await getUserEmbedStats(username);
+    const data = await getUserEmbedStats(username, sortBy);
 
     if (!data) {
       const svg = renderProfileEmbedErrorSvg(`User @${username} was not found`, {
@@ -58,13 +64,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return createSvgResponse(svg, { status: 200 });
     }
 
-    const svg = renderProfileEmbedSvg(data, { theme, compact });
+    const svg = renderProfileEmbedSvg(data, {
+      theme,
+      compact,
+      compactNumbers: compact,
+      sortBy,
+    });
 
     console.info("[embed-svg] success", {
       username,
       status: 200,
       durationMs: Date.now() - startedAt,
       compact,
+      sortBy,
       theme,
     });
 

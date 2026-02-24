@@ -34,6 +34,13 @@ describe("renderProfileEmbedSvg", () => {
     expect(svg).toContain("Submissions");
   });
 
+  it("uses Figtree font in SVG", () => {
+    const svg = renderProfileEmbedSvg(mockStats);
+
+    expect(svg).toContain("family=Figtree");
+    expect(svg).toContain("font-family=\"Figtree");
+  });
+
   it("renders compact variant", () => {
     const svg = renderProfileEmbedSvg(mockStats, { compact: true, theme: "light" });
 
@@ -41,6 +48,20 @@ describe("renderProfileEmbedSvg", () => {
     expect(svg).toContain("height=\"162\"");
     expect(svg).toContain("@octocat");
     expect(svg).not.toContain("Submissions");
+  });
+
+  it("supports compact number notation when enabled", () => {
+    const svg = renderProfileEmbedSvg(mockStats, { compactNumbers: true });
+
+    expect(svg).toContain("1.2M");
+  });
+
+  it("renders rank label based on selected sorting", () => {
+    const tokensSvg = renderProfileEmbedSvg(mockStats, { sortBy: "tokens" });
+    const costSvg = renderProfileEmbedSvg(mockStats, { sortBy: "cost" });
+
+    expect(tokensSvg).toContain("Rank (Tokens)");
+    expect(costSvg).toContain("Rank (Cost)");
   });
 
   it("escapes XML in user-provided text", () => {
@@ -64,5 +85,6 @@ describe("renderProfileEmbedErrorSvg", () => {
     expect(svg).toContain("Tokscale Stats");
     expect(svg).toContain("User &lt;unknown&gt;");
     expect(svg).not.toContain("User <unknown>");
+    expect(svg).toContain("family=Figtree");
   });
 });

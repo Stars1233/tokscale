@@ -2,6 +2,8 @@ import { unstable_cache } from "next/cache";
 import { db, users, submissions } from "@/lib/db";
 import { eq, sql } from "drizzle-orm";
 
+export type EmbedSortBy = "tokens" | "cost";
+
 export interface UserEmbedStats {
   user: {
     id: string;
@@ -18,7 +20,7 @@ export interface UserEmbedStats {
   };
 }
 
-async function fetchUserEmbedStats(username: string): Promise<UserEmbedStats | null> {
+async function fetchUserEmbedStats(username: string, sortBy: EmbedSortBy): Promise<UserEmbedStats | null> {
   const [result] = await db
     .select({
       id: users.id,
@@ -41,12 +43,19 @@ async function fetchUserEmbedStats(username: string): Promise<UserEmbedStats | n
 
   let rank: number | null = null;
 
-  if ((Number(result.totalTokens) || 0) > 0) {
+  const rankingValue = sortBy === "cost" ? Number(result.totalCost) || 0 : Number(result.totalTokens) || 0;
+
+  if (rankingValue > 0) {
     const rankResult = await db.execute<{ rank: number }>(sql`
       WITH ranked AS (
         SELECT
           user_id,
-          RANK() OVER (ORDER BY total_tokens DESC) AS rank
+          RANK() OVER (
+            ORDER BY
+              ${sortBy === "cost"
+                ? sql`CAST(total_cost AS DECIMAL(12,4)) DESC, total_tokens DESC`
+                : sql`total_tokens DESC, CAST(total_cost AS DECIMAL(12,4)) DESC`}
+          ) AS rank
         FROM submissions
       )
       SELECT rank FROM ranked WHERE user_id = ${result.id}
@@ -72,12 +81,12 @@ async function fetchUserEmbedStats(username: string): Promise<UserEmbedStats | n
   };
 }
 
-export function getUserEmbedStats(username: string): Promise<UserEmbedStats | null> {
+export function getUserEmbedStats(username: string, sortBy: EmbedSortBy = "tokens"): Promise<UserEmbedStats | null> {
   return unstable_cache(
-    () => fetchUserEmbedStats(username),
-    [`embed-user:${username}`],
+    () => fetchUserEmbedStats(username, sortBy),
+    [`embed-user:${username}:${sortBy}`],
     {
-      tags: [`user:${username}`, `embed-user:${username}`],
+      tags: [`user:${username}`, `embed-user:${username}`, `embed-user:${username}:${sortBy}`],
       revalidate: 60,
     }
   )();
