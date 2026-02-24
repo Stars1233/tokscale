@@ -78,15 +78,18 @@ const TopBar = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background-image: url("/assets/landing/separator-pattern-slash.svg");
+
+  background-image: url("/assets/landing/separator-pattern-slash@blue.svg");
   background-size: 24px 24px;
   background-repeat: repeat;
+  
   border-top: 1px solid #0073FF;
-  border-bottom: none;
+  border-bottom: 1px solid #0073FF;
 `;
 
 const MiddleContentOuter = styled.div`
   width: 100%;
+  padding: 0 8px;
   display: flex;
   justify-content: center;
 `;
@@ -95,7 +98,6 @@ const MiddleContentInner = styled.div`
   position: relative;
   overflow: visible;
   width: 100%;
-  max-width: 960px;
   background: #01070f;
   border-left: 1px solid #0073ff;
   border-right: 1px solid #0073ff;

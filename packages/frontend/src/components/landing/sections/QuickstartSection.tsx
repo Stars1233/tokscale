@@ -121,7 +121,7 @@ const SeparatorBar = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background-image: url("/assets/landing/separator-pattern-slash.svg");
+  background-image: url("/assets/landing/separator-pattern-slash@gray.svg");
   background-size: 24px 24px;
   background-repeat: repeat;
   border-left: 1px solid #10233E;
@@ -211,7 +211,7 @@ const CardPatternOverlay = styled.div<{ $position: "left" | "right" }>`
   top: ${({ $position }) => ($position === "left" ? "120px" : "96px")};
   width: 100%;
   height: 24px;
-  background-image: url("/assets/landing/separator-pattern-slash.svg");
+  background-image: url("/assets/landing/separator-pattern-slash@gray.svg");
   background-size: 24px 24px;
   background-repeat: repeat;
   pointer-events: none;
@@ -269,16 +269,12 @@ const CommandInputArea = styled.div`
 const CommandText = styled.span`
   font-family: "Inconsolata", monospace !important;
   font-weight: 700;
-  font-size: 18px;
+  font-size: 16px;
   line-height: 0.94em;
   letter-spacing: -0.05em;
   text-align: center;
-  color: #ffffff;
+  color: #9ad7ed;
   white-space: nowrap;
-
-  @media (max-width: 1000px) {
-    font-size: 16px;
-  }
 
   @media (max-width: 480px) {
     font-size: 14px;
