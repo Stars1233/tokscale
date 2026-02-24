@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import styled from "styled-components";
@@ -35,6 +35,35 @@ export function WorldwideSection({
   const worldwideSection = useSquircleClip<HTMLDivElement>(32, 0.6, true, 1);
   const [activeTab, setActiveTab] = useState<"tokens" | "cost">("cost");
   const users = activeTab === "cost" ? topUsersByCost : topUsersByTokens;
+  // Measure blue header bottom for border gradient transition
+  const sectionElRef = useRef<HTMLDivElement>(null);
+  const blueHeaderRef = useRef<HTMLDivElement>(null);
+  const [gradientTransitionY, setGradientTransitionY] = useState(0);
+
+  const sectionRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      sectionElRef.current = node;
+      worldwideSection.ref(node);
+    },
+    [worldwideSection.ref],
+  );
+
+  useEffect(() => {
+    const section = sectionElRef.current;
+    const header = blueHeaderRef.current;
+    if (!section || !header) return;
+
+    const update = () => {
+      const sectionRect = section.getBoundingClientRect();
+      const headerRect = header.getBoundingClientRect();
+      setGradientTransitionY(Math.round(headerRect.bottom - sectionRect.top));
+    };
+
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(section);
+    return () => ro.disconnect();
+  }, []);
   return (
     <>
       {/* SVG clip-path def for globe section */}
@@ -59,12 +88,12 @@ export function WorldwideSection({
       {/* Separator before Globe */}
       <GlobeSeparatorBar />
       <GlobeSectionWrapper
-        ref={worldwideSection.ref}
+        ref={sectionRef}
         style={{
           clipPath: worldwideSection.clipPath || undefined,
         }}
       >
-        <SquircleBorder def={worldwideSection.borderDef} color="#0073FF" />
+        <SquircleBorder def={worldwideSection.borderDef} color="#0073FF" gradient={gradientTransitionY > 0 ? { colors: ["#0073FF", "#10233E"], transitionY: gradientTransitionY } : undefined} />
         <GlobeImageWrapper>
           <GlobeBackground />
           <GlobeFadeTop />
@@ -78,7 +107,7 @@ export function WorldwideSection({
           />
         </GlobeImageWrapper>
         <GlobeContentStack>
-          <GlobeBlueHeader>
+          <GlobeBlueHeader ref={blueHeaderRef}>
             <GlobeHeaderText>
               THE LARGEST GROUP
               <br />

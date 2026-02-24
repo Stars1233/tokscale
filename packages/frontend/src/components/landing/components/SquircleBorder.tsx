@@ -2,14 +2,21 @@
 
 import type { SquircleBorderDef } from "../hooks";
 
+interface SquircleBorderGradient {
+  colors: [string, string];
+  /** Y position (in element pixels) where the color transition begins */
+  transitionY: number;
+}
 interface SquircleBorderProps {
   def: SquircleBorderDef | null;
   color?: string;
+  gradient?: SquircleBorderGradient;
 }
 
 export function SquircleBorder({
   def,
   color = "#10233E",
+  gradient,
 }: SquircleBorderProps) {
   if (!def) return null;
   const {
@@ -65,11 +72,32 @@ export function SquircleBorder({
             clipPath={`url(#${innerClipId})`}
           />
         </mask>
+        {gradient && gradient.transitionY > 0 && height > 0 && (
+          <linearGradient
+            id={`${outerClipId}-gradient`}
+            x1="0"
+            y1="0"
+            x2="0"
+            y2={String(height)}
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop offset="0" stopColor={gradient.colors[0]} />
+            <stop
+              offset={String(gradient.transitionY / height)}
+              stopColor={gradient.colors[0]}
+            />
+            <stop offset="1" stopColor={gradient.colors[1]} />
+          </linearGradient>
+        )}
       </defs>
       <rect
         width={width}
         height={height}
-        fill={color}
+        fill={
+          gradient && gradient.transitionY > 0 && height > 0
+            ? `url(#${outerClipId}-gradient)`
+            : color
+        }
         mask={`url(#${maskId})`}
       />
     </svg>
