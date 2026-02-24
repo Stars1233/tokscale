@@ -126,13 +126,13 @@ export function renderProfileEmbedSvg(
 
   const width = compact ? 460 : 680;
   const height = compact ? 162 : 186;
+  const rx = 12;
 
   const username = `@${data.user.username}`;
   const displayName = data.user.displayName ? escapeXml(data.user.displayName) : null;
   const tokens = formatNumber(data.stats.totalTokens, compactNumbers);
   const cost = formatCurrency(data.stats.totalCost, compactNumbers);
   const rank = data.stats.rank ? `#${data.stats.rank}` : "N/A";
-  const submissions = formatNumber(data.stats.submissionCount, compactNumbers);
   const updated = escapeXml(formatDateLabel(data.stats.updatedAt));
   const rankLabel = `Rank (${sortBy === "cost" ? "Cost" : "Tokens"})`;
 
@@ -145,28 +145,22 @@ export function renderProfileEmbedSvg(
   const displayNameX = 24 + usernameEstimatedWidth + 8;
   const showDisplayName = displayName && displayNameX + 40 < width;
 
-  const compactMetrics = [
-    metric(24, "Tokens", tokens, palette),
-    metric(184, "Cost", cost, palette),
-    metric(344, "Rank", rank, palette),
+  const metrics = [
+    metric(compact ? 24 : 24, "Tokens", tokens, palette),
+    metric(compact ? 184 : 194, "Cost", cost, palette),
+    metric(compact ? 344 : 364, compact ? "Rank" : rankLabel, rank, palette),
   ].join("");
-
-  const fullMetrics = [
-    metric(24, "Tokens", tokens, palette),
-    metric(194, "Cost", cost, palette),
-    metric(364, rankLabel, rank, palette),
-    metric(534, "Submissions", submissions, palette),
-  ].join("");
-
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tokscale profile stats for ${escapeXml(username)}">
   <defs>
     <style>@import url('${FIGTREE_FONT_IMPORT}');</style>
+    <clipPath id="card-clip">
+      <rect width="${width}" height="${height}" rx="${rx}"/>
+    </clipPath>
   </defs>
-  <rect width="${width}" height="${height}" rx="12" fill="${palette.background}"/>
-  <rect x="1" y="1" width="${width - 2}" height="${height - 2}" rx="11" fill="${palette.panel}" stroke="${palette.border}"/>
-  <rect x="1" y="1" width="${width - 2}" height="4" rx="11" fill="${palette.accent}"/>
-
+  <rect width="${width}" height="${height}" rx="${rx}" fill="${palette.background}"/>
+  <rect x="1" y="1" width="${width - 2}" height="${height - 2}" rx="${rx - 1}" fill="${palette.panel}" stroke="${palette.border}"/>
+  <rect x="0" y="0" width="${width}" height="5" fill="${palette.accent}" clip-path="url(#card-clip)"/>
   <text x="24" y="36" fill="${palette.title}" font-size="18" font-weight="700" font-family="${FIGTREE_FONT_STACK}">Tokscale Stats</text>
   <text x="24" y="60" fill="${palette.text}" font-size="15" font-weight="600" font-family="${FIGTREE_FONT_STACK}">${escapeXml(username)}</text>
   ${
@@ -175,8 +169,7 @@ export function renderProfileEmbedSvg(
       : ""
   }
 
-  ${compact ? compactMetrics : fullMetrics}
-
+  ${metrics}
   <text x="24" y="${height - 16}" fill="${palette.muted}" font-size="11" font-family="${FIGTREE_FONT_STACK}">${updated}</text>
   <text x="${width - 158}" y="${height - 16}" fill="${palette.muted}" font-size="11" font-family="${FIGTREE_FONT_STACK}">tokscale.ai/u/${escapeXml(
     data.user.username
@@ -196,11 +189,13 @@ export function renderProfileEmbedErrorSvg(
 <svg width="540" height="120" viewBox="0 0 540 120" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tokscale embed error">
   <defs>
     <style>@import url('${FIGTREE_FONT_IMPORT}');</style>
+    <clipPath id="card-clip">
+      <rect width="540" height="120" rx="12"/>
+    </clipPath>
   </defs>
   <rect width="540" height="120" rx="12" fill="${palette.background}"/>
   <rect x="1" y="1" width="538" height="118" rx="11" fill="${palette.panel}" stroke="${palette.border}"/>
-  <rect x="1" y="1" width="538" height="4" rx="11" fill="${palette.accent}"/>
-
+  <rect x="0" y="0" width="540" height="5" fill="${palette.accent}" clip-path="url(#card-clip)"/>
   <text x="20" y="42" fill="${palette.title}" font-size="17" font-weight="700" font-family="${FIGTREE_FONT_STACK}">Tokscale Stats</text>
   <text x="20" y="72" fill="${palette.text}" font-size="13" font-family="${FIGTREE_FONT_STACK}">${safeMessage}</text>
   <text x="20" y="98" fill="${palette.muted}" font-size="11" font-family="${FIGTREE_FONT_STACK}">Try checking the username or submitting usage first.</text>

@@ -31,7 +31,7 @@ describe("renderProfileEmbedSvg", () => {
     expect(svg).toContain("1,234,567");
     expect(svg).toContain("$42.42");
     expect(svg).toContain("#3");
-    expect(svg).toContain("Submissions");
+    expect(svg).not.toContain("Submissions");
   });
 
   it("uses Figtree font in SVG", () => {
