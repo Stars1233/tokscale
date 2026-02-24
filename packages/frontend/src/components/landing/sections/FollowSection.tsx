@@ -7,14 +7,7 @@ export function FollowSection() {
   return (
     <FollowSectionWrapper>
       <CardOuter>
-        <TopBar
-          src="/assets/landing/follow-top-bar-pattern.svg"
-          alt=""
-          width={1200}
-          height={36}
-          draggable={false}
-          priority
-        />
+        <TopBar />
 
         <MiddleContentOuter>
           <MiddleContentInner>
@@ -79,12 +72,17 @@ const CardOuter = styled.div`
   border-right: 1px solid #0073ff;
 `;
 
-const TopBar = styled(Image)`
-  display: block;
-  width: calc(100% + 2px);
-  height: auto;
-  margin: 0 -1px;
-  user-select: none;
+const TopBar = styled.div`
+  width: 100%;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-image: url("/assets/landing/separator-pattern-slash.svg");
+  background-size: 24px 24px;
+  background-repeat: repeat;
+  border-top: 1px solid #0073FF;
+  border-bottom: none;
 `;
 
 const MiddleContentOuter = styled.div`
