@@ -11,7 +11,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tokio::runtime::Runtime;
 use tokscale_core::{
-    generate_graph, parse_local_clients, GroupBy, LocalParseOptions, ReportOptions,
+    generate_graph, parse_local_clients, ClientId, GroupBy, LocalParseOptions, ReportOptions,
 };
 
 const SCALE: i32 = 2;
@@ -165,10 +165,10 @@ async fn load_wrapped_data(options: &WrappedOptions) -> Result<WrappedData> {
     let clients = options.clients.clone().unwrap_or_else(default_clients);
     let local_clients: Vec<String> = clients
         .iter()
-        .filter(|src| src.as_str() != "cursor")
+        .filter(|src| src.as_str() != ClientId::Cursor.as_str())
         .cloned()
         .collect();
-    let include_cursor = clients.iter().any(|src| src == "cursor");
+    let include_cursor = clients.iter().any(|src| src == ClientId::Cursor.as_str());
 
     let since = format!("{}-01-01", year);
     let until = format!("{}-12-31", year);
@@ -206,7 +206,7 @@ async fn load_wrapped_data(options: &WrappedOptions) -> Result<WrappedData> {
     let graph_clients = if include_cursor && !include_cursor_in_graph {
         clients
             .iter()
-            .filter(|src| src.as_str() != "cursor")
+            .filter(|src| src.as_str() != ClientId::Cursor.as_str())
             .cloned()
             .collect::<Vec<_>>()
     } else {
@@ -1347,7 +1347,7 @@ fn client_display_name(client: &str) -> Option<&'static str> {
         "claude" => Some("Claude Code"),
         "codex" => Some("Codex CLI"),
         "gemini" => Some("Gemini CLI"),
-        "cursor" => Some("Cursor IDE"),
+        s if s == ClientId::Cursor.as_str() => Some("Cursor IDE"),
         "amp" => Some("Amp"),
         "droid" => Some("Droid"),
         "openclaw" => Some("OpenClaw"),
@@ -1704,7 +1704,7 @@ fn default_clients() -> Vec<String> {
         "claude".to_string(),
         "codex".to_string(),
         "gemini".to_string(),
-        "cursor".to_string(),
+        ClientId::Cursor.as_str().to_string(),
         "amp".to_string(),
         "droid".to_string(),
         "openclaw".to_string(),
