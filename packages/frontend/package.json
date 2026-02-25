@@ -20,7 +20,7 @@
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.38.3",
     "figma-squircle": "^1.1.0",
-    "next": "16.0.7",
+    "next": "16.0.10",
     "nextjs-toploader": "^3.9.17",
     "obelisk.js": "^1.2.2",
     "postgres": "^3.4.7",
