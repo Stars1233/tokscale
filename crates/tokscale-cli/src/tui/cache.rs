@@ -299,6 +299,64 @@ impl TryFrom<CachedUsageData> for UsageData {
     }
 }
 
+/// Result of loading the TUI cache — combines staleness check with data loading
+/// to avoid double file I/O (previously is_cache_stale + load_cached_data both parsed the file).
+pub enum CacheResult {
+    /// Cache exists, is fresh (within TTL), and clients match
+    Fresh(UsageData),
+    /// Cache exists and clients match, but is older than the staleness threshold
+    Stale(UsageData),
+    /// Cache missing, unreadable, unparseable, or clients don't match
+    Miss,
+}
+
+/// Load cached TUI data from disk with a single read/parse.
+/// Returns Fresh/Stale/Miss so the caller can decide whether to
+/// display cached data immediately and/or trigger a background refresh.
+pub fn load_cache(enabled_clients: &HashSet<ClientId>) -> CacheResult {
+    let Some(cache_path) = cache_file() else {
+        return CacheResult::Miss;
+    };
+
+    if !cache_path.exists() {
+        return CacheResult::Miss;
+    }
+
+    let file = match File::open(&cache_path) {
+        Ok(f) => f,
+        Err(_) => return CacheResult::Miss,
+    };
+    let reader = BufReader::new(file);
+    let cached: CachedTUIData = match serde_json::from_reader(reader) {
+        Ok(c) => c,
+        Err(_) => return CacheResult::Miss,
+    };
+
+    // Check if clients match
+    if !clients_match(enabled_clients, &cached.enabled_clients) {
+        return CacheResult::Miss;
+    }
+
+    // Convert cached data to UsageData
+    let data = match cached.data.try_into() {
+        Ok(d) => d,
+        Err(_) => return CacheResult::Miss,
+    };
+
+    // Check staleness
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64;
+
+    let cache_age = now.saturating_sub(cached.timestamp);
+    if cache_age > CACHE_STALE_THRESHOLD_MS {
+        CacheResult::Stale(data)
+    } else {
+        CacheResult::Fresh(data)
+    }
+}
+
 /// Check if clients match between enabled and cached
 fn clients_match(enabled_clients: &HashSet<ClientId>, cached_clients: &[String]) -> bool {
     if enabled_clients.len() != cached_clients.len() {
@@ -310,27 +368,6 @@ fn clients_match(enabled_clients: &HashSet<ClientId>, cached_clients: &[String])
         }
     }
     true
-}
-
-/// Load cached TUI data from disk
-pub fn load_cached_data(enabled_clients: &HashSet<ClientId>) -> Option<UsageData> {
-    let cache_path = cache_file()?;
-
-    if !cache_path.exists() {
-        return None;
-    }
-
-    let file = File::open(&cache_path).ok()?;
-    let reader = BufReader::new(file);
-    let cached: CachedTUIData = serde_json::from_reader(reader).ok()?;
-
-    // Check if clients match
-    if !clients_match(enabled_clients, &cached.enabled_clients) {
-        return None;
-    }
-
-    // Convert cached data to UsageData
-    cached.data.try_into().ok()
 }
 
 /// Save TUI data to disk cache
@@ -375,37 +412,3 @@ pub fn save_cached_data(data: &UsageData, enabled_clients: &HashSet<ClientId>) {
     }
 }
 
-/// Check if cache is stale (older than threshold)
-pub fn is_cache_stale(enabled_clients: &HashSet<ClientId>) -> bool {
-    let Some(cache_path) = cache_file() else {
-        return true;
-    };
-
-    if !cache_path.exists() {
-        return true;
-    }
-
-    let file = match File::open(&cache_path) {
-        Ok(f) => f,
-        Err(_) => return true,
-    };
-    let reader = BufReader::new(file);
-    let cached: CachedTUIData = match serde_json::from_reader(reader) {
-        Ok(c) => c,
-        Err(_) => return true,
-    };
-
-    // Check if clients match
-    if !clients_match(enabled_clients, &cached.enabled_clients) {
-        return true;
-    }
-
-    // Check age
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis() as u64;
-
-    let cache_age = now.saturating_sub(cached.timestamp);
-    cache_age > CACHE_STALE_THRESHOLD_MS
-}
