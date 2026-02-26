@@ -1,16 +1,26 @@
 #!/usr/bin/env node
 import { spawnSync, execSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { resolve, join } from "node:path";
+import { resolve, join, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const binaryName = process.platform === "win32" ? "tokscale.exe" : "tokscale";
 
 const currentDir = fileURLToPath(new URL(".", import.meta.url));
-const cliPackageRoot = currentDir.includes("/dist/")
-  ? resolve(currentDir, "../..")
-  : resolve(currentDir, "..");
-const monorepoRoot = resolve(cliPackageRoot, "..");
+const dirName = basename(currentDir);
+// In npm install: currentDir = .../node_modules/@tokscale/cli/dist/
+//   cliDir = .../node_modules/@tokscale/cli/
+//   scopeDir = .../node_modules/@tokscale/
+// In monorepo dev (dist): currentDir = .../packages/cli/dist/
+//   cliDir = .../packages/cli/
+//   scopeDir = .../packages/
+// In monorepo dev (src): currentDir = .../packages/cli/src/
+//   cliDir = .../packages/cli/
+//   scopeDir = .../packages/
+const isSubDir = dirName === "dist" || dirName === "src";
+const cliDir = isSubDir ? resolve(currentDir, "..") : currentDir;
+const scopeDir = resolve(cliDir, "..");
+const workspaceRoot = resolve(scopeDir, "..");
 
 type LibcKind = "gnu" | "musl";
 
@@ -111,20 +121,26 @@ const searchPaths: string[] = [];
 
 if (targetPackage) {
   searchPaths.push(
-    join(cliPackageRoot, "node_modules", "@tokscale", targetPackage, "bin", binaryName),
-    join(monorepoRoot, "node_modules", "@tokscale", targetPackage, "bin", binaryName),
-    join(monorepoRoot, "packages", targetPackage, "bin", binaryName),
+    // npm/bun install: sibling scoped package (node_modules/@tokscale/cli-<platform>/bin/...)
+    join(scopeDir, targetPackage, "bin", binaryName),
+    // Nested node_modules: non-hoisted / pnpm (node_modules/@tokscale/cli/node_modules/@tokscale/cli-<platform>/bin/...)
+    join(cliDir, "node_modules", "@tokscale", targetPackage, "bin", binaryName),
+    // Hoisted edge case (node_modules/@tokscale/node_modules/@tokscale/cli-<platform>/bin/...)
+    join(scopeDir, "node_modules", "@tokscale", targetPackage, "bin", binaryName),
+    join(workspaceRoot, "node_modules", "@tokscale", targetPackage, "bin", binaryName),
+    // Monorepo development
+    join(workspaceRoot, "packages", targetPackage, "bin", binaryName),
   );
 }
 
 const rustTargetTriple = resolveRustTargetTriple();
 if (rustTargetTriple) {
-  searchPaths.push(join(monorepoRoot, "target", rustTargetTriple, "release", binaryName));
+  searchPaths.push(join(workspaceRoot, "target", rustTargetTriple, "release", binaryName));
 }
 
 searchPaths.push(
-  join(monorepoRoot, "target", "release", binaryName),
-  join(cliPackageRoot, "bin", binaryName),
+  join(workspaceRoot, "target", "release", binaryName),
+  join(cliDir, "bin", binaryName),
 );
 
 let binary = searchPaths.find((p) => existsSync(p));
