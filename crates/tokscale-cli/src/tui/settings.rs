@@ -102,7 +102,11 @@ impl Settings {
             use std::io::Write;
             file.write_all(content.as_bytes())?;
             file.sync_all()?;
-            fs::rename(&temp_path, &path)?;
+            if fs::rename(&temp_path, &path).is_err() {
+                // Fallback for Windows where rename doesn't overwrite existing files
+                fs::copy(&temp_path, &path)?;
+                fs::remove_file(&temp_path)?;
+            }
             Ok(())
         })();
 

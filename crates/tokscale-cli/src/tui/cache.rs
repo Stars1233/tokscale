@@ -406,7 +406,10 @@ pub fn save_cached_data(data: &UsageData, enabled_clients: &HashSet<ClientId>) {
     let writer = BufWriter::new(file);
 
     if serde_json::to_writer(writer, &cached).is_ok() {
-        let _ = fs::rename(&temp_path, &cache_path);
+        if fs::rename(&temp_path, &cache_path).is_err() {
+            let _ = fs::copy(&temp_path, &cache_path);
+            let _ = fs::remove_file(&temp_path);
+        }
     } else {
         let _ = fs::remove_file(&temp_path);
     }

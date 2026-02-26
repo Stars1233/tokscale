@@ -66,7 +66,11 @@ pub fn save_cache<T: Serialize>(filename: &str, data: &T) -> Result<(), std::io:
         let mut file = fs::File::create(&tmp_path)?;
         file.write_all(content.as_bytes())?;
         file.sync_all()?;
-        fs::rename(&tmp_path, &final_path)
+        if fs::rename(&tmp_path, &final_path).is_err() {
+            fs::copy(&tmp_path, &final_path)?;
+            fs::remove_file(&tmp_path)?;
+        }
+        Ok(())
     })();
 
     if write_result.is_err() {
