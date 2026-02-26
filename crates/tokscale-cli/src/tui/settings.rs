@@ -95,7 +95,10 @@ impl Settings {
             .map(|d| d.as_nanos() as u64)
             .unwrap_or(0);
         let tmp_filename = format!(".settings.{}.{:x}.tmp", std::process::id(), nanos);
-        let temp_path = path.parent().unwrap_or(std::path::Path::new(".")).join(&tmp_filename);
+        let temp_path = path
+            .parent()
+            .unwrap_or(std::path::Path::new("."))
+            .join(&tmp_filename);
 
         let write_result = (|| -> Result<()> {
             let mut file = fs::File::create(&temp_path)?;

@@ -414,4 +414,3 @@ pub fn save_cached_data(data: &UsageData, enabled_clients: &HashSet<ClientId>) {
         let _ = fs::remove_file(&temp_path);
     }
 }
-
