@@ -87,8 +87,30 @@ impl Settings {
     pub fn save(&self) -> Result<()> {
         let path = Self::config_path()?;
         let content = serde_json::to_string_pretty(self)?;
-        fs::write(path, content)?;
-        Ok(())
+
+        // Atomic write: write to temp file, sync, then rename
+        // Matches the pattern used in tui/cache.rs and pricing/cache.rs
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos() as u64)
+            .unwrap_or(0);
+        let tmp_filename = format!(".settings.{}.{:x}.tmp", std::process::id(), nanos);
+        let temp_path = path.parent().unwrap_or(std::path::Path::new(".")).join(&tmp_filename);
+
+        let write_result = (|| -> Result<()> {
+            let mut file = fs::File::create(&temp_path)?;
+            use std::io::Write;
+            file.write_all(content.as_bytes())?;
+            file.sync_all()?;
+            fs::rename(&temp_path, &path)?;
+            Ok(())
+        })();
+
+        if write_result.is_err() {
+            let _ = fs::remove_file(&temp_path);
+        }
+
+        write_result
     }
 
     pub fn theme_name(&self) -> ThemeName {
