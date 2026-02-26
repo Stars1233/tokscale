@@ -166,14 +166,14 @@ jobs:
             artifact_name: cli-binary-aarch64-unknown-linux-gnu
             bin_name: tokscale
             build: cargo zigbuild --release -p tokscale-cli --target aarch64-unknown-linux-gnu
-            strip: strip target/aarch64-unknown-linux-gnu/release/tokscale
+            strip: aarch64-linux-gnu-strip target/aarch64-unknown-linux-gnu/release/tokscale
           - host: ubuntu-latest
             target: aarch64-unknown-linux-musl
             package_dir: cli-linux-arm64-musl
             artifact_name: cli-binary-aarch64-unknown-linux-musl
             bin_name: tokscale
             build: cargo zigbuild --release -p tokscale-cli --target aarch64-unknown-linux-musl
-            strip: strip target/aarch64-unknown-linux-musl/release/tokscale
+            strip: aarch64-linux-gnu-strip target/aarch64-unknown-linux-musl/release/tokscale
           - host: windows-latest
             target: x86_64-pc-windows-msvc
             package_dir: cli-win32-x64-msvc
@@ -235,6 +235,10 @@ jobs:
       - name: Build CLI binary
         shell: bash
         run: ${{ matrix.settings.build }}
+
+      - name: Install cross-compilation strip tool
+        if: contains(matrix.settings.target, 'aarch64') && runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y binutils-aarch64-linux-gnu
 
       - name: Strip CLI binary
         if: ${{ matrix.settings.strip != '' }}
