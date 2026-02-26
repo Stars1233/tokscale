@@ -67,8 +67,9 @@ pub fn save_cache<T: Serialize>(filename: &str, data: &T) -> Result<(), std::io:
         file.write_all(content.as_bytes())?;
         file.sync_all()?;
         if fs::rename(&tmp_path, &final_path).is_err() {
-            fs::copy(&tmp_path, &final_path)?;
-            fs::remove_file(&tmp_path)?;
+            // Windows: rename can't overwrite, so remove destination and retry.
+            let _ = fs::remove_file(&final_path);
+            fs::rename(&tmp_path, &final_path)?;
         }
         Ok(())
     })();
