@@ -1027,7 +1027,7 @@ Tokscale fetches real-time pricing from [LiteLLM's pricing database](https://git
 
 **Caching**: Pricing data is cached to disk with 1-hour TTL for fast startup:
 - LiteLLM cache: `~/.cache/tokscale/pricing-litellm.json`
-- OpenRouter cache: `~/.cache/tokscale/pricing-openrouter.json` (incremental, caches only models you've used)
+- OpenRouter cache: `~/.cache/tokscale/pricing-openrouter.json` (caches author pricing for models from supported providers)
 
 Pricing includes:
 - Input tokens

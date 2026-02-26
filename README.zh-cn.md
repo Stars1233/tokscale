@@ -974,7 +974,7 @@ Tokscale 从 [LiteLLM 的价格数据库](https://github.com/BerriAI/litellm/blo
 
 **缓存**：价格数据以 1 小时 TTL 缓存到磁盘，确保快速启动：
 - LiteLLM 缓存：`~/.cache/tokscale/pricing-litellm.json`
-- OpenRouter 缓存：`~/.cache/tokscale/pricing-openrouter.json`（增量式，仅缓存您使用过的模型）
+- OpenRouter 缓存：`~/.cache/tokscale/pricing-openrouter.json`（缓存支持提供商的模型作者定价信息）
 
 定价包括：
 - 输入 Token
