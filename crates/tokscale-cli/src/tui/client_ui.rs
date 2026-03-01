@@ -48,7 +48,7 @@ pub const CLIENT_UI: [ClientUi; ClientId::COUNT] = [
     },
     ClientUi {
         display_name: "Qwen",
-        hotkey: 'q',
+        hotkey: 'w',
     },
 ];
 

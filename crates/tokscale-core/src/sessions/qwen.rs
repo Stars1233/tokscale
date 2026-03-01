@@ -43,7 +43,7 @@ const DEFAULT_PROVIDER: &str = "qwen";
 /// Extract session ID with fallback logic:
 /// 1. Use JSON session_id if present and non-empty
 /// 2. Otherwise derive from path including project name to avoid collisions
-/// 
+///
 /// Path format: ~/.qwen/projects/{project}/chats/{filename}.jsonl
 pub fn extract_session_id_with_fallback(path: &Path, json_session_id: Option<&str>) -> String {
     // Priority 1: Use JSON sessionId if present and non-empty
@@ -52,14 +52,14 @@ pub fn extract_session_id_with_fallback(path: &Path, json_session_id: Option<&st
             return id.to_string();
         }
     }
-    
+
     // Priority 2: Derive from path with project context
     // Extract project name from path structure: .../projects/{project}/chats/{file}.jsonl
     let filename = path
         .file_stem()
         .and_then(|n| n.to_str())
         .unwrap_or("unknown");
-    
+
     // Try to extract project name from the path
     let project_name = path
         .parent() // .../chats
@@ -67,7 +67,7 @@ pub fn extract_session_id_with_fallback(path: &Path, json_session_id: Option<&st
         .and_then(|p| p.file_name())
         .and_then(|n| n.to_str())
         .unwrap_or("unknown");
-    
+
     // Combine project and filename for unique session ID
     format!("{}-{}", project_name, filename)
 }
@@ -133,10 +133,8 @@ pub fn parse_qwen_file(path: &Path) -> Vec<UnifiedMessage> {
         let model = qwen_line.model.unwrap_or_else(|| DEFAULT_MODEL.to_string());
 
         // Resolve session ID: prefer JSON sessionId, fallback to path-derived
-        let line_session_id = extract_session_id_with_fallback(
-            path,
-            qwen_line.session_id.as_deref()
-        );
+        let line_session_id =
+            extract_session_id_with_fallback(path, qwen_line.session_id.as_deref());
 
         messages.push(UnifiedMessage::new(
             "qwen",
