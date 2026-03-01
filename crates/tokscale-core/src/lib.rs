@@ -570,6 +570,29 @@ fn parse_all_messages_with_pricing(
         .collect();
     all_messages.extend(kimi_messages);
 
+    // Parse Qwen files
+    let qwen_messages: Vec<UnifiedMessage> = scan_result
+        .get(ClientId::Qwen)
+        .par_iter()
+        .flat_map(|path| {
+            sessions::qwen::parse_qwen_file(path)
+                .into_iter()
+                .map(|mut msg| {
+                    msg.cost = pricing.calculate_cost(
+                        &msg.model_id,
+                        msg.tokens.input,
+                        msg.tokens.output,
+                        msg.tokens.cache_read,
+                        msg.tokens.cache_write,
+                        msg.tokens.reasoning,
+                    );
+                    msg
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    all_messages.extend(qwen_messages);
+
     all_messages
 }
 
@@ -1008,6 +1031,21 @@ pub fn parse_local_clients(options: LocalParseOptions) -> Result<ParsedMessages,
     let kimi_count = kimi_msgs.len() as i32;
     counts.set(ClientId::Kimi, kimi_count);
     messages.extend(kimi_msgs);
+
+    // Parse Qwen JSONL files in parallel
+    let qwen_msgs: Vec<ParsedMessage> = scan_result
+        .get(ClientId::Qwen)
+        .par_iter()
+        .flat_map(|path| {
+            sessions::qwen::parse_qwen_file(path)
+                .into_iter()
+                .map(|msg| unified_to_parsed(&msg))
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    let qwen_count = qwen_msgs.len() as i32;
+    counts.set(ClientId::Qwen, qwen_count);
+    messages.extend(qwen_msgs);
 
     let filtered = filter_parsed_messages(messages, &options);
 

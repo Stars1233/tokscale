@@ -69,6 +69,9 @@ struct Cli {
     #[arg(long, help = "Show only Kimi CLI usage")]
     kimi: bool,
 
+    #[arg(long, help = "Show only Qwen CLI usage")]
+    qwen: bool,
+
     #[arg(long, help = "Show only today's usage")]
     today: bool,
 
@@ -130,6 +133,8 @@ enum Commands {
         pi: bool,
         #[arg(long, help = "Show only Kimi CLI usage")]
         kimi: bool,
+        #[arg(long, help = "Show only Qwen CLI usage")]
+        qwen: bool,
         #[arg(long, help = "Show only today's usage")]
         today: bool,
         #[arg(long, help = "Show last 7 days")]
@@ -180,6 +185,8 @@ enum Commands {
         pi: bool,
         #[arg(long, help = "Show only Kimi CLI usage")]
         kimi: bool,
+        #[arg(long, help = "Show only Qwen CLI usage")]
+        qwen: bool,
         #[arg(long, help = "Show only today's usage")]
         today: bool,
         #[arg(long, help = "Show last 7 days")]
@@ -242,6 +249,8 @@ enum Commands {
         pi: bool,
         #[arg(long, help = "Show only Kimi CLI usage")]
         kimi: bool,
+        #[arg(long, help = "Show only Qwen CLI usage")]
+        qwen: bool,
         #[arg(long, help = "Show only today's usage")]
         today: bool,
         #[arg(long, help = "Show last 7 days")]
@@ -281,6 +290,8 @@ enum Commands {
         pi: bool,
         #[arg(long, help = "Show only Kimi CLI usage")]
         kimi: bool,
+        #[arg(long, help = "Show only Qwen CLI usage")]
+        qwen: bool,
         #[arg(long, help = "Show only today's usage")]
         today: bool,
         #[arg(long, help = "Show last 7 days")]
@@ -316,6 +327,8 @@ enum Commands {
         pi: bool,
         #[arg(long, help = "Include only Kimi CLI data")]
         kimi: bool,
+        #[arg(long, help = "Include only Qwen CLI data")]
+        qwen: bool,
         #[arg(long, help = "Submit only today's usage")]
         today: bool,
         #[arg(long, help = "Submit last 7 days")]
@@ -373,6 +386,8 @@ enum Commands {
         pi: bool,
         #[arg(long, help = "Show only Kimi CLI usage")]
         kimi: bool,
+        #[arg(long, help = "Show only Qwen CLI usage")]
+        qwen: bool,
         #[arg(
             long,
             help = "Display total tokens in abbreviated format (e.g., 7.14B)"
@@ -451,6 +466,7 @@ fn main() -> Result<()> {
             openclaw,
             pi,
             kimi,
+            qwen,
             today,
             week,
             month,
@@ -478,6 +494,7 @@ fn main() -> Result<()> {
                 openclaw,
                 pi,
                 kimi,
+                qwen,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             let year = normalize_year_filter(today, week, month, year);
@@ -521,6 +538,7 @@ fn main() -> Result<()> {
             openclaw,
             pi,
             kimi,
+            qwen,
             today,
             week,
             month,
@@ -541,6 +559,7 @@ fn main() -> Result<()> {
                 openclaw,
                 pi,
                 kimi,
+                qwen,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             let year = normalize_year_filter(today, week, month, year);
@@ -592,6 +611,7 @@ fn main() -> Result<()> {
             openclaw,
             pi,
             kimi,
+            qwen,
             today,
             week,
             month,
@@ -612,6 +632,7 @@ fn main() -> Result<()> {
                 openclaw,
                 pi,
                 kimi,
+                qwen,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             let year = normalize_year_filter(today, week, month, year);
@@ -628,6 +649,7 @@ fn main() -> Result<()> {
             openclaw,
             pi,
             kimi,
+            qwen,
             today,
             week,
             month,
@@ -646,6 +668,7 @@ fn main() -> Result<()> {
                 openclaw,
                 pi,
                 kimi,
+                qwen,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             let year = normalize_year_filter(today, week, month, year);
@@ -671,6 +694,7 @@ fn main() -> Result<()> {
             openclaw,
             pi,
             kimi,
+            qwen,
             today,
             week,
             month,
@@ -690,6 +714,7 @@ fn main() -> Result<()> {
                 openclaw,
                 pi,
                 kimi,
+                qwen,
             });
             let (since, until) = build_date_filter(today, week, month, since, until);
             let year = normalize_year_filter(today, week, month, year);
@@ -715,6 +740,7 @@ fn main() -> Result<()> {
             openclaw,
             pi,
             kimi,
+            qwen,
             short,
             agents,
             clients,
@@ -732,6 +758,7 @@ fn main() -> Result<()> {
                 openclaw,
                 pi,
                 kimi,
+                qwen,
             });
             run_wrapped_command(
                 output,
@@ -756,6 +783,7 @@ fn main() -> Result<()> {
                 openclaw: cli.openclaw,
                 pi: cli.pi,
                 kimi: cli.kimi,
+                qwen: cli.qwen,
             });
             let (since, until) =
                 build_date_filter(cli.today, cli.week, cli.month, cli.since, cli.until);
@@ -820,6 +848,7 @@ struct ClientFlags {
     openclaw: bool,
     pi: bool,
     kimi: bool,
+    qwen: bool,
 }
 
 fn build_client_filter(flags: ClientFlags) -> Option<Vec<String>> {
@@ -836,6 +865,7 @@ fn build_client_filter(flags: ClientFlags) -> Option<Vec<String>> {
         (ClientId::OpenClaw, flags.openclaw),
         (ClientId::Pi, flags.pi),
         (ClientId::Kimi, flags.kimi),
+        (ClientId::Qwen, flags.qwen),
     ]
     .into_iter()
     .filter(|(_, enabled)| *enabled)
