@@ -9,7 +9,7 @@ mod themes;
 mod ui;
 
 pub use app::{App, Tab, TuiConfig};
-pub use cache::{is_cache_stale, load_cached_data, save_cached_data};
+pub use cache::{load_cache, save_cached_data, CacheResult};
 pub use data::{DataLoader, UsageData};
 pub use event::{Event, EventHandler};
 
@@ -77,8 +77,12 @@ pub fn run(
         }
     }
 
-    let cached_data = load_cached_data(&enabled_clients);
-    let cache_is_stale = cached_data.is_some() && is_cache_stale(&enabled_clients);
+    // Single file read: load cache and check freshness in one pass
+    let (cached_data, cache_is_stale) = match load_cache(&enabled_clients) {
+        CacheResult::Fresh(data) => (Some(data), false),
+        CacheResult::Stale(data) => (Some(data), true),
+        CacheResult::Miss => (None, true),
+    };
     let has_cached_data = cached_data.is_some();
 
     let original_hook = panic::take_hook();

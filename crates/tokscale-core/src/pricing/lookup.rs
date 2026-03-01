@@ -153,7 +153,14 @@ impl PricingLookup {
 
         if let Ok(mut cache) = self.lookup_cache.write() {
             if cache.len() >= MAX_LOOKUP_CACHE_ENTRIES {
-                cache.clear();
+                // Evict ~25% of entries instead of clearing everything.
+                // This avoids a thundering-herd cache miss storm that happens
+                // when clear() wipes all entries at once.
+                let evict_count = cache.len() / 4;
+                let keys_to_remove: Vec<String> = cache.keys().take(evict_count).cloned().collect();
+                for key in keys_to_remove {
+                    cache.remove(&key);
+                }
             }
             cache.insert(
                 model_id.to_string(),

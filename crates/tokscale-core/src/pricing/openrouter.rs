@@ -297,7 +297,13 @@ pub async fn fetch_all_models() -> HashMap<String, ModelPricing> {
     }
 
     if !result.is_empty() {
-        let _ = cache::save_cache(CACHE_FILENAME, &result);
+        if let Err(e) = cache::save_cache(CACHE_FILENAME, &result) {
+            eprintln!(
+                "[tokscale] Warning: Failed to cache OpenRouter pricing at {}: {}",
+                cache::get_cache_path(CACHE_FILENAME).display(),
+                e
+            );
+        }
     }
 
     result
