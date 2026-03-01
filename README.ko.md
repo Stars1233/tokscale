@@ -973,7 +973,7 @@ Tokscale은 [LiteLLM의 가격 데이터베이스](https://github.com/BerriAI/li
 
 **캐싱**: 가격 데이터는 1시간 TTL로 디스크에 캐시되어 빠른 시작을 보장합니다:
 - LiteLLM 캐시: `~/.cache/tokscale/pricing-litellm.json`
-- OpenRouter 캐시: `~/.cache/tokscale/pricing-openrouter.json` (증분 방식, 사용한 모델만 캐시)
+- OpenRouter 캐시: `~/.cache/tokscale/pricing-openrouter.json` (지원 제공자의 모델에 대한 작성자 가격 정보를 캐시)
 
 가격 포함 항목:
 - 입력 토큰

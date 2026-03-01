@@ -63,7 +63,13 @@ pub async fn fetch() -> Result<PricingDataset, reqwest::Error> {
 
                 match response.json::<PricingDataset>().await {
                     Ok(data) => {
-                        let _ = cache::save_cache(CACHE_FILENAME, &data);
+                        if let Err(e) = cache::save_cache(CACHE_FILENAME, &data) {
+                            eprintln!(
+                                "[tokscale] Warning: Failed to cache LiteLLM pricing at {}: {}",
+                                cache::get_cache_path(CACHE_FILENAME).display(),
+                                e
+                            );
+                        }
                         return Ok(data);
                     }
                     Err(e) => {

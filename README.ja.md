@@ -974,7 +974,7 @@ Tokscaleは[LiteLLMの価格データベース](https://github.com/BerriAI/litel
 
 **キャッシュ**: 価格データは1時間TTLでディスクにキャッシュされ、高速な起動を確保します：
 - LiteLLMキャッシュ: `~/.cache/tokscale/pricing-litellm.json`
-- OpenRouterキャッシュ: `~/.cache/tokscale/pricing-openrouter.json`（増分式、使用したモデルのみキャッシュ）
+- OpenRouterキャッシュ: `~/.cache/tokscale/pricing-openrouter.json`（サポート対象プロバイダーのモデル作成者価格をキャッシュ）
 
 価格には以下が含まれます：
 - 入力トークン
