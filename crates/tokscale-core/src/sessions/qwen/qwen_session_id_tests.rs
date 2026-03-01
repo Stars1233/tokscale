@@ -7,28 +7,28 @@
 
 use super::{parse_qwen_file, extract_session_id_with_fallback};
 use std::io::Write;
-use tempfile::NamedTempFile;
+use tempfile::TempDir;
 use std::path::Path;
 
-fn create_test_file_with_name(content: &str, filename: &str) -> (NamedTempFile, std::path::PathBuf) {
-    let mut file = NamedTempFile::new().unwrap();
-    file.write_all(content.as_bytes()).unwrap();
-    file.flush().unwrap();
-    
+fn create_test_file_with_name(content: &str, filename: &str) -> (TempDir, std::path::PathBuf) {
+    let temp_dir = tempfile::tempdir().unwrap();
+
     // Create a path that simulates the real Qwen structure
     // ~/.qwen/projects/{project}/chats/{filename}.jsonl
-    let path = file.path().parent().unwrap().join(format!("test_project/chats/{}.jsonl", filename));
+    let path = temp_dir.path().join(format!("test_project/chats/{}.jsonl", filename));
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-    std::fs::copy(file.path(), &path).unwrap();
-    
-    (file, path)
+
+    let mut file = std::fs::File::create(&path).unwrap();
+    file.write_all(content.as_bytes()).unwrap();
+
+    (temp_dir, path)
 }
 
 /// Test 1: JSON has valid sessionId - should use JSON value
 #[test]
 fn test_session_id_from_json_when_present() {
     let content = r#"{"type": "assistant", "model": "qwen3.5-plus", "timestamp": "2026-02-23T14:24:56.857Z", "sessionId": "abc123def456", "usageMetadata": {"promptTokenCount": 100, "candidatesTokenCount": 200, "thoughtsTokenCount": 10, "cachedContentTokenCount": 5}}"#;
-    let (_temp, path) = create_test_file_with_name(content, "json_present");
+    let (_dir, path) = create_test_file_with_name(content, "json_present");
     
     let messages = parse_qwen_file(&path);
     
@@ -41,7 +41,7 @@ fn test_session_id_from_json_when_present() {
 #[test]
 fn test_session_id_fallback_when_empty_string() {
     let content = r#"{"type": "assistant", "model": "qwen3.5-plus", "timestamp": "2026-02-23T14:24:56.857Z", "sessionId": "", "usageMetadata": {"promptTokenCount": 100, "candidatesTokenCount": 200, "thoughtsTokenCount": 10, "cachedContentTokenCount": 5}}"#;
-    let (_temp, path) = create_test_file_with_name(content, "json_empty");
+    let (_dir, path) = create_test_file_with_name(content, "json_empty");
     
     let messages = parse_qwen_file(&path);
     
@@ -57,7 +57,7 @@ fn test_session_id_fallback_when_empty_string() {
 #[test]
 fn test_session_id_fallback_when_missing() {
     let content = r#"{"type": "assistant", "model": "qwen3.5-plus", "timestamp": "2026-02-23T14:24:56.857Z", "usageMetadata": {"promptTokenCount": 100, "candidatesTokenCount": 200, "thoughtsTokenCount": 10, "cachedContentTokenCount": 5}}"#;
-    let (_temp, path) = create_test_file_with_name(content, "json_missing");
+    let (_dir, path) = create_test_file_with_name(content, "json_missing");
     
     let messages = parse_qwen_file(&path);
     
@@ -70,7 +70,7 @@ fn test_session_id_fallback_when_missing() {
 #[test]
 fn test_session_id_fallback_when_null() {
     let content = r#"{"type": "assistant", "model": "qwen3.5-plus", "timestamp": "2026-02-23T14:24:56.857Z", "sessionId": null, "usageMetadata": {"promptTokenCount": 100, "candidatesTokenCount": 200, "thoughtsTokenCount": 10, "cachedContentTokenCount": 5}}"#;
-    let (_temp, path) = create_test_file_with_name(content, "json_null");
+    let (_dir, path) = create_test_file_with_name(content, "json_null");
     
     let messages = parse_qwen_file(&path);
     
@@ -86,7 +86,7 @@ fn test_cross_project_session_id_uniqueness() {
     let content = r#"{"type": "assistant", "model": "qwen3.5-plus", "timestamp": "2026-02-23T14:24:56.857Z", "usageMetadata": {"promptTokenCount": 100, "candidatesTokenCount": 200, "thoughtsTokenCount": 10, "cachedContentTokenCount": 5}}"#;
     
     // Create two files with same name in different projects
-    let (_temp1, path1) = create_test_file_with_name(content, "session");
+    let (_dir1, path1) = create_test_file_with_name(content, "session");
     
     // Manually create a second file in a different project
     let temp_dir = tempfile::tempdir().unwrap();
@@ -156,7 +156,7 @@ fn test_path_derived_session_id_includes_project() {
 fn test_multi_turn_same_session_id() {
     let content = r#"{"type": "assistant", "model": "qwen3.5-plus", "timestamp": "2026-02-23T14:24:56.857Z", "sessionId": "shared_session", "usageMetadata": {"promptTokenCount": 100, "candidatesTokenCount": 200, "thoughtsTokenCount": 10, "cachedContentTokenCount": 5}}
 {"type": "assistant", "model": "qwen3.5-plus", "timestamp": "2026-02-23T14:25:00.000Z", "sessionId": "shared_session", "usageMetadata": {"promptTokenCount": 300, "candidatesTokenCount": 400, "thoughtsTokenCount": 20, "cachedContentTokenCount": 10}}"#;
-    let (_temp, path) = create_test_file_with_name(content, "multi");
+    let (_dir, path) = create_test_file_with_name(content, "multi");
     
     let messages = parse_qwen_file(&path);
     
@@ -172,7 +172,7 @@ fn test_mixed_session_id_in_file() {
     let content = r#"{"type": "assistant", "model": "qwen3.5-plus", "timestamp": "2026-02-23T14:24:56.857Z", "sessionId": "valid_id", "usageMetadata": {"promptTokenCount": 100, "candidatesTokenCount": 200, "thoughtsTokenCount": 10, "cachedContentTokenCount": 5}}
 {"type": "assistant", "model": "qwen3.5-plus", "timestamp": "2026-02-23T14:25:00.000Z", "usageMetadata": {"promptTokenCount": 300, "candidatesTokenCount": 400, "thoughtsTokenCount": 20, "cachedContentTokenCount": 10}}
 {"type": "assistant", "model": "qwen3.5-plus", "timestamp": "2026-02-23T14:26:00.000Z", "sessionId": "", "usageMetadata": {"promptTokenCount": 500, "candidatesTokenCount": 600, "thoughtsTokenCount": 30, "cachedContentTokenCount": 15}}"#;
-    let (_temp, path) = create_test_file_with_name(content, "mixed");
+    let (_dir, path) = create_test_file_with_name(content, "mixed");
     
     let messages = parse_qwen_file(&path);
     

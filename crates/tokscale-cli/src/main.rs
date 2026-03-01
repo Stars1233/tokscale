@@ -3068,6 +3068,7 @@ mod tests {
             openclaw: false,
             pi: false,
             kimi: false,
+            qwen: false,
         };
         assert_eq!(build_client_filter(flags), None);
     }
@@ -3085,6 +3086,7 @@ mod tests {
             openclaw: false,
             pi: false,
             kimi: false,
+            qwen: false,
         };
         assert_eq!(
             build_client_filter(flags),
@@ -3105,6 +3107,7 @@ mod tests {
             openclaw: false,
             pi: true,
             kimi: false,
+            qwen: false,
         };
         assert_eq!(
             build_client_filter(flags),
@@ -3129,11 +3132,12 @@ mod tests {
             openclaw: true,
             pi: true,
             kimi: true,
+            qwen: true,
         };
         let result = build_client_filter(flags);
         assert!(result.is_some());
         let sources = result.unwrap();
-        assert_eq!(sources.len(), 10);
+        assert_eq!(sources.len(), 11);
         assert!(sources.contains(&"opencode".to_string()));
         assert!(sources.contains(&"claude".to_string()));
         assert!(sources.contains(&"codex".to_string()));
@@ -3144,6 +3148,7 @@ mod tests {
         assert!(sources.contains(&"openclaw".to_string()));
         assert!(sources.contains(&"pi".to_string()));
         assert!(sources.contains(&"kimi".to_string()));
+        assert!(sources.contains(&"qwen".to_string()));
     }
 
     #[test]
