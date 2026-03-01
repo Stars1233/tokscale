@@ -106,11 +106,9 @@ impl Settings {
             file.write_all(content.as_bytes())?;
             file.sync_all()?;
             if fs::rename(&temp_path, &path).is_err() {
-                // Windows: rename can't overwrite, so remove destination and retry.
-                // remove+rename keeps atomicity; the tiny race window only risks
-                // losing settings that regenerate from defaults.
-                let _ = fs::remove_file(&path);
-                fs::rename(&temp_path, &path)?;
+                // Windows: rename can't overwrite; copy then cleanup so destination is never removed first.
+                fs::copy(&temp_path, &path)?;
+                let _ = fs::remove_file(&temp_path);
             }
             Ok(())
         })();

@@ -407,9 +407,10 @@ pub fn save_cached_data(data: &UsageData, enabled_clients: &HashSet<ClientId>) {
 
     if serde_json::to_writer(writer, &cached).is_ok() {
         if fs::rename(&temp_path, &cache_path).is_err() {
-            // Windows: rename can't overwrite, so remove destination and retry.
-            let _ = fs::remove_file(&cache_path);
-            let _ = fs::rename(&temp_path, &cache_path);
+            // Windows: rename can't overwrite; copy then cleanup so destination is never removed first.
+            if fs::copy(&temp_path, &cache_path).is_ok() {
+                let _ = fs::remove_file(&temp_path);
+            }
         }
     } else {
         let _ = fs::remove_file(&temp_path);
