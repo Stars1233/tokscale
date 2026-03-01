@@ -79,7 +79,7 @@ function createMockSubmissionData(overrides: Partial<{
         reasoning: 0,
       },
       clients: d.clients.map(client => ({
-        client: client.client as 'opencode' | 'claude' | 'codex' | 'gemini' | 'cursor' | 'amp' | 'droid' | 'openclaw' | 'pi' | 'kimi',
+        client: client.client as 'opencode' | 'claude' | 'codex' | 'gemini' | 'cursor' | 'amp' | 'droid' | 'openclaw' | 'pi' | 'kimi' | 'qwen',
         modelId: client.modelId,
         tokens: client.tokens,
         cost: client.cost,
