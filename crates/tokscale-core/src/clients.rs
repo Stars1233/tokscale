@@ -187,6 +187,14 @@ define_clients!(
         pattern: "wire.jsonl",
         headless: false,
         parse_local: true
+    },
+    Qwen = 10 => {
+        id: "qwen",
+        root: PathRoot::Home,
+        relative: ".qwen/projects",
+        pattern: "*.jsonl",
+        headless: false,
+        parse_local: true
     }
 );
 
@@ -238,8 +246,8 @@ mod tests {
     }
 
     #[test]
-    fn test_client_id_count_is_ten() {
-        assert_eq!(ClientId::COUNT, 10);
+    fn test_client_id_count_is_eleven() {
+        assert_eq!(ClientId::COUNT, 11);
     }
 
     #[test]
