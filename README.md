@@ -62,6 +62,7 @@
 | <img width="48px" src=".github/assets/client-droid.png" alt="Droid" /> | [Droid (Factory Droid)](https://factory.ai/) | `~/.factory/sessions/` | ✅ Yes |
 | <img width="48px" src=".github/assets/client-pi.png" alt="Pi" /> | [Pi](https://github.com/badlogic/pi-mono) | `~/.pi/agent/sessions/` | ✅ Yes |
 | <img width="48px" src=".github/assets/client-kimi.png" alt="Kimi" /> | [Kimi CLI](https://github.com/MoonshotAI/kimi-cli) | `~/.kimi/sessions/` | ✅ Yes |
+| <img width="48px" src=".github/assets/client-qwen.png" alt="Qwen" /> | [Qwen CLI](https://github.com/QwenLM/qwen-cli) | `~/.qwen/projects/` | ✅ Yes |
 
 Get real-time pricing calculations using [🚅 LiteLLM's pricing data](https://github.com/BerriAI/litellm), with support for tiered pricing models and cache token discounts.
 
@@ -126,7 +127,7 @@ In the age of AI-assisted development, **tokens are the new energy**. They power
   - GitHub-style contribution graph with 9 color themes
   - Real-time filtering and sorting
   - Zero flicker rendering (native Zig engine)
-- **Multi-platform support** - Track usage across OpenCode, Claude Code, Codex CLI, Cursor IDE, Gemini CLI, Amp, Droid, OpenClaw, Pi, and Kimi CLI
+- **Multi-platform support** - Track usage across OpenCode, Claude Code, Codex CLI, Cursor IDE, Gemini CLI, Amp, Droid, OpenClaw, Pi, Kimi CLI, and Qwen CLI
 - **Real-time pricing** - Fetches current pricing from LiteLLM with 1-hour disk cache; automatic OpenRouter fallback and Cursor model pricing for newly released models
 - **Detailed breakdowns** - Input, output, cache read/write, and reasoning token tracking
 - **Native Rust core** - All parsing and aggregation done in Rust for 10x faster processing
@@ -306,6 +307,9 @@ tokscale --pi
 
 # Show only Kimi CLI usage
 tokscale --kimi
+
+# Show only Qwen CLI usage
+tokscale --qwen
 
 # Combine filters
 tokscale --opencode --claude
@@ -556,7 +560,7 @@ The frontend provides a GitHub-style contribution graph visualization:
 - **Interactive tooltips**: Hover for detailed daily breakdowns
 - **Day breakdown panel**: Click to see per-source and per-model details
 - **Year filtering**: Navigate between years
-- **Source filtering**: Filter by platform (OpenCode, Claude, Codex, Cursor, Gemini, Amp, Droid, OpenClaw, Pi, Kimi)
+- **Source filtering**: Filter by platform (OpenCode, Claude, Codex, Cursor, Gemini, Amp, Droid, OpenClaw, Pi, Kimi, Qwen)
 - **Stats panel**: Total cost, tokens, active days, streaks
 - **FOUC prevention**: Theme applied before React hydrates (no flash)
 
@@ -835,6 +839,7 @@ AI coding tools store their session data in cross-platform locations. Most tools
 | Droid | `~/.factory/` | `%USERPROFILE%\.factory\` | Same path on all platforms |
 | Pi | `~/.pi/` | `%USERPROFILE%\.pi\` | Same path on all platforms |
 | Kimi CLI | `~/.kimi/` | `%USERPROFILE%\.kimi\` | Same path on all platforms |
+| Qwen CLI | `~/.qwen/` | `%USERPROFILE%\.qwen\` | Same path on all platforms |
 
 > **Note**: On Windows, `~` expands to `%USERPROFILE%` (e.g., `C:\Users\YourName`). These tools intentionally use Unix-style paths (like `.local/share`) even on Windows for cross-platform consistency, rather than Windows-native paths like `%APPDATA%`.
 
@@ -1016,6 +1021,18 @@ wire.jsonl format with StatusUpdate messages:
 {"type": "metadata", "protocol_version": "1.3"}
 {"timestamp": 1770983426.420942, "message": {"type": "StatusUpdate", "payload": {"token_usage": {"input_other": 1562, "output": 2463, "input_cache_read": 0, "input_cache_creation": 0}, "message_id": "chatcmpl-xxx"}}}
 ```
+
+### Qwen CLI
+
+Location: `~/.qwen/projects/{PROJECT_PATH}/chats/{CHAT_ID}.jsonl`
+
+Format: JSONL — one JSON object per line, each with `type`, `model`, `timestamp`, `sessionId`, and `usageMetadata` fields.
+
+Token fields (from `usageMetadata`):
+- `promptTokenCount` → input tokens
+- `candidatesTokenCount` → output tokens
+- `thoughtsTokenCount` → reasoning/thinking tokens
+- `cachedContentTokenCount` → cached input tokens
 
 ## Pricing
 
