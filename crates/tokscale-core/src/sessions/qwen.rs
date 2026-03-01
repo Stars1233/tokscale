@@ -18,7 +18,6 @@ struct QwenLine {
     model: Option<String>,
     timestamp: Option<String>,
     #[serde(rename = "sessionId")]
-    #[allow(dead_code)]
     session_id: Option<String>,
 
     #[serde(rename = "usageMetadata")]
@@ -41,13 +40,36 @@ struct UsageMetadata {
 const DEFAULT_MODEL: &str = "unknown";
 const DEFAULT_PROVIDER: &str = "qwen";
 
-/// Extract session ID from the JSONL filename
-/// Path format: ~/.qwen/projects/{project}/chats/{SESSION_ID}.jsonl
-fn extract_session_id(path: &Path) -> String {
-    path.file_stem()
+/// Extract session ID with fallback logic:
+/// 1. Use JSON session_id if present and non-empty
+/// 2. Otherwise derive from path including project name to avoid collisions
+/// 
+/// Path format: ~/.qwen/projects/{project}/chats/{filename}.jsonl
+pub fn extract_session_id_with_fallback(path: &Path, json_session_id: Option<&str>) -> String {
+    // Priority 1: Use JSON sessionId if present and non-empty
+    if let Some(id) = json_session_id {
+        if !id.is_empty() {
+            return id.to_string();
+        }
+    }
+    
+    // Priority 2: Derive from path with project context
+    // Extract project name from path structure: .../projects/{project}/chats/{file}.jsonl
+    let filename = path
+        .file_stem()
         .and_then(|n| n.to_str())
-        .unwrap_or("unknown")
-        .to_string()
+        .unwrap_or("unknown");
+    
+    // Try to extract project name from the path
+    let project_name = path
+        .parent() // .../chats
+        .and_then(|p| p.parent()) // .../projects/{project}
+        .and_then(|p| p.file_name())
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown");
+    
+    // Combine project and filename for unique session ID
+    format!("{}-{}", project_name, filename)
 }
 
 /// Parse a Qwen CLI JSONL file
@@ -57,7 +79,6 @@ pub fn parse_qwen_file(path: &Path) -> Vec<UnifiedMessage> {
         Err(_) => return Vec::new(),
     };
 
-    let session_id = extract_session_id(path);
     let file_mtime = file_modified_timestamp_ms(path);
 
     let reader = BufReader::new(file);
@@ -111,11 +132,17 @@ pub fn parse_qwen_file(path: &Path) -> Vec<UnifiedMessage> {
         // Use model from line or fallback to "unknown"
         let model = qwen_line.model.unwrap_or_else(|| DEFAULT_MODEL.to_string());
 
+        // Resolve session ID: prefer JSON sessionId, fallback to path-derived
+        let line_session_id = extract_session_id_with_fallback(
+            path,
+            qwen_line.session_id.as_deref()
+        );
+
         messages.push(UnifiedMessage::new(
             "qwen",
             model,
             DEFAULT_PROVIDER,
-            session_id.clone(),
+            line_session_id,
             timestamp_ms,
             TokenBreakdown {
                 input,
@@ -130,6 +157,10 @@ pub fn parse_qwen_file(path: &Path) -> Vec<UnifiedMessage> {
 
     messages
 }
+
+#[cfg(test)]
+#[path = "qwen/qwen_session_id_tests.rs"]
+mod qwen_session_id_tests;
 
 #[cfg(test)]
 mod tests {
