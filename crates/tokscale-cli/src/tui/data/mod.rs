@@ -240,6 +240,14 @@ impl DataLoader {
                         .collect();
                     all_messages.extend(msgs);
                 }
+                ClientId::Qwen => {
+                    let msgs: Vec<UnifiedMessage> = scan_result
+                        .get(ClientId::Qwen)
+                        .par_iter()
+                        .flat_map(|path| sessions::qwen::parse_qwen_file(path))
+                        .collect();
+                    all_messages.extend(msgs);
+                }
             }
         }
 
