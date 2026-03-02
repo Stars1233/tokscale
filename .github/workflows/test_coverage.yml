@@ -57,7 +57,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
+          # Only check out the PR branch for same-repo PRs (forks use default merge ref)
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref || '' }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Rust toolchain
@@ -69,20 +70,25 @@ jobs:
         id: fmt-check
         run: |
           if ! cargo fmt --all -- --check; then
+            # Auto-fix only for same-repo PRs; fail hard for pushes and fork PRs
+            if [ "${{ github.event_name }}" != "pull_request" ] || [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+              exit 1
+            fi
             echo "needs_fix=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Apply formatting fix
-        if: steps.fmt-check.outputs.needs_fix == 'true' && github.event_name == 'pull_request'
+        if: steps.fmt-check.outputs.needs_fix == 'true'
         run: cargo fmt --all
 
       - name: Commit formatting fix
-        if: steps.fmt-check.outputs.needs_fix == 'true' && github.event_name == 'pull_request'
+        if: steps.fmt-check.outputs.needs_fix == 'true'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add -A
           git diff --staged --quiet || git commit -m "style: cargo fmt [skip ci]"
+          git pull --rebase
           git push
 
   coverage:
