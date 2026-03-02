@@ -156,7 +156,6 @@ pub fn parse_qwen_file(path: &Path) -> Vec<UnifiedMessage> {
     messages
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -447,11 +446,13 @@ not valid json at all
         assert_eq!(messages[0].session_id, "valid_id");
         // Second message (no sessionId) uses fallback
         assert!(
-            messages[1].session_id.contains("mixed") || messages[1].session_id.contains("test_project")
+            messages[1].session_id.contains("mixed")
+                || messages[1].session_id.contains("test_project")
         );
         // Third message (empty sessionId) uses fallback
         assert!(
-            messages[2].session_id.contains("mixed") || messages[2].session_id.contains("test_project")
+            messages[2].session_id.contains("mixed")
+                || messages[2].session_id.contains("test_project")
         );
     }
 }
