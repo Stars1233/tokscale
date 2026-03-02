@@ -88,8 +88,8 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add -A
           git diff --staged --quiet || git commit -m "style: cargo fmt [skip ci]"
-          git pull --rebase
-          git push
+          git pull --rebase origin "${{ github.head_ref }}"
+          git push origin "HEAD:${{ github.head_ref }}"
 
   coverage:
     name: Code Coverage
