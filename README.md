@@ -10,7 +10,7 @@
 
 > [!TIP]
 >
-> v2 (ratatui rewrite + windows support) is upcoming! <br />
+> v2 is here — native Rust TUI, cross-platform support, and more. <br />
 > I drop new open-source work every week. Don't miss the next one.
 >
 > | [<img alt="GitHub Follow" src="https://img.shields.io/github/followers/junhoyeo?style=flat-square&logo=github&labelColor=black&color=24292f" width="156px" />](https://github.com/junhoyeo) | Follow [@junhoyeo](https://github.com/junhoyeo) on GitHub for more projects. Hacking on AI, infra, and everything in between. |
