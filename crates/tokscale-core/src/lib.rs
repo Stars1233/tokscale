@@ -18,14 +18,6 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-pub fn version() -> String {
-    env!("CARGO_PKG_VERSION").to_string()
-}
-
-pub fn health_check() -> String {
-    "tokscale-core is healthy!".to_string()
-}
-
 pub fn normalize_model_for_grouping(model_id: &str) -> String {
     let mut name = model_id.to_lowercase();
 
