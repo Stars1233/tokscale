@@ -50,10 +50,15 @@ jobs:
   fmt:
     name: Format Check
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -61,7 +66,24 @@ jobs:
           components: rustfmt
 
       - name: Check formatting
-        run: cargo fmt --all -- --check
+        id: fmt-check
+        run: |
+          if ! cargo fmt --all -- --check; then
+            echo "needs_fix=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Apply formatting fix
+        if: steps.fmt-check.outputs.needs_fix == 'true' && github.event_name == 'pull_request'
+        run: cargo fmt --all
+
+      - name: Commit formatting fix
+        if: steps.fmt-check.outputs.needs_fix == 'true' && github.event_name == 'pull_request'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add -A
+          git diff --staged --quiet || git commit -m "style: cargo fmt [skip ci]"
+          git push
 
   coverage:
     name: Code Coverage
