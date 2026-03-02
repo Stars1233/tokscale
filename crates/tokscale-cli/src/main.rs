@@ -2474,7 +2474,9 @@ fn save_star_cache(username: &str, has_starred: bool) {
     if !has_starred {
         return;
     }
-    let Some(path) = star_cache_path() else { return };
+    let Some(path) = star_cache_path() else {
+        return;
+    };
     let now = chrono::Utc::now().to_rfc3339();
     let cache = StarCache {
         username: username.to_string(),
@@ -2531,7 +2533,10 @@ fn prompt_star_repo(username: &str) -> Result<()> {
         "{}",
         "  Starring bunx tokscale@latest helps others discover the project.\n".bright_black()
     );
-    print!("{}", "  \u{2b50} Would you like to star tokscale? (Y/n): ".white());
+    print!(
+        "{}",
+        "  \u{2b50} Would you like to star tokscale? (Y/n): ".white()
+    );
     io::stdout().flush()?;
 
     let mut input = String::new();
@@ -2557,7 +2562,10 @@ fn prompt_star_repo(username: &str) -> Result<()> {
         .status();
     match status {
         Ok(s) if s.success() => {
-            println!("{}", "  \u{2713} Starred! Thank you for your support.\n".green());
+            println!(
+                "{}",
+                "  \u{2713} Starred! Thank you for your support.\n".green()
+            );
             save_star_cache(username, true);
         }
         _ => {
