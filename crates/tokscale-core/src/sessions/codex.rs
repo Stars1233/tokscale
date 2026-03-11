@@ -88,6 +88,39 @@ impl CodexTotals {
         })
     }
 
+    fn saturating_add(self, other: Self) -> Self {
+        Self {
+            input: self.input.saturating_add(other.input),
+            output: self.output.saturating_add(other.output),
+            cached: self.cached.saturating_add(other.cached),
+            reasoning: self.reasoning.saturating_add(other.reasoning),
+        }
+    }
+
+    fn total(self) -> i64 {
+        self.input
+            .saturating_add(self.output)
+            .saturating_add(self.cached)
+            .saturating_add(self.reasoning)
+    }
+
+    fn looks_like_stale_regression(self, previous: Self, last: Self) -> bool {
+        let previous_total = previous.total();
+        let current_total = self.total();
+        let last_total = last.total();
+
+        if previous_total <= 0 || current_total <= 0 || last_total <= 0 {
+            return false;
+        }
+
+        // Some Codex token_count snapshots arrive slightly out of order: the cumulative
+        // total regresses by roughly one recent increment, then resumes from the true
+        // higher watermark on the next row. Treat those as stale snapshots rather than
+        // hard resets so we do not count `last_token_usage` twice.
+        current_total.saturating_mul(100) >= previous_total.saturating_mul(98)
+            || current_total.saturating_add(last_total.saturating_mul(2)) >= previous_total
+    }
+
     fn into_tokens(self) -> TokenBreakdown {
         // Clamp cached to not exceed input to prevent inflated totals when
         // malformed data reports more cached tokens than input tokens.
@@ -180,40 +213,32 @@ pub fn parse_codex_file(path: &Path) -> Vec<UnifiedMessage> {
                     let total_usage = info.total_token_usage.as_ref().map(CodexTotals::from_usage);
                     let last_usage = info.last_token_usage.as_ref().map(CodexTotals::from_usage);
 
-                    let tokens = if let Some(total) = total_usage {
-                        match previous_totals {
-                            Some(previous) => {
-                                match total.delta_from(previous).or(last_usage) {
-                                    Some(delta) => delta.into_tokens(),
-                                    None => {
-                                        // Totals regressed with no last_usage fallback;
-                                        // reset baseline and skip to avoid double-counting.
-                                        previous_totals = Some(total);
-                                        continue;
-                                    }
+                    let (tokens, next_totals) = match (total_usage, last_usage, previous_totals) {
+                        (Some(total), _, None) => (total.into_tokens(), Some(total)),
+                        (Some(total), _, Some(previous)) => {
+                            if let Some(delta) = total.delta_from(previous) {
+                                (delta.into_tokens(), Some(total))
+                            } else if let Some(last) = last_usage {
+                                if total.looks_like_stale_regression(previous, last) {
+                                    (last.into_tokens(), Some(previous.saturating_add(last)))
+                                } else {
+                                    (last.into_tokens(), Some(total))
                                 }
+                            } else {
+                                // Totals regressed with no last_usage fallback;
+                                // reset baseline and skip to avoid double-counting.
+                                previous_totals = Some(total);
+                                continue;
                             }
-                            None => total.into_tokens(),
                         }
-                    } else if let Some(last) = last_usage {
-                        last.into_tokens()
-                    } else {
-                        continue;
+                        (None, Some(last), Some(previous)) => {
+                            (last.into_tokens(), Some(previous.saturating_add(last)))
+                        }
+                        (None, Some(last), None) => (last.into_tokens(), None),
+                        (None, None, _) => continue,
                     };
 
-                    // Advance the baseline for the next cumulative row. If the current row
-                    // only has incremental usage, extend the previous baseline by that amount
-                    // so a later resumed cumulative snapshot does not double count it.
-                    if let Some(total) = total_usage {
-                        previous_totals = Some(total);
-                    } else if let Some(last) = last_usage {
-                        previous_totals = previous_totals.map(|previous| CodexTotals {
-                            input: previous.input.saturating_add(last.input),
-                            output: previous.output.saturating_add(last.output),
-                            cached: previous.cached.saturating_add(last.cached),
-                            reasoning: previous.reasoning.saturating_add(last.reasoning),
-                        });
-                    }
+                    previous_totals = next_totals;
 
                     // Skip empty deltas
                     if tokens.input == 0
@@ -576,5 +601,88 @@ mod tests {
         assert_eq!(messages[1].tokens.output, 3);
         assert_eq!(messages[1].tokens.cache_read, 2);
         assert_eq!(messages[1].tokens.reasoning, 1);
+    }
+
+    #[test]
+    fn test_token_count_avoids_double_counting_stale_cumulative_regressions() {
+        let line1 = r#"{"timestamp":"2026-01-01T00:00:00Z","type":"turn_context","payload":{"model":"gpt-5.2"}}"#;
+        let line2 = r#"{"timestamp":"2026-01-01T00:00:01Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":100,"cached_input_tokens":20,"output_tokens":30,"reasoning_output_tokens":5},"last_token_usage":{"input_tokens":100,"cached_input_tokens":20,"output_tokens":30,"reasoning_output_tokens":5}}}}"#;
+        let line3 = r#"{"timestamp":"2026-01-01T00:00:02Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":110,"cached_input_tokens":22,"output_tokens":33,"reasoning_output_tokens":6},"last_token_usage":{"input_tokens":10,"cached_input_tokens":2,"output_tokens":3,"reasoning_output_tokens":1}}}}"#;
+        let line4 = r#"{"timestamp":"2026-01-01T00:00:03Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":109,"cached_input_tokens":21,"output_tokens":32,"reasoning_output_tokens":6},"last_token_usage":{"input_tokens":9,"cached_input_tokens":1,"output_tokens":2,"reasoning_output_tokens":0}}}}"#;
+        let line5 = r#"{"timestamp":"2026-01-01T00:00:04Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":119,"cached_input_tokens":23,"output_tokens":35,"reasoning_output_tokens":6},"last_token_usage":{"input_tokens":10,"cached_input_tokens":2,"output_tokens":3,"reasoning_output_tokens":0}}}}"#;
+        let content = format!("{}\n{}\n{}\n{}\n{}", line1, line2, line3, line4, line5);
+        let file = create_test_file(&content);
+
+        let messages = parse_codex_file(file.path());
+
+        assert_eq!(messages.len(), 3);
+        assert_eq!(messages[0].tokens.input, 80);
+        assert_eq!(messages[0].tokens.output, 30);
+        assert_eq!(messages[0].tokens.cache_read, 20);
+        assert_eq!(messages[0].tokens.reasoning, 5);
+
+        assert_eq!(messages[1].tokens.input, 8);
+        assert_eq!(messages[1].tokens.output, 3);
+        assert_eq!(messages[1].tokens.cache_read, 2);
+        assert_eq!(messages[1].tokens.reasoning, 1);
+
+        assert_eq!(messages[2].tokens.input, 8);
+        assert_eq!(messages[2].tokens.output, 2);
+        assert_eq!(messages[2].tokens.cache_read, 1);
+        assert_eq!(messages[2].tokens.reasoning, 0);
+    }
+
+    #[test]
+    fn test_token_count_handles_multiple_stale_regressions_before_recovery() {
+        let line1 = r#"{"timestamp":"2026-01-01T00:00:00Z","type":"turn_context","payload":{"model":"gpt-5.2"}}"#;
+        let line2 = r#"{"timestamp":"2026-01-01T00:00:01Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":100,"cached_input_tokens":20,"output_tokens":30,"reasoning_output_tokens":5},"last_token_usage":{"input_tokens":100,"cached_input_tokens":20,"output_tokens":30,"reasoning_output_tokens":5}}}}"#;
+        let line3 = r#"{"timestamp":"2026-01-01T00:00:02Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":110,"cached_input_tokens":22,"output_tokens":33,"reasoning_output_tokens":6},"last_token_usage":{"input_tokens":10,"cached_input_tokens":2,"output_tokens":3,"reasoning_output_tokens":1}}}}"#;
+        let line4 = r#"{"timestamp":"2026-01-01T00:00:03Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":109,"cached_input_tokens":21,"output_tokens":32,"reasoning_output_tokens":6},"last_token_usage":{"input_tokens":9,"cached_input_tokens":1,"output_tokens":2,"reasoning_output_tokens":0}}}}"#;
+        let line5 = r#"{"timestamp":"2026-01-01T00:00:04Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":118,"cached_input_tokens":22,"output_tokens":34,"reasoning_output_tokens":6},"last_token_usage":{"input_tokens":9,"cached_input_tokens":1,"output_tokens":2,"reasoning_output_tokens":0}}}}"#;
+        let line6 = r#"{"timestamp":"2026-01-01T00:00:05Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":128,"cached_input_tokens":24,"output_tokens":37,"reasoning_output_tokens":6},"last_token_usage":{"input_tokens":10,"cached_input_tokens":2,"output_tokens":3,"reasoning_output_tokens":0}}}}"#;
+        let content = format!(
+            "{}\n{}\n{}\n{}\n{}\n{}",
+            line1, line2, line3, line4, line5, line6
+        );
+        let file = create_test_file(&content);
+
+        let messages = parse_codex_file(file.path());
+
+        assert_eq!(messages.len(), 4);
+        assert_eq!(messages[0].tokens.input, 80);
+        assert_eq!(messages[1].tokens.input, 8);
+        assert_eq!(messages[2].tokens.input, 8);
+        assert_eq!(messages[3].tokens.input, 8);
+        assert_eq!(messages[3].tokens.output, 2);
+        assert_eq!(messages[3].tokens.cache_read, 1);
+        assert_eq!(messages[3].tokens.reasoning, 0);
+    }
+
+    #[test]
+    fn test_token_count_treats_large_regressions_as_real_resets() {
+        let line1 = r#"{"timestamp":"2026-01-01T00:00:00Z","type":"turn_context","payload":{"model":"gpt-5.2"}}"#;
+        let line2 = r#"{"timestamp":"2026-01-01T00:00:01Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":10000,"cached_input_tokens":1000,"output_tokens":400,"reasoning_output_tokens":50},"last_token_usage":{"input_tokens":10000,"cached_input_tokens":1000,"output_tokens":400,"reasoning_output_tokens":50}}}}"#;
+        let line3 = r#"{"timestamp":"2026-01-01T00:00:02Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":7600,"cached_input_tokens":800,"output_tokens":280,"reasoning_output_tokens":35},"last_token_usage":{"input_tokens":25,"cached_input_tokens":5,"output_tokens":4,"reasoning_output_tokens":1}}}}"#;
+        let line4 = r#"{"timestamp":"2026-01-01T00:00:03Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":7625,"cached_input_tokens":805,"output_tokens":284,"reasoning_output_tokens":36},"last_token_usage":{"input_tokens":25,"cached_input_tokens":5,"output_tokens":4,"reasoning_output_tokens":1}}}}"#;
+        let content = format!("{}\n{}\n{}\n{}", line1, line2, line3, line4);
+        let file = create_test_file(&content);
+
+        let messages = parse_codex_file(file.path());
+
+        assert_eq!(messages.len(), 3);
+        assert_eq!(messages[0].tokens.input, 9000);
+        assert_eq!(messages[0].tokens.output, 400);
+        assert_eq!(messages[0].tokens.cache_read, 1000);
+        assert_eq!(messages[0].tokens.reasoning, 50);
+
+        assert_eq!(messages[1].tokens.input, 20);
+        assert_eq!(messages[1].tokens.output, 4);
+        assert_eq!(messages[1].tokens.cache_read, 5);
+        assert_eq!(messages[1].tokens.reasoning, 1);
+
+        assert_eq!(messages[2].tokens.input, 20);
+        assert_eq!(messages[2].tokens.output, 4);
+        assert_eq!(messages[2].tokens.cache_read, 5);
+        assert_eq!(messages[2].tokens.reasoning, 1);
     }
 }
