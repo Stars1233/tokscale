@@ -151,4 +151,77 @@ describe("POST /api/auth/device/poll", () => {
       },
     });
   });
+
+  it("returns 400 when deviceCode is missing", async () => {
+    const response = await POST(
+      new Request("http://localhost:3000/api/auth/device/poll", {
+        method: "POST",
+        body: JSON.stringify({}),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body).toEqual({ error: "Missing device code" });
+  });
+
+  it("returns expired status when no matching device code found", async () => {
+    mockState.pushSelectResult([]);
+
+    const response = await POST(
+      new Request("http://localhost:3000/api/auth/device/poll", {
+        method: "POST",
+        body: JSON.stringify({ deviceCode: "invalid-code" }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({ status: "expired" });
+  });
+
+  it("returns pending status when user has not yet authorized", async () => {
+    mockState.pushSelectResult([
+      {
+        id: "device-1",
+        userId: null,
+        deviceName: "CLI on macbook",
+        expiresAt: new Date("2026-03-08T05:00:00.000Z"),
+      },
+    ]);
+
+    const response = await POST(
+      new Request("http://localhost:3000/api/auth/device/poll", {
+        method: "POST",
+        body: JSON.stringify({ deviceCode: "device-code-1" }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({ status: "pending" });
+  });
+
+  it("returns 500 when authorized user is not found in users table", async () => {
+    mockState.pushSelectResult([
+      {
+        id: "device-1",
+        userId: "user-1",
+        deviceName: "CLI on macbook",
+        expiresAt: new Date("2026-03-08T05:00:00.000Z"),
+      },
+    ]);
+    mockState.pushSelectResult([]);
+
+    const response = await POST(
+      new Request("http://localhost:3000/api/auth/device/poll", {
+        method: "POST",
+        body: JSON.stringify({ deviceCode: "device-code-1" }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(body).toEqual({ error: "User not found" });
+  });
 });
