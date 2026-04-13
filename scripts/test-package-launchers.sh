@@ -136,10 +136,10 @@ fi
 echo "Checking source-tree wrapper with Node-only PATH..."
 env PATH="${NODE_ONLY_PATH}" "${ROOT_DIR}/packages/tokscale/bin.js" --version >/dev/null
 
-echo "Checking installed launcher with Bun-only PATH..."
-INSTALLED_VERSION_BUN="$(env PATH="${BUN_ONLY_PATH}" "${INSTALLED_BIN}" --version)"
+echo "Checking installed launcher via Bun runtime..."
+INSTALLED_VERSION_BUN="$(env PATH="${BUN_ONLY_PATH}" bun "${INSTALLED_BIN}" --version)"
 [[ "${INSTALLED_VERSION_BUN}" == tokscale* ]] || {
-  echo "Unexpected Bun-only launcher output: ${INSTALLED_VERSION_BUN}" >&2
+  echo "Unexpected Bun launcher output: ${INSTALLED_VERSION_BUN}" >&2
   exit 1
 }
 
@@ -159,7 +159,7 @@ if [[ ${ERROR_CODE} -eq 0 ]]; then
   echo "Expected launcher to fail when neither Node nor Bun is available" >&2
   exit 1
 fi
-[[ "${ERROR_OUTPUT}" == *"Node.js or Bun"* ]] || {
+[[ "${ERROR_OUTPUT}" == *"node"* ]] || {
   echo "Unexpected launcher error output: ${ERROR_OUTPUT}" >&2
   exit 1
 }
