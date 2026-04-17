@@ -286,29 +286,27 @@ impl App {
     }
 
     pub fn build_model_shade_map(&mut self) {
-        self.model_shade_map.clear();
+        self.model_shade_map = super::colors::build_model_shade_map(&self.data.models);
+    }
 
-        let mut provider_models: HashMap<&str, Vec<(&str, f64)>> = HashMap::new();
-        for m in &self.data.models {
-            let provider = get_provider_from_model(&m.model);
-            provider_models
-                .entry(provider)
-                .or_default()
-                .push((&m.model, m.cost));
-        }
-
-        for (provider, mut models) in provider_models {
-            models.sort_by(|a, b| b.1.total_cmp(&a.1));
-            for (rank, (model_name, _)) in models.iter().enumerate() {
-                let color = get_provider_shade(provider, rank);
-                self.model_shade_map.insert(model_name.to_string(), color);
-            }
-        }
+    pub fn model_color_for(&self, provider: &str, model: &str) -> Color {
+        let provider = if provider.is_empty() || provider.contains(", ") {
+            get_provider_from_model(model)
+        } else {
+            provider
+        };
+        let lookup_key = super::colors::model_shade_key(provider, model);
+        self.model_shade_map
+            .get(&lookup_key)
+            .copied()
+            .unwrap_or_else(|| get_provider_shade(provider, 0))
     }
 
     pub fn model_color(&self, model: &str) -> Color {
+        let provider = get_provider_from_model(model);
+        let lookup_key = super::colors::model_shade_key(provider, model);
         self.model_shade_map
-            .get(model)
+            .get(&lookup_key)
             .copied()
             .unwrap_or_else(|| get_model_color(model))
     }
@@ -859,59 +857,12 @@ impl App {
     }
 
     fn export_to_json(&mut self) {
-        let export_data = serde_json::json!({
-            "models": self.data.models.iter().map(|m| serde_json::json!({
-                "model": m.model,
-                "provider": m.provider,
-                "client": m.client,
-                "tokens": {
-                    "input": m.tokens.input,
-                    "output": m.tokens.output,
-                    "cacheRead": m.tokens.cache_read,
-                    "cacheWrite": m.tokens.cache_write,
-                    "total": m.tokens.total()
-                },
-                "cost": m.cost,
-                "sessionCount": m.session_count
-            })).collect::<Vec<_>>(),
-            "agents": self.data.agents.iter().map(|a| serde_json::json!({
-                "agent": a.agent,
-                "clients": a.clients,
-                "tokens": {
-                    "input": a.tokens.input,
-                    "output": a.tokens.output,
-                    "cacheRead": a.tokens.cache_read,
-                    "cacheWrite": a.tokens.cache_write,
-                    "total": a.tokens.total()
-                },
-                "cost": a.cost,
-                "messageCount": a.message_count
-            })).collect::<Vec<_>>(),
-            "daily": self.data.daily.iter().map(|d| serde_json::json!({
-                "date": d.date.to_string(),
-                "tokens": {
-                    "input": d.tokens.input,
-                    "output": d.tokens.output,
-                    "cacheRead": d.tokens.cache_read,
-                    "cacheWrite": d.tokens.cache_write,
-                    "total": d.tokens.total()
-                },
-                "messageCount": d.message_count,
-                "turnCount": d.turn_count,
-                "cost": d.cost
-            })).collect::<Vec<_>>(),
-            "totals": {
-                "tokens": self.data.total_tokens,
-                "cost": self.data.total_cost
-            }
-        });
-
         let filename = format!(
             "tokscale-export-{}.json",
             chrono::Utc::now().format("%Y%m%d-%H%M%S")
         );
 
-        match serde_json::to_string_pretty(&export_data) {
+        match super::export::build_export_json(&self.data) {
             Ok(json) => match std::fs::write(&filename, json) {
                 Ok(_) => self.set_status(&format!("Exported to {}", filename)),
                 Err(e) => self.set_status(&format!("Export failed: {}", e)),
@@ -1083,6 +1034,7 @@ impl App {
 
 #[cfg(test)]
 mod tests {
+    use super::super::ui::widgets::get_provider_shade;
     use super::*;
     use crate::tui::data::{ModelUsage, TokenBreakdown};
 
@@ -2055,5 +2007,259 @@ mod tests {
         app.current_tab = Tab::Daily;
         app.handle_key_event(key(KeyCode::Char('v')));
         assert_eq!(app.hourly_view_mode, HourlyViewMode::Table);
+    }
+
+    // ── build_model_shade_map ───────────────────────────────────────
+
+    fn model_usage(name: &str, cost: f64, workspace: Option<&str>) -> ModelUsage {
+        ModelUsage {
+            model: name.to_string(),
+            provider: "anthropic".to_string(),
+            client: "claude".to_string(),
+            workspace_key: workspace.map(String::from),
+            workspace_label: workspace.map(String::from),
+            tokens: TokenBreakdown::default(),
+            cost,
+            session_count: 1,
+        }
+    }
+
+    fn shade_key(provider: &str, model: &str) -> String {
+        super::super::colors::model_shade_key(provider, model)
+    }
+
+    #[test]
+    fn test_shade_map_assigns_rank_0_to_highest_cost() {
+        let mut app = make_app();
+        app.data.models = vec![
+            model_usage("claude-haiku-4-5", 10.0, None),
+            model_usage("claude-opus-4-5", 100.0, None),
+            model_usage("claude-sonnet-4-5", 50.0, None),
+        ];
+        app.build_model_shade_map();
+
+        let opus = app
+            .model_shade_map
+            .get(&shade_key("anthropic", "claude-opus-4-5"))
+            .copied()
+            .unwrap();
+        let sonnet = app
+            .model_shade_map
+            .get(&shade_key("anthropic", "claude-sonnet-4-5"))
+            .copied()
+            .unwrap();
+        let haiku = app
+            .model_shade_map
+            .get(&shade_key("anthropic", "claude-haiku-4-5"))
+            .copied()
+            .unwrap();
+
+        // Rank 0 is the base Anthropic coral; ranks below lighten toward white.
+        assert_eq!(opus, get_provider_shade("anthropic", 0));
+        assert_eq!(sonnet, get_provider_shade("anthropic", 1));
+        assert_eq!(haiku, get_provider_shade("anthropic", 2));
+    }
+
+    #[test]
+    fn test_shade_map_dedupes_same_model_across_workspaces() {
+        // Same model appearing N times in different workspaces (as happens
+        // under GroupBy::WorkspaceModel) must not inflate the rank count.
+        let mut app = make_app();
+        app.data.models = vec![
+            model_usage("claude-sonnet-4-5", 20.0, Some("ws-a")),
+            model_usage("claude-sonnet-4-5", 20.0, Some("ws-b")),
+            model_usage("claude-sonnet-4-5", 20.0, Some("ws-c")),
+            model_usage("claude-haiku-4-5", 5.0, None),
+        ];
+        app.build_model_shade_map();
+
+        // Only two distinct model names should be in the map; sonnet takes
+        // rank 0 (aggregate cost 60 > haiku cost 5).
+        assert_eq!(app.model_shade_map.len(), 2);
+        assert_eq!(
+            app.model_shade_map
+                .get(&shade_key("anthropic", "claude-sonnet-4-5"))
+                .copied(),
+            Some(get_provider_shade("anthropic", 0))
+        );
+        assert_eq!(
+            app.model_shade_map
+                .get(&shade_key("anthropic", "claude-haiku-4-5"))
+                .copied(),
+            Some(get_provider_shade("anthropic", 1))
+        );
+    }
+
+    #[test]
+    fn test_shade_map_is_deterministic_on_cost_ties() {
+        // All-zero costs (fresh data) must produce a stable shade assignment
+        // across refreshes so the chart doesn't flicker.
+        let ranks = |app: &App| {
+            let a = app
+                .model_shade_map
+                .get(&shade_key("anthropic", "claude-alpha"))
+                .copied();
+            let b = app
+                .model_shade_map
+                .get(&shade_key("anthropic", "claude-beta"))
+                .copied();
+            let c = app
+                .model_shade_map
+                .get(&shade_key("anthropic", "claude-gamma"))
+                .copied();
+            (a, b, c)
+        };
+
+        let mut app1 = make_app();
+        app1.data.models = vec![
+            model_usage("claude-gamma", 0.0, None),
+            model_usage("claude-alpha", 0.0, None),
+            model_usage("claude-beta", 0.0, None),
+        ];
+        app1.build_model_shade_map();
+
+        let mut app2 = make_app();
+        app2.data.models = vec![
+            model_usage("claude-beta", 0.0, None),
+            model_usage("claude-gamma", 0.0, None),
+            model_usage("claude-alpha", 0.0, None),
+        ];
+        app2.build_model_shade_map();
+
+        assert_eq!(ranks(&app1), ranks(&app2));
+        // alpha sorts first by name so it gets rank 0 on ties.
+        assert_eq!(
+            app1.model_shade_map
+                .get(&shade_key("anthropic", "claude-alpha"))
+                .copied(),
+            Some(get_provider_shade("anthropic", 0))
+        );
+    }
+
+    #[test]
+    fn test_shade_map_handles_nan_cost() {
+        // NaN costs must not propagate into total_cmp ordering surprises or
+        // crash the builder.
+        let mut app = make_app();
+        app.data.models = vec![
+            model_usage("claude-nan", f64::NAN, None),
+            model_usage("claude-normal", 1.0, None),
+        ];
+        app.build_model_shade_map();
+
+        assert_eq!(app.model_shade_map.len(), 2);
+        // Normal model outranks NaN (which is coerced to 0).
+        assert_eq!(
+            app.model_shade_map
+                .get(&shade_key("anthropic", "claude-normal"))
+                .copied(),
+            Some(get_provider_shade("anthropic", 0))
+        );
+    }
+
+    #[test]
+    fn test_shade_map_separates_providers() {
+        let mut app = make_app();
+        app.data.models = vec![
+            ModelUsage {
+                model: "claude-opus-4-5".to_string(),
+                provider: "anthropic".to_string(),
+                client: "claude".to_string(),
+                workspace_key: None,
+                workspace_label: None,
+                tokens: TokenBreakdown::default(),
+                cost: 10.0,
+                session_count: 1,
+            },
+            ModelUsage {
+                model: "gpt-5".to_string(),
+                provider: "openai".to_string(),
+                client: "codex".to_string(),
+                workspace_key: None,
+                workspace_label: None,
+                tokens: TokenBreakdown::default(),
+                cost: 1.0,
+                session_count: 1,
+            },
+        ];
+        app.build_model_shade_map();
+
+        // Each provider ranks independently — both get rank-0 shades.
+        assert_eq!(
+            app.model_shade_map
+                .get(&shade_key("anthropic", "claude-opus-4-5"))
+                .copied(),
+            Some(get_provider_shade("anthropic", 0))
+        );
+        assert_eq!(
+            app.model_shade_map
+                .get(&shade_key("openai", "gpt-5"))
+                .copied(),
+            Some(get_provider_shade("openai", 0))
+        );
+    }
+
+    #[test]
+    fn test_shade_map_rebuilds_on_update_data() {
+        let mut app = make_app();
+        app.data.models = vec![model_usage("claude-opus-4-5", 10.0, None)];
+        app.build_model_shade_map();
+        assert!(app
+            .model_shade_map
+            .contains_key(&shade_key("anthropic", "claude-opus-4-5")));
+
+        let fresh = UsageData {
+            models: vec![model_usage("claude-sonnet-4-5", 5.0, None)],
+            ..UsageData::default()
+        };
+        app.update_data(fresh);
+
+        assert!(!app
+            .model_shade_map
+            .contains_key(&shade_key("anthropic", "claude-opus-4-5")));
+        assert!(app
+            .model_shade_map
+            .contains_key(&shade_key("anthropic", "claude-sonnet-4-5")));
+    }
+
+    #[test]
+    fn test_same_model_name_keeps_distinct_provider_colors() {
+        let mut app = make_app();
+        app.data.models = vec![
+            ModelUsage {
+                model: "sonnet-shared".to_string(),
+                provider: "anthropic".to_string(),
+                client: "claude".to_string(),
+                workspace_key: None,
+                workspace_label: None,
+                tokens: TokenBreakdown::default(),
+                cost: 10.0,
+                session_count: 1,
+            },
+            ModelUsage {
+                model: "sonnet-shared".to_string(),
+                provider: "openai".to_string(),
+                client: "codex".to_string(),
+                workspace_key: None,
+                workspace_label: None,
+                tokens: TokenBreakdown::default(),
+                cost: 5.0,
+                session_count: 1,
+            },
+        ];
+        app.build_model_shade_map();
+
+        assert_eq!(
+            app.model_color_for("anthropic", "sonnet-shared"),
+            get_provider_shade("anthropic", 0)
+        );
+        assert_eq!(
+            app.model_color_for("openai", "sonnet-shared"),
+            get_provider_shade("openai", 0)
+        );
+        assert_ne!(
+            app.model_color_for("anthropic", "sonnet-shared"),
+            app.model_color_for("openai", "sonnet-shared")
+        );
     }
 }
