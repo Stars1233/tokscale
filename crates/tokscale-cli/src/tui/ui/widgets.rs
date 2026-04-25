@@ -70,16 +70,19 @@ pub fn get_provider_shade(provider: &str, rank: usize) -> Color {
     if let Some(base) = TokscaleConfig::load().get_provider_color(provider) {
         return shade_from_base(base, rank);
     }
-    let palette: &[(u8, u8, u8)] = match provider {
-        "anthropic" => &ANTHROPIC_SHADES,
-        "openai" => &OPENAI_SHADES,
-        "google" => &GOOGLE_SHADES,
-        "deepseek" => &DEEPSEEK_SHADES,
-        "xai" => &XAI_SHADES,
-        "meta" => &META_SHADES,
-        "cursor" => &CURSOR_SHADES,
+
+    let p = provider.to_lowercase();
+    let palette: &[(u8, u8, u8)] = match p.as_str() {
+        s if s.contains("anthropic") => &ANTHROPIC_SHADES,
+        s if s.contains("openai") => &OPENAI_SHADES,
+        s if s.contains("google") || s.contains("gemini") => &GOOGLE_SHADES,
+        s if s.contains("deepseek") => &DEEPSEEK_SHADES,
+        s if s.contains("xai") || s.contains("grok") => &XAI_SHADES,
+        s if s.contains("meta") || s.contains("llama") => &META_SHADES,
+        s if s.contains("cursor") => &CURSOR_SHADES,
         _ => &UNKNOWN_SHADES,
     };
+
     let idx = rank.min(palette.len() - 1);
     let (r, g, b) = palette[idx];
     Color::Rgb(r, g, b)
@@ -349,5 +352,29 @@ mod tests {
         let last = get_provider_shade("anthropic", 6);
         let past_end = get_provider_shade("anthropic", 99);
         assert_eq!(last, past_end);
+    }
+
+    #[test]
+    fn get_provider_shade_fuzzy_matching() {
+        assert_eq!(
+            get_provider_shade("test-anthropic", 0),
+            get_provider_shade("anthropic", 0)
+        );
+        assert_eq!(
+            get_provider_shade("company-google", 0),
+            get_provider_shade("google", 0)
+        );
+        assert_eq!(
+            get_provider_shade("openrouter-gemini-prod", 0),
+            get_provider_shade("google", 0)
+        );
+        assert_eq!(
+            get_provider_shade("deepseek-api", 0),
+            get_provider_shade("deepseek", 0)
+        );
+        assert_eq!(
+            get_provider_shade("meta-llama-endpoint", 0),
+            get_provider_shade("meta", 0)
+        );
     }
 }
