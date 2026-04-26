@@ -32,6 +32,7 @@ export const SOURCE_DISPLAY_NAMES: Record<string, string> = {
   gemini: "Gemini CLI",
   cursor: "Cursor",
   amp: "Amp",
+  codebuff: "Codebuff",
   droid: "Droid",
   openclaw: "OpenClaw",
   hermes: "Hermes Agent",
@@ -43,6 +44,8 @@ export const SOURCE_DISPLAY_NAMES: Record<string, string> = {
   kilo: "Kilo",
   mux: "Mux",
   crush: "Crush",
+  goose: "Goose",
+  antigravity: "Antigravity",
   synthetic: "Synthetic",
 };
 
@@ -56,6 +59,7 @@ export const SOURCE_LOGOS: Record<string, string> = {
   gemini: `${GITHUB_CDN_BASE}/client-gemini.png`,
   cursor: `${GITHUB_CDN_BASE}/client-cursor.jpg`,
   amp: `${GITHUB_CDN_BASE}/client-amp.png`,
+  codebuff: "https://avatars.githubusercontent.com/u/189203002?s=200&v=4",
   droid: `${GITHUB_CDN_BASE}/client-droid.png`,
   openclaw: `${GITHUB_CDN_BASE}/client-openclaw.jpg`,
   hermes: `${GITHUB_CDN_BASE}/client-hermes.png`,
@@ -67,6 +71,8 @@ export const SOURCE_LOGOS: Record<string, string> = {
   kilo: `${GITHUB_CDN_BASE}/client-kilocode.png`,
   mux: `${GITHUB_CDN_BASE}/client-mux.png`,
   crush: `${GITHUB_CDN_BASE}/client-crush.png`,
+  goose: `${GITHUB_CDN_BASE}/client-goose.png`,
+  antigravity: "https://antigravity.google/favicon.ico",
   synthetic: `${GITHUB_CDN_BASE}/client-synthetic.png`,
 };
 
@@ -78,6 +84,7 @@ export const SOURCE_COLORS: Record<string, string> = {
   gemini: "#8b5cf6",
   cursor: "#22c55e",
   amp: "#EC4899",
+  codebuff: "#7C3AED",
   droid: "#1F1D1C",
   openclaw: "#EF4444",
   hermes: "#FFD700",
@@ -89,6 +96,8 @@ export const SOURCE_COLORS: Record<string, string> = {
   kilo: "#F59E0B",
   mux: "#171717",
   crush: "#DC2626",
+  goose: "#64B4DC",
+  antigravity: "#6366F1",
   synthetic: "#4ADE80",
 };
 
