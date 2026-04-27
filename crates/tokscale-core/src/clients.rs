@@ -2,6 +2,7 @@
 pub enum PathRoot {
     Home,
     XdgData,
+    Config,
     EnvVar {
         var: &'static str,
         fallback_relative: &'static str,
@@ -19,6 +20,36 @@ impl PathRoot {
                 } else {
                     format!("{}/.local/share", home_dir)
                 }
+            }
+            PathRoot::Config => {
+                if use_env_roots {
+                    if let Some(custom) = std::env::var_os("TOKSCALE_CONFIG_DIR") {
+                        if !custom.is_empty() {
+                            return custom.to_string_lossy().into_owned();
+                        }
+                    }
+
+                    #[cfg(target_os = "linux")]
+                    if let Ok(xdg_config_home) = std::env::var("XDG_CONFIG_HOME") {
+                        return format!("{xdg_config_home}/tokscale");
+                    }
+                }
+
+                // Match paths::get_config_dir() platform branches so the
+                // scanner reads from the same root the writer (e.g.
+                // get_antigravity_cache_dir) targets. Hardcoding
+                // `{home}/.config/tokscale` everywhere would diverge from
+                // dirs::config_dir() on Windows (where it resolves to
+                // %APPDATA%\tokscale), causing synced data to land in
+                // %APPDATA% while the scanner looks in %USERPROFILE%.
+                #[cfg(target_os = "windows")]
+                {
+                    if let Some(dir) = dirs::config_dir() {
+                        return dir.join("tokscale").to_string_lossy().into_owned();
+                    }
+                }
+
+                format!("{home_dir}/.config/tokscale")
             }
             PathRoot::EnvVar {
                 var,
@@ -325,8 +356,8 @@ define_clients!(
     },
     Antigravity = 20 => {
         id: "antigravity",
-        root: PathRoot::Home,
-        relative: ".config/tokscale/antigravity-cache/sessions",
+        root: PathRoot::Config,
+        relative: "antigravity-cache/sessions",
         pattern: "*.jsonl",
         headless: false,
         parse_local: true,
@@ -439,6 +470,86 @@ mod tests {
         assert_eq!(resolved, "/tmp/home/.local/share");
 
         restore_env("XDG_DATA_HOME", previous);
+    }
+
+    #[test]
+    fn test_path_root_config_uses_override_when_set() {
+        let _guard = env_lock().lock().unwrap();
+        let previous_override = std::env::var("TOKSCALE_CONFIG_DIR").ok();
+        let previous_xdg = std::env::var("XDG_CONFIG_HOME").ok();
+        unsafe {
+            std::env::set_var("TOKSCALE_CONFIG_DIR", "/tmp/custom-config-root");
+            std::env::set_var("XDG_CONFIG_HOME", "/tmp/xdg-config-home");
+        }
+
+        let resolved = PathRoot::Config.resolve("/tmp/home");
+        assert_eq!(resolved, "/tmp/custom-config-root");
+
+        restore_env("TOKSCALE_CONFIG_DIR", previous_override);
+        restore_env("XDG_CONFIG_HOME", previous_xdg);
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn test_path_root_config_uses_xdg_config_home_when_override_unset() {
+        let _guard = env_lock().lock().unwrap();
+        let previous_override = std::env::var("TOKSCALE_CONFIG_DIR").ok();
+        let previous_xdg = std::env::var("XDG_CONFIG_HOME").ok();
+        unsafe {
+            std::env::remove_var("TOKSCALE_CONFIG_DIR");
+            std::env::set_var("XDG_CONFIG_HOME", "/tmp/xdg-config-home");
+        }
+
+        let resolved = PathRoot::Config.resolve("/tmp/home");
+        assert_eq!(resolved, "/tmp/xdg-config-home/tokscale");
+
+        restore_env("TOKSCALE_CONFIG_DIR", previous_override);
+        restore_env("XDG_CONFIG_HOME", previous_xdg);
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn test_path_root_config_uses_dirs_config_dir_on_windows() {
+        // Windows must resolve PathRoot::Config to the same root that
+        // paths::get_config_dir() and get_antigravity_cache_dir() use,
+        // i.e. dirs::config_dir() (= %APPDATA%\tokscale). Hardcoding
+        // {home}/.config/tokscale would diverge from the writer side
+        // and silently hide synced Antigravity data from reports.
+        let _guard = env_lock().lock().unwrap();
+        let previous_override = std::env::var("TOKSCALE_CONFIG_DIR").ok();
+        unsafe {
+            std::env::remove_var("TOKSCALE_CONFIG_DIR");
+        }
+
+        let resolved = PathRoot::Config.resolve("C:\\fake-home");
+        let expected = dirs::config_dir()
+            .expect("Windows always exposes dirs::config_dir")
+            .join("tokscale")
+            .to_string_lossy()
+            .into_owned();
+        assert_eq!(
+            resolved, expected,
+            "PathRoot::Config on Windows must match dirs::config_dir().join('tokscale') so the scanner agrees with the writer"
+        );
+
+        restore_env("TOKSCALE_CONFIG_DIR", previous_override);
+    }
+
+    #[test]
+    fn test_path_root_config_ignores_env_when_disabled() {
+        let _guard = env_lock().lock().unwrap();
+        let previous_override = std::env::var("TOKSCALE_CONFIG_DIR").ok();
+        let previous_xdg = std::env::var("XDG_CONFIG_HOME").ok();
+        unsafe {
+            std::env::set_var("TOKSCALE_CONFIG_DIR", "/tmp/custom-config-root");
+            std::env::set_var("XDG_CONFIG_HOME", "/tmp/xdg-config-home");
+        }
+
+        let resolved = PathRoot::Config.resolve_with_env_strategy("/tmp/home", false);
+        assert_eq!(resolved, "/tmp/home/.config/tokscale");
+
+        restore_env("TOKSCALE_CONFIG_DIR", previous_override);
+        restore_env("XDG_CONFIG_HOME", previous_xdg);
     }
 
     #[test]

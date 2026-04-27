@@ -18,11 +18,25 @@ fn prime_pricing_cache(base: &Path) {
     for dir in [
         base.join("Library/Caches/tokscale"),
         base.join(".cache/tokscale"),
+        base.join(".config/tokscale/cache"),
     ] {
         fs::create_dir_all(&dir).unwrap();
         fs::write(dir.join("pricing-litellm.json"), &payload).unwrap();
         fs::write(dir.join("pricing-openrouter.json"), &payload).unwrap();
     }
+}
+
+fn prime_override_pricing_cache(config_dir: &Path) {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system time before unix epoch")
+        .as_secs();
+    let payload = format!(r#"{{"timestamp":{},"data":{{}}}}"#, now);
+
+    let cache_dir = config_dir.join("cache");
+    fs::create_dir_all(&cache_dir).unwrap();
+    fs::write(cache_dir.join("pricing-litellm.json"), &payload).unwrap();
+    fs::write(cache_dir.join("pricing-openrouter.json"), &payload).unwrap();
 }
 
 /// Create a temporary directory with minimal OpenCode fixture data.
@@ -274,7 +288,13 @@ fn cmd_with_conflicting_env(tmp: &Path) -> Command {
 
 fn offline_cmd_with_home(tmp: &Path) -> Command {
     let mut cmd = cargo_bin_cmd!("tokscale");
+    // Pin every XDG_* var so the cache resolvers stay inside the sandbox.
+    // Without XDG_CONFIG_HOME the post-#470 cache root can leak to the
+    // host's $XDG_CONFIG_HOME (set globally on some CI runners) and
+    // either find pricing data outside the fixture or write to the
+    // host filesystem. Mirrors what cmd_with_home does.
     cmd.env("HOME", tmp)
+        .env("XDG_CONFIG_HOME", tmp.join(".config"))
         .env("XDG_DATA_HOME", tmp.join(".local/share"))
         .env("XDG_CACHE_HOME", tmp.join(".cache"))
         .env("HTTP_PROXY", "http://127.0.0.1:9")
@@ -290,7 +310,16 @@ fn write_pricing_cache(base: &Path, timestamp: u64) {
     );
     let openrouter = format!(r#"{{"timestamp":{},"data":{{}}}}"#, timestamp);
 
+    // Seed all three locations so the test exercises the same fallback
+    // chain the binary uses post-#470: canonical
+    // <config_dir>/cache/, then legacy dirs::cache_dir()/tokscale, then
+    // ~/.cache/tokscale. Without the canonical path seeded, CI runners
+    // where dirs::cache_dir() resolves outside the sandboxed HOME (e.g.
+    // some Linux runners with XDG_CACHE_HOME set globally) miss the
+    // pricing cache entirely and the report falls back to embedded
+    // source costs.
     for dir in [
+        base.join(".config/tokscale/cache"),
         base.join("Library/Caches/tokscale"),
         base.join(".cache/tokscale"),
     ] {
@@ -1707,6 +1736,25 @@ fn test_root_light_output() {
         .assert()
         .success()
         .stdout(predicate::str::contains("Token Usage Report by Model"));
+}
+
+#[test]
+fn light_with_write_cache_writes_to_canonical_path() {
+    let tmp = create_temp_fixture_dir();
+    let config_dir = tmp.path().join("custom-config-root");
+    prime_override_pricing_cache(&config_dir);
+
+    cmd_with_home(tmp.path())
+        .env("TOKSCALE_CONFIG_DIR", &config_dir)
+        .args(["--light", "--opencode", "--write-cache", "--no-spinner"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Token Usage Report by Model"));
+
+    assert!(
+        config_dir.join("cache/tui-data-cache.json").exists(),
+        "--write-cache should populate the canonical cache path"
+    );
 }
 
 #[test]
