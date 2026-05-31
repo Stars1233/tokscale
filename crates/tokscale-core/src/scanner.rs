@@ -164,6 +164,29 @@ impl ScanResult {
 
         paths
     }
+
+    /// Return every Zed threads SQLite database that should be parsed.
+    pub fn zed_db_paths(&self) -> Vec<PathBuf> {
+        let mut paths = Vec::new();
+        let mut seen: HashSet<PathBuf> = HashSet::new();
+
+        let mut push = |path: &Path| {
+            let key = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+            if seen.insert(key) {
+                paths.push(path.to_path_buf());
+            }
+        };
+
+        if let Some(path) = &self.zed_db {
+            push(path);
+        }
+
+        for path in self.get(ClientId::Zed) {
+            push(path);
+        }
+
+        paths
+    }
 }
 
 pub fn headless_roots_with_env_strategy(home_dir: &str, use_env_roots: bool) -> Vec<PathBuf> {
@@ -278,6 +301,7 @@ pub fn scan_directory(root: &str, pattern: &str) -> Vec<PathBuf> {
                 "session-usage.json" => file_name == "session-usage.json",
                 "chat-messages.json" => file_name == "chat-messages.json",
                 "state.db" => file_name == "state.db",
+                "threads.db" => file_name == "threads.db",
                 _ => false,
             }
         })
@@ -505,11 +529,11 @@ fn supports_extra_dir_scanning(client_id: ClientId) -> bool {
     // Kilo CLI currently loads a single SQLite DB via `scan_result.kilo_db`
     // Roo/KiloCode require local + remote and server task roots, and Crush
     // discovers SQLite DBs via the project registry rather than scanned file
-    // paths. Hermes profile databases are named `state.db`, so they can use
-    // `extraScanPaths` once `scan_directory` knows that exact filename.
+    // paths. Hermes/Zed profile databases are named consistently enough for
+    // `scan_directory` to find them from user-provided roots.
     !matches!(
         client_id,
-        ClientId::Kilo | ClientId::Crush | ClientId::Goose | ClientId::Zed
+        ClientId::Kilo | ClientId::Crush | ClientId::Goose
     )
 }
 
@@ -1820,6 +1844,33 @@ mod tests {
 
         assert_eq!(result.hermes_db.as_ref(), Some(&default_db));
         assert_eq!(result.hermes_db_paths(), vec![default_db, profile_db]);
+    }
+
+    #[test]
+    fn test_scan_all_clients_with_scanner_settings_merges_zed_extra_threads_db() {
+        let dir = TempDir::new().unwrap();
+        let home = dir.path();
+
+        let windows_threads_dir = home.join("AppData/Local/Zed/threads");
+        fs::create_dir_all(&windows_threads_dir).unwrap();
+        let threads_db = windows_threads_dir.join("threads.db");
+        File::create(&threads_db).unwrap();
+
+        let settings: ScannerSettings = serde_json::from_value(serde_json::json!({
+            "extraScanPaths": {
+                "zed": [windows_threads_dir]
+            }
+        }))
+        .unwrap();
+
+        let result = scan_all_clients_with_scanner_settings(
+            home.to_str().unwrap(),
+            &["zed".to_string()],
+            false,
+            &settings,
+        );
+
+        assert_eq!(result.zed_db_paths(), vec![threads_db]);
     }
 
     #[test]

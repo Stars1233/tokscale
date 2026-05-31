@@ -1223,8 +1223,8 @@ fn parse_all_messages_with_pricing_with_env_strategy(
         all_messages.extend(goose_messages);
     }
 
-    if let Some(db_path) = &scan_result.zed_db {
-        let outcome = load_or_parse_sqlite_source(db_path, &source_cache, pricing, |path| {
+    for db_path in scan_result.zed_db_paths() {
+        let outcome = load_or_parse_sqlite_source(&db_path, &source_cache, pricing, |path| {
             sessions::zed::parse_zed_sqlite(path)
         });
         all_messages.extend(outcome.messages);
@@ -2351,9 +2351,11 @@ pub fn parse_local_clients(options: LocalParseOptions) -> Result<ParsedMessages,
         messages.extend(goose_msgs);
     }
 
-    if let Some(db_path) = &scan_result.zed_db {
-        let zed_msgs: Vec<ParsedMessage> = sessions::zed::parse_zed_sqlite(db_path)
-            .into_iter()
+    let zed_db_paths = scan_result.zed_db_paths();
+    if !zed_db_paths.is_empty() {
+        let zed_msgs: Vec<ParsedMessage> = zed_db_paths
+            .iter()
+            .flat_map(|db_path| sessions::zed::parse_zed_sqlite(db_path))
             .map(|msg| unified_to_parsed(&msg))
             .collect();
         let count = summed_parsed_message_count(&zed_msgs);
@@ -2716,6 +2718,49 @@ mod tests {
         )
         .unwrap();
         conn
+    }
+
+    fn create_zed_sqlite_db(db_path: &std::path::Path) -> rusqlite::Connection {
+        let conn = rusqlite::Connection::open(db_path).unwrap();
+        conn.execute_batch(
+            "CREATE TABLE threads (
+                id TEXT PRIMARY KEY,
+                summary TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                data_type TEXT NOT NULL,
+                data BLOB NOT NULL
+            );",
+        )
+        .unwrap();
+        conn
+    }
+
+    fn insert_zed_thread(conn: &rusqlite::Connection, id: &str, model: &str) {
+        let payload = format!(
+            r#"{{
+                "version": "0.3.0",
+                "title": "Test thread",
+                "updated_at": "2026-05-01T12:30:00Z",
+                "request_token_usage": {{
+                    "turn-1": {{
+                        "input_tokens": 42,
+                        "output_tokens": 7,
+                        "cache_creation_input_tokens": 3,
+                        "cache_read_input_tokens": 5
+                    }}
+                }},
+                "model": {{
+                    "provider": "zed.dev",
+                    "model": "{model}"
+                }},
+                "imported": false
+            }}"#
+        );
+        conn.execute(
+            "INSERT INTO threads (id, summary, updated_at, data_type, data) VALUES (?1, ?2, ?3, ?4, ?5)",
+            rusqlite::params![id, "Test thread", "2026-05-01T12:30:00Z", "json", payload.as_bytes()],
+        )
+        .unwrap();
     }
 
     fn insert_hermes_session(
@@ -5825,6 +5870,124 @@ mod tests {
         assert_eq!(parsed_with_settings.messages[0].model_id, "claude-sonnet-4");
         assert_eq!(parsed_with_settings.messages[0].input, 100);
         assert_eq!(parsed_with_settings.messages[0].output, 25);
+    }
+
+    #[test]
+    fn test_parse_local_clients_honors_scanner_extra_scan_paths_for_zed_threads_db() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let windows_threads_dir = temp_dir.path().join("AppData/Local/Zed/threads");
+        std::fs::create_dir_all(&windows_threads_dir).unwrap();
+        let threads_db = windows_threads_dir.join("threads.db");
+        let conn = create_zed_sqlite_db(&threads_db);
+        insert_zed_thread(&conn, "zed-extra-thread", "claude-sonnet-4-5");
+        drop(conn);
+
+        let parsed_default = parse_local_clients(LocalParseOptions {
+            home_dir: Some(temp_dir.path().to_str().unwrap().to_string()),
+            use_env_roots: false,
+            clients: Some(vec!["zed".to_string()]),
+            since: None,
+            until: None,
+            year: None,
+            scanner_settings: scanner::ScannerSettings::default(),
+        })
+        .unwrap();
+        assert_eq!(parsed_default.counts.get(ClientId::Zed), 0);
+        assert!(parsed_default.messages.is_empty());
+
+        let mut extra_scan_paths = std::collections::BTreeMap::new();
+        extra_scan_paths.insert("zed".to_string(), vec![windows_threads_dir]);
+        let parsed_with_settings = parse_local_clients(LocalParseOptions {
+            home_dir: Some(temp_dir.path().to_str().unwrap().to_string()),
+            use_env_roots: false,
+            clients: Some(vec!["zed".to_string()]),
+            since: None,
+            until: None,
+            year: None,
+            scanner_settings: scanner::ScannerSettings {
+                extra_scan_paths,
+                ..Default::default()
+            },
+        })
+        .unwrap();
+
+        assert_eq!(parsed_with_settings.counts.get(ClientId::Zed), 1);
+        assert_eq!(parsed_with_settings.messages.len(), 1);
+        assert_eq!(parsed_with_settings.messages[0].client, "zed");
+        assert_eq!(
+            parsed_with_settings.messages[0].session_id,
+            "zed-extra-thread"
+        );
+        assert_eq!(
+            parsed_with_settings.messages[0].model_id,
+            "claude-sonnet-4-5"
+        );
+        assert_eq!(parsed_with_settings.messages[0].input, 42);
+        assert_eq!(parsed_with_settings.messages[0].output, 7);
+    }
+
+    #[test]
+    fn test_parse_local_clients_dedups_zed_threads_across_default_and_extra_dbs() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+
+        // Place threads.db at the default platform path so the scanner finds it
+        // as `zed_db` AND we also pass it via extraScanPaths.
+        let default_threads_dir = temp_dir.path().join(".local/share/zed/threads");
+        std::fs::create_dir_all(&default_threads_dir).unwrap();
+        let default_db = default_threads_dir.join("threads.db");
+        let conn = create_zed_sqlite_db(&default_db);
+        insert_zed_thread(&conn, "shared-zed-thread", "claude-sonnet-4-5");
+        drop(conn);
+
+        // Point extraScanPaths.zed at the same directory — dedup should prevent
+        // the thread from appearing twice.
+        let mut extra_scan_paths = std::collections::BTreeMap::new();
+        extra_scan_paths.insert("zed".to_string(), vec![default_threads_dir.clone()]);
+        let parsed = parse_local_clients(LocalParseOptions {
+            home_dir: Some(temp_dir.path().to_str().unwrap().to_string()),
+            use_env_roots: false,
+            clients: Some(vec!["zed".to_string()]),
+            since: None,
+            until: None,
+            year: None,
+            scanner_settings: scanner::ScannerSettings {
+                extra_scan_paths,
+                ..Default::default()
+            },
+        })
+        .unwrap();
+
+        // Should see exactly 1 message, not 2 (deduped by canonicalize).
+        assert_eq!(parsed.counts.get(ClientId::Zed), 1);
+        assert_eq!(parsed.messages.len(), 1);
+        assert_eq!(parsed.messages[0].session_id, "shared-zed-thread");
+    }
+
+    #[test]
+    fn test_parse_local_clients_zed_extra_scan_paths_nonexistent_dir_is_silent() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+
+        let mut extra_scan_paths = std::collections::BTreeMap::new();
+        extra_scan_paths.insert(
+            "zed".to_string(),
+            vec![temp_dir.path().join("does/not/exist")],
+        );
+        let parsed = parse_local_clients(LocalParseOptions {
+            home_dir: Some(temp_dir.path().to_str().unwrap().to_string()),
+            use_env_roots: false,
+            clients: Some(vec!["zed".to_string()]),
+            since: None,
+            until: None,
+            year: None,
+            scanner_settings: scanner::ScannerSettings {
+                extra_scan_paths,
+                ..Default::default()
+            },
+        })
+        .unwrap();
+
+        assert_eq!(parsed.counts.get(ClientId::Zed), 0);
+        assert!(parsed.messages.is_empty());
     }
 
     #[test]
