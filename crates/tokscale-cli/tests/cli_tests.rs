@@ -434,7 +434,8 @@ fn create_conflicting_codex_fixture_dir() -> TempDir {
     tmp
 }
 
-/// Build a Command pointing HOME at the given temp dir, with --no-spinner and --opencode flags.
+/// Build a Command pointing HOME and the XDG dirs at the given temp dir for
+/// hermetic test runs (no flags are added; callers append their own).
 fn cmd_with_home(tmp: &Path) -> Command {
     let mut cmd = cargo_bin_cmd!("tokscale");
     cmd.env("HOME", tmp)

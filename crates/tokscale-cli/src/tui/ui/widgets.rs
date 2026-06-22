@@ -390,12 +390,12 @@ pub fn get_provider_display_name(provider: &str) -> String {
     if provider.contains(", ") {
         return provider
             .split(", ")
-            .map(|segment| map_single_provider(segment, &config))
+            .map(|segment| map_single_provider(segment, config))
             .collect::<Vec<_>>()
             .join(", ");
     }
 
-    map_single_provider(provider, &config)
+    map_single_provider(provider, config)
 }
 
 /// Display name for a SINGLE provider id (no comma-joined lists — the public
