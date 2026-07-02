@@ -4,7 +4,7 @@
 //! and per-session event metadata in `~/.copilot/session-state/{session_id}`.
 
 use super::{normalize_workspace_key, workspace_label_from_key, UnifiedMessage};
-use crate::{provider_identity::inferred_provider_from_model, TokenBreakdown};
+use crate::provider_identity::inferred_provider_from_model;
 use chrono::{DateTime, NaiveDateTime};
 use rusqlite::{Connection, OpenFlags};
 use serde_json::Value;
@@ -144,13 +144,17 @@ fn session_row_to_message(db_path: &Path, row: CopilotDesktopSessionRow) -> Unif
         provider_id,
         row.id.clone(),
         timestamp_ms,
-        TokenBreakdown {
-            input: row.total_input_tokens.max(0),
-            output: row.total_output_tokens.max(0),
-            cache_read: row.total_cached_tokens.max(0),
-            cache_write: 0,
-            reasoning: row.total_reasoning_tokens.max(0),
-        },
+        // Copilot reports input tokens inclusive of cache reads (same convention
+        // as the OTEL exporter that feeds this same session data). Reuse the
+        // shared normalizer so the desktop-DB and OTEL paths never diverge and
+        // additive pricing does not double-charge the cached portion.
+        super::copilot::normalize_input_tokens(
+            row.total_input_tokens,
+            row.total_output_tokens,
+            row.total_cached_tokens,
+            0,
+            row.total_reasoning_tokens,
+        ),
         0.0,
         Some(format!("copilot-desktop:{}", row.id)),
     );
@@ -232,6 +236,14 @@ fn parse_iso8601_timestamp_ms(value: &str) -> Option<i64> {
         })
         .or_else(|| {
             NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S%.f")
+                .ok()
+                .map(|timestamp| timestamp.and_utc().timestamp_millis())
+        })
+        .or_else(|| {
+            // SQLite's default datetime() text form is space-separated and may
+            // carry fractional seconds ("2026-07-01 12:34:56.789"); without this
+            // branch it fails every parse above and the session lands in 1970.
+            NaiveDateTime::parse_from_str(value, "%Y-%m-%d %H:%M:%S%.f")
                 .ok()
                 .map(|timestamp| timestamp.and_utc().timestamp_millis())
         })
@@ -341,7 +353,9 @@ mod tests {
         assert_eq!(message.provider_id, "openai");
         assert_eq!(message.session_id, "session-1");
         assert_eq!(message.timestamp, 1_782_909_296_000);
-        assert_eq!(message.tokens.input, 100);
+        // total_input_tokens is inclusive of cache reads, so the cached portion
+        // (25) is normalized out of input: 100 - 25 = 75.
+        assert_eq!(message.tokens.input, 75);
         assert_eq!(message.tokens.output, 50);
         assert_eq!(message.tokens.cache_read, 25);
         assert_eq!(message.tokens.cache_write, 0);
@@ -400,5 +414,24 @@ mod tests {
 
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].provider_id, "github-copilot");
+    }
+
+    #[test]
+    fn parse_iso8601_handles_space_separated_fractional_seconds() {
+        // SQLite datetime() text form; must not fall through to the 1970 default.
+        let ms = parse_iso8601_timestamp_ms("2026-07-01 12:34:56.789")
+            .expect("space + fractional seconds should parse");
+        assert_eq!(ms, 1_782_909_296_789);
+
+        // Sibling formats still parse.
+        assert_eq!(
+            parse_iso8601_timestamp_ms("2026-07-01T12:34:56Z"),
+            Some(1_782_909_296_000)
+        );
+        assert_eq!(
+            parse_iso8601_timestamp_ms("2026-07-01 12:34:56"),
+            Some(1_782_909_296_000)
+        );
+        assert_eq!(parse_iso8601_timestamp_ms("not-a-timestamp"), None);
     }
 }
