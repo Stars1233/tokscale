@@ -558,8 +558,17 @@ fn render_medium_loaded(frame: &mut Frame, app: &mut App, area: Rect, outputs: &
     let selected = &outputs[selected_index];
     let summary_height = if area.height >= 36 { 8 } else { 6 }.min(area.height);
     let base_selected_height = if area.height >= 36 { 11 } else { 9 };
+    // Reserve enough rows for the accounts table's borders + header + a
+    // handful of account rows so the dynamic selected-panel height can only
+    // grow into space that is genuinely spare, never collapsing the table.
+    let accounts_table_min_height: u16 = 9;
     let selected_height = if has_available_reset_credit(selected) {
-        medium_selected_account_preferred_height(selected)
+        let max_dynamic_height = area
+            .height
+            .saturating_sub(summary_height)
+            .saturating_sub(accounts_table_min_height)
+            .max(base_selected_height);
+        medium_selected_account_preferred_height(selected).min(max_dynamic_height)
     } else {
         base_selected_height
     }
@@ -1299,7 +1308,15 @@ fn append_selected_reset_credit_lines(
         return;
     }
 
-    let available = max_lines.saturating_sub(lines.len());
+    // Leave room for the sections rendered after the reset schedule (a blank
+    // spacer, the "Limits" heading, at least one metric row, and the
+    // snapshot line) so a long expiry list can't push them off screen, while
+    // still keeping a small floor for an expiry line plus "+N more".
+    let trailing_rows_reserved = 4usize;
+    let expiry_budget = max_lines
+        .saturating_sub(trailing_rows_reserved)
+        .max(lines.len() + 2);
+    let available = expiry_budget.saturating_sub(lines.len());
     let visible_count = if buckets.len() > available {
         available.saturating_sub(1)
     } else {
@@ -1465,23 +1482,23 @@ fn nearest_credit_expiry_label(buckets: &[(String, usize)]) -> Option<String> {
 
 fn credit_expiry_buckets<'a>(expiries: impl Iterator<Item = &'a str>) -> Vec<(String, usize)> {
     let mut values: Vec<String> = expiries.map(str::to_string).collect();
+    // Sort by the raw RFC3339 value so buckets stay in chronological order,
+    // then group by the formatted label below, since `format_reset_time` has
+    // only minute granularity and would otherwise render two entries whose
+    // raw timestamps differ only by seconds as separate identical lines.
     values.sort();
 
-    let mut buckets = Vec::new();
-    let mut current: Option<String> = None;
-    let mut count = 0usize;
+    let mut buckets: Vec<(String, usize)> = Vec::new();
     for value in values {
-        if current.as_deref() == Some(value.as_str()) {
-            count += 1;
+        let label = format_credit_expiry_label(&value);
+        if let Some(last) = buckets
+            .last_mut()
+            .filter(|(last_label, _)| *last_label == label)
+        {
+            last.1 += 1;
             continue;
         }
-        if let Some(previous) = current.replace(value) {
-            buckets.push((format_credit_expiry_label(&previous), count));
-        }
-        count = 1;
-    }
-    if let Some(previous) = current {
-        buckets.push((format_credit_expiry_label(&previous), count));
+        buckets.push((label, 1));
     }
 
     buckets
@@ -3120,10 +3137,38 @@ mod tests {
         );
         assert!(!credit_account.contains("reset-b"), "{credit_account}");
         assert!(body.contains("expires reset-a"), "{body}");
-        assert!(body.contains("expires reset-d"), "{body}");
         assert!(!body.contains("scheduled resets"), "{body}");
         assert!(!body.contains("Schedule"), "{body}");
-        assert!(!body.contains("+2"), "{body}");
+        // This panel is short enough that the reset schedule must budget room
+        // for the Limits/metrics sections rendered after it, so the rest of
+        // the expiry list collapses into "+N more" instead of evicting them.
+        assert!(body.contains("more reset credits"), "{body}");
+        assert!(!body.contains("expires reset-d"), "{body}");
+        assert!(body.contains("Limits"), "{body}");
+    }
+
+    #[test]
+    fn wide_usage_reset_schedule_budgets_room_for_metrics_and_snapshot() {
+        let mut app = make_app();
+        let expiries: Vec<String> = (0..9).map(|index| format!("reset-{index}")).collect();
+        let expiries: Vec<&str> = expiries.iter().map(String::as_str).collect();
+        app.subscription_usage = vec![output_with_reset_credit_expiries(
+            "Codex",
+            Some(UsageAccount {
+                id: "acct_work".to_string(),
+                label: Some("work".to_string()),
+                is_active: true,
+            }),
+            &expiries,
+        )];
+
+        let body = render_body(&mut app, 180, 42);
+
+        assert!(body.contains("9 available"), "{body}");
+        assert!(body.contains("more reset credits"), "{body}");
+        assert!(body.contains("Limits"), "{body}");
+        assert!(body.contains("90% left"), "{body}");
+        assert!(body.contains("Snapshot"), "{body}");
     }
 
     #[test]
@@ -3148,6 +3193,71 @@ mod tests {
         assert!(!body.contains("scheduled resets"), "{body}");
         assert!(!body.contains("Schedule"), "{body}");
         assert!(!body.contains("+2"), "{body}");
+    }
+
+    #[test]
+    fn medium_usage_short_height_keeps_accounts_table_visible() {
+        let mut app = make_app();
+        app.subscription_usage = vec![
+            output_with_reset_credits(
+                "Codex",
+                Some(UsageAccount {
+                    id: "acct_work".to_string(),
+                    label: Some("work".to_string()),
+                    is_active: true,
+                }),
+                1,
+            ),
+            output(
+                "Codex",
+                Some(UsageAccount {
+                    id: "acct_beta".to_string(),
+                    label: Some("acct-beta".to_string()),
+                    is_active: false,
+                }),
+            ),
+            output(
+                "Codex",
+                Some(UsageAccount {
+                    id: "acct_gamma".to_string(),
+                    label: Some("acct-gamma".to_string()),
+                    is_active: false,
+                }),
+            ),
+        ];
+
+        let body = render_body(&mut app, 120, 28);
+
+        assert!(body.contains("Accounts"), "{body}");
+        assert!(
+            body.contains("acct-beta"),
+            "non-selected account should stay visible in the accounts table: {body}"
+        );
+        assert!(
+            body.contains("acct-gamma"),
+            "non-selected account should stay visible in the accounts table: {body}"
+        );
+    }
+
+    #[test]
+    fn medium_usage_120x24_accounts_table_is_not_collapsed() {
+        let mut app = make_app();
+        app.subscription_usage = vec![output_with_reset_credits(
+            "Codex",
+            Some(UsageAccount {
+                id: "acct_work".to_string(),
+                label: Some("work".to_string()),
+                is_active: true,
+            }),
+            1,
+        )];
+
+        let body = render_body(&mut app, 120, 24);
+
+        assert!(
+            body.contains("Account / Status"),
+            "accounts table header should still render at a short height: {body}"
+        );
     }
 
     #[test]
@@ -3195,6 +3305,28 @@ mod tests {
 
         assert_eq!(buckets[0], ("reset-a".to_string(), 2));
         assert_eq!(buckets[1], ("reset-b".to_string(), 1));
+    }
+
+    #[test]
+    fn credit_expiry_buckets_group_same_minute_different_seconds() {
+        let buckets = credit_expiry_buckets(
+            [
+                "2030-06-15T09:20:00Z",
+                "2030-06-15T09:15:20Z",
+                "2030-06-15T09:15:00Z",
+            ]
+            .into_iter(),
+        );
+
+        assert_eq!(buckets.len(), 2, "{buckets:?}");
+        assert_eq!(
+            buckets[0],
+            (format_credit_expiry_label("2030-06-15T09:15:00Z"), 2)
+        );
+        assert_eq!(
+            buckets[1],
+            (format_credit_expiry_label("2030-06-15T09:20:00Z"), 1)
+        );
     }
 
     #[test]
