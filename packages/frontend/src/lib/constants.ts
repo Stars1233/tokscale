@@ -107,8 +107,10 @@ export const SOURCE_LOGOS: Record<ClientType, string> = {
   junie: "https://github.com/JetBrains.png",
   zcode: "https://github.com/zai-org.png",
   opencodereview: "https://github.com/alibaba.png",
-  codebuddy: "https://github.com/Tencent.png",
-  workbuddy: "https://github.com/Tencent.png",
+  codebuddy:
+    "https://pc3.gtimg.com/softmgr/logo/48/43068_48_1764842447.png",
+  workbuddy:
+    "https://static.workbuddy.cn/web/agents/008054d6beaaf4a83e2d049e982e1244560726dc/assets/share-logo.png",
 };
 
 export const SOURCE_COLORS: Record<ClientType, string> = {
