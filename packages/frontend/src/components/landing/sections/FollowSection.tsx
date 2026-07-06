@@ -13,7 +13,7 @@ export function FollowSection() {
           <MiddleContentInner>
             <Avatar3D>
               <Image
-                src="/assets/landing/follow-3d-avatar.png"
+                src="/assets/landing/follow-3d-avatar.webp"
                 alt="@junhoyeo"
                 width={268}
                 height={268}

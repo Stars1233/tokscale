@@ -108,8 +108,10 @@ export function WorldwideSection({
             loop
             muted
             playsInline
-            src="/assets/landing/trophy-cup-transparent.webm"
-          />
+          >
+            <source src="/assets/landing/trophy-cup-transparent.webm" type="video/webm" />
+            <source src="/assets/landing/trophy-cup-transparent.mp4" type="video/mp4" />
+          </TrophyVideo>
         </GlobeImageWrapper>
         <GlobeContentStack>
           <GlobeBlueHeader ref={blueHeaderRef}>
