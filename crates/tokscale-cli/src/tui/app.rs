@@ -3947,7 +3947,7 @@ mod tests {
         app.handle_key_event(key(KeyCode::Char('p')));
         assert_ne!(app.theme.name, initial_theme);
 
-        for _ in 0..8 {
+        for _ in 1..ThemeName::all().len() {
             app.handle_key_event(key(KeyCode::Char('p')));
         }
         assert_eq!(app.theme.name, initial_theme);

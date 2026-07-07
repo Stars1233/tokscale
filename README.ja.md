@@ -159,7 +159,7 @@ AI支援開発の時代において、**トークンは新しいエネルギー*
 - **インタラクティブTUIモード** - Ratatuiによる美しいターミナルUI（デフォルトモード）
   - 6つのインタラクティブビュー：概要、モデル、日別、時間別、統計、エージェント（オプションの Minutely ビューを `minutelyTabEnabled` でオプトイン可能）
   - キーボード＆マウスナビゲーション
-  - 9色テーマのGitHubスタイル貢献グラフ
+  - 設定可能なカラーテーマのGitHubスタイル貢献グラフ
   - リアルタイムフィルタリングとソート
   - ゼロフリッカーレンダリング
 - **マルチプラットフォームサポート** - OpenCode、Claude Code、Codex CLI、Copilot CLI、Cursor IDE、Gemini CLI、Amp、Codebuff、Droid、OpenClaw、Hermes Agent、Pi、Kimi CLI、Qwen CLI、Roo Code、Kilo、Mux、Kilo CLI、Crush、Goose、Antigravity、Antigravity CLI、Zed、Kiro、Trae、Warp/Oz、Cline、Gajae-Code、Grok Build、Jcode、MiMo Code、Command Code、Junie、ZCode、Synthetic全体の使用量追跡
@@ -279,12 +279,12 @@ tokscale models --json > report.json   # ファイルに保存
   - `h`: 日別/時間別のチャート粒度を切り替え（Overview タブ）
   - `v`: テーブル/プロフィールビューを切り替え（Hourly タブ）
   - `y`: 選択行をクリップボードにコピー
-  - `p`: 9色テーマを循環
+  - `p`: カラーテーマを循環
   - `r`: データを更新; `Shift+R` で自動更新の切り替え; `+`/`-` で間隔調整
   - `e`: JSONにエクスポート
   - `q` または `Ctrl+C`: 終了
 - **マウスサポート**: タブ、ボタン、フィルターをクリック
-- **テーマ**: Green、Halloween、Teal、Blue、Pink、Purple、Orange、Monochrome、YlGnBu
+- **テーマ**: Green、Halloween、Teal、Blue、Pink、Purple、Orange、Monochrome、YlGnBu、Graphite、Lagoon、Dusk
 - **設定の永続化**: 設定は`~/.config/tokscale/settings.json`に保存（[設定](#設定)を参照）
 
 ### グループ基準戦略
@@ -820,7 +820,7 @@ Tokscaleは設定を`~/.config/tokscale/settings.json`に保存します：
 
 | 設定 | タイプ | デフォルト | 説明 |
 |---------|------|---------|-------------|
-| `colorPalette` | string | `"blue"` | TUIカラーテーマ（green、halloween、teal、blue、pink、purple、orange、monochrome、ylgnbu） |
+| `colorPalette` | string | `"blue"` | TUIカラーテーマ（green、halloween、teal、blue、pink、purple、orange、monochrome、ylgnbu、graphite、lagoon、dusk） |
 | `includeUnusedModels` | boolean | `false` | レポートでゼロトークンのモデルを表示 |
 | `autoRefreshEnabled` | boolean | `false` | TUIの自動更新を有効化 |
 | `autoRefreshMs` | number | `60000` | 自動更新間隔（30000-3600000ms） |

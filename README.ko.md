@@ -157,7 +157,7 @@ AI 지원 개발 시대에 **토큰은 새로운 에너지**입니다. 토큰은
 - **인터랙티브 TUI 모드** - Ratatui 기반의 터미널 UI (기본 모드)
   - 6개 인터랙티브 뷰: 개요, 모델, 일별, 시간별, 통계, 에이전트 (선택적 Minutely 뷰는 `minutelyTabEnabled`로 활성화)
   - 키보드 및 마우스 지원
-  - 9가지 테마의 GitHub 스타일 기여 그래프
+  - 설정 가능한 색상 테마의 GitHub 스타일 기여 그래프
   - 실시간 필터링 및 정렬
   - 깜빡임 없는 렌더링
 - **멀티 플랫폼 지원** - OpenCode, Claude Code, Codex CLI, Copilot CLI, Cursor IDE, Gemini CLI, Amp, Codebuff, Droid, OpenClaw, Hermes Agent, Pi, Kimi CLI, Qwen CLI, Roo Code, Kilo, Mux, Kilo CLI, Crush, Goose, Antigravity, Antigravity CLI, Zed, Kiro, Trae, Warp/Oz, Cline, Gajae-Code, Grok Build, Jcode, MiMo Code, Command Code, Junie, ZCode, Synthetic 사용량 통합 추적
@@ -275,12 +275,12 @@ tokscale models --json > report.json   # 파일로 저장
   - `h`: Daily/Hourly 차트 단위 전환 (Overview 탭)
   - `v`: Table/Profile 뷰 전환 (Hourly 탭)
   - `y`: 선택된 행을 클립보드에 복사
-  - `p`: 9가지 색상 테마 순환
+  - `p`: 색상 테마 순환
   - `r`: 데이터 새로고침; `Shift+R`로 자동 새로고침 토글; `+`/`-`로 간격 조정
   - `e`: JSON으로 내보내기
   - `q` 또는 `Ctrl+C`: 종료
 - **마우스 지원**: 탭, 버튼, 필터 클릭
-- **테마**: Green, Halloween, Teal, Blue, Pink, Purple, Orange, Monochrome, YlGnBu
+- **테마**: Green, Halloween, Teal, Blue, Pink, Purple, Orange, Monochrome, YlGnBu, Graphite, Lagoon, Dusk
 - **설정 저장**: 설정이 `~/.config/tokscale/settings.json`에 저장됨 ([설정](#설정) 참조)
 
 ### 그룹 기준 전략
@@ -820,7 +820,7 @@ Tokscale은 설정을 `~/.config/tokscale/settings.json`에 저장합니다:
 
 | 설정 | 타입 | 기본값 | 설명 |
 |---------|------|---------|-------------|
-| `colorPalette` | string | `"blue"` | TUI 색상 테마 (green, halloween, teal, blue, pink, purple, orange, monochrome, ylgnbu) |
+| `colorPalette` | string | `"blue"` | TUI 색상 테마 (green, halloween, teal, blue, pink, purple, orange, monochrome, ylgnbu, graphite, lagoon, dusk) |
 | `includeUnusedModels` | boolean | `false` | 리포트에서 제로 토큰 모델 표시 |
 | `autoRefreshEnabled` | boolean | `false` | TUI 자동 새로고침 활성화 |
 | `autoRefreshMs` | number | `60000` | 자동 새로고침 간격 (30000-3600000ms) |

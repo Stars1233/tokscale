@@ -64,6 +64,7 @@ fn render_table(frame: &mut Frame, app: &mut App, area: Rect) {
     let metric_output_style = app.theme.metric_output_style();
     let metric_cache_read_style = app.theme.metric_cache_read_style();
     let metric_cache_write_style = app.theme.metric_cache_write_style();
+    let metric_total_style = app.theme.metric_total_style();
     let current_row_style = app.theme.current_row_style();
     let striped_row_style = app.theme.striped_row_style();
     let now = Local::now().naive_local();
@@ -225,7 +226,7 @@ fn render_table(frame: &mut Frame, app: &mut App, area: Rect) {
             }
             cells.extend([
                 Cell::from(hour.message_count.to_string()),
-                Cell::from(format_tokens(hour.tokens.total())),
+                Cell::from(format_tokens(hour.tokens.total())).style(metric_total_style),
                 Cell::from(format_cost(hour.cost)).style(Style::default().fg(Color::Green)),
             ]);
             cells
@@ -249,7 +250,7 @@ fn render_table(frame: &mut Frame, app: &mut App, area: Rect) {
                     hour.tokens.cache_write,
                 ))
                 .style(Style::default().fg(Color::Cyan)),
-                Cell::from(format_tokens(hour.tokens.total())),
+                Cell::from(format_tokens(hour.tokens.total())).style(metric_total_style),
                 Cell::from(format_cost(hour.cost)).style(Style::default().fg(Color::Green)),
                 Cell::from(format_cost_per_million(hour.cost, hour.tokens.total()))
                     .style(Style::default().fg(Color::Rgb(150, 200, 150))),

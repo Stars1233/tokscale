@@ -55,6 +55,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     let metric_output_style = app.theme.metric_output_style();
     let metric_cache_read_style = app.theme.metric_cache_read_style();
     let metric_cache_write_style = app.theme.metric_cache_write_style();
+    let metric_total_style = app.theme.metric_total_style();
     let current_row_style = app.theme.current_row_style();
     let striped_row_style = app.theme.striped_row_style();
     let today = Local::now().date_naive();
@@ -186,7 +187,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
                 }
                 cells.extend([
                     Cell::from(day.message_count.to_string()),
-                    Cell::from(format_tokens(day.tokens.total())),
+                    Cell::from(format_tokens(day.tokens.total())).style(metric_total_style),
                     Cell::from(format_cost(day.cost)).style(Style::default().fg(Color::Green)),
                 ]);
                 cells
@@ -222,7 +223,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
                         day.tokens.cache_write,
                     ))
                     .style(Style::default().fg(Color::Cyan)),
-                    Cell::from(format_tokens(day.tokens.total())),
+                    Cell::from(format_tokens(day.tokens.total())).style(metric_total_style),
                     Cell::from(format_cost(day.cost)).style(Style::default().fg(Color::Green)),
                     Cell::from(format_cost_per_million(day.cost, day.tokens.total()))
                         .style(Style::default().fg(Color::Rgb(150, 200, 150))),
@@ -361,6 +362,7 @@ fn render_detail(frame: &mut Frame, app: &mut App, area: Rect) {
     let metric_output_style = app.theme.metric_output_style();
     let metric_cache_read_style = app.theme.metric_cache_read_style();
     let metric_cache_write_style = app.theme.metric_cache_write_style();
+    let metric_total_style = app.theme.metric_total_style();
     let striped_row_style = app.theme.striped_row_style();
 
     let header_cells = if is_very_narrow {
@@ -445,7 +447,7 @@ fn render_detail(frame: &mut Frame, app: &mut App, area: Rect) {
                     Cell::from(get_client_display_name(row.source))
                         .style(Style::default().fg(theme_muted)),
                     Cell::from(row.messages.to_string()),
-                    Cell::from(format_tokens(row.tokens.total())),
+                    Cell::from(format_tokens(row.tokens.total())).style(metric_total_style),
                     Cell::from(format_cost(row.cost)).style(Style::default().fg(Color::Green)),
                 ]
             } else {
@@ -471,7 +473,7 @@ fn render_detail(frame: &mut Frame, app: &mut App, area: Rect) {
                         row.tokens.cache_write,
                     ))
                     .style(Style::default().fg(Color::Cyan)),
-                    Cell::from(format_tokens(row.tokens.total())),
+                    Cell::from(format_tokens(row.tokens.total())).style(metric_total_style),
                     Cell::from(format_cost(row.cost)).style(Style::default().fg(Color::Green)),
                 ]
             };

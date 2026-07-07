@@ -47,6 +47,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     let metric_output_style = app.theme.metric_output_style();
     let metric_cache_read_style = app.theme.metric_cache_read_style();
     let metric_cache_write_style = app.theme.metric_cache_write_style();
+    let metric_total_style = app.theme.metric_total_style();
     let current_row_style = app.theme.current_row_style();
     let striped_row_style = app.theme.striped_row_style();
     let now = Local::now().naive_local();
@@ -174,7 +175,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
                 }
                 cells.extend([
                     Cell::from(minute.message_count.to_string()),
-                    Cell::from(format_tokens(minute.tokens.total())),
+                    Cell::from(format_tokens(minute.tokens.total())).style(metric_total_style),
                     Cell::from(format_cost(minute.cost)).style(Style::default().fg(Color::Green)),
                 ]);
                 cells
@@ -213,7 +214,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
                         minute.tokens.cache_write,
                     ))
                     .style(Style::default().fg(Color::Cyan)),
-                    Cell::from(format_tokens(minute.tokens.total())),
+                    Cell::from(format_tokens(minute.tokens.total())).style(metric_total_style),
                     Cell::from(format_cost(minute.cost)).style(Style::default().fg(Color::Green)),
                 ]);
                 cells
