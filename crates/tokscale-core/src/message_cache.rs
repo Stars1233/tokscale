@@ -709,6 +709,9 @@ fn parser_version(client: ClientId) -> u32 {
         ClientId::Codex => 4,
         ClientId::Jcode => 4,
         ClientId::Copilot => 3,
+        // Pi subagent sessions now derive agent attribution from session_info
+        // names; version-1 caches carry those messages without agent metadata.
+        ClientId::Pi => 2,
         _ => 1,
     }
 }
