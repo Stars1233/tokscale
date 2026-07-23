@@ -59,20 +59,43 @@ function mergeModelBreakdowns(
   }
 }
 
+interface NormalizedClientBreakdownAliases {
+  breakdown: Record<string, ClientBreakdownData>;
+  // Canonical client names where MULTIPLE raw source keys folded together
+  // (e.g. a stale legacy "kilocode" key alongside "kilo" for the same
+  // underlying usage, summed by this function), mapped to the largest token
+  // count any single raw key contributed. The merge guard uses that value as
+  // the healing floor: a truthful complete-day resubmit must report at least
+  // as many tokens as the largest component of the fold, while anything
+  // below it looks like a partial re-parse and keeps the normal regression
+  // guard. A pure rename -- only the legacy key present, nothing to sum it
+  // with -- is NOT included: that's a single contributor, not a suspect
+  // double count, so the regression guard should still defend it normally.
+  foldedClientFloors: Map<string, number>;
+}
+
 function normalizeClientBreakdownAliases(
   breakdown: Record<string, ClientBreakdownData>
-): Record<string, ClientBreakdownData> {
+): NormalizedClientBreakdownAliases {
   const normalized: Record<string, ClientBreakdownData> = {};
+  const foldedClients = new Set<string>();
+  const largestComponentTokens = new Map<string, number>();
 
   for (const [rawClientName, data] of Object.entries(breakdown)) {
     const clientName = LEGACY_CLIENT_ALIASES[rawClientName] ?? rawClientName;
     const existing = normalized[clientName];
+
+    largestComponentTokens.set(
+      clientName,
+      Math.max(largestComponentTokens.get(clientName) ?? 0, data.tokens || 0)
+    );
 
     if (!existing) {
       normalized[clientName] = { ...data, models: { ...data.models } };
       continue;
     }
 
+    foldedClients.add(clientName);
     existing.tokens += data.tokens || 0;
     existing.cost += data.cost || 0;
     existing.input += data.input || 0;
@@ -85,7 +108,12 @@ function normalizeClientBreakdownAliases(
     existing.provenance = deriveClientBreakdownProvenance(existing);
   }
 
-  return normalized;
+  const foldedClientFloors = new Map<string, number>();
+  for (const clientName of foldedClients) {
+    foldedClientFloors.set(clientName, largestComponentTokens.get(clientName) ?? 0);
+  }
+
+  return { breakdown: normalized, foldedClientFloors };
 }
 
 function normalizeSubmissionData(data: unknown): void {
@@ -527,18 +555,36 @@ export async function POST(request: Request) {
         const existingDay = existingDaysMap.get(incomingDay.date);
 
         if (existingDay) {
-          const existingClientBreakdown = normalizeClientBreakdownAliases(
-            (existingDay.sourceBreakdown || {}) as Record<string, ClientBreakdownData>
-          );
+          const rawExistingBreakdown = (existingDay.sourceBreakdown || {}) as Record<
+            string,
+            ClientBreakdownData
+          >;
+          const { breakdown: existingClientBreakdown, foldedClientFloors } =
+            normalizeClientBreakdownAliases(rawExistingBreakdown);
           const mergeResult = mergeClientBreakdownsWithRegressionGuard(
             existingClientBreakdown,
             incomingClientBreakdown,
-            submittedClients
+            submittedClients,
+            foldedClientFloors
           );
           warnings.push(
             ...mergeResult.warnings.map((warning) => `Day ${incomingDay.date}: ${warning}`)
           );
           const mergedClientBreakdown = mergeResult.merged;
+          // A preserved fold must keep its ORIGINAL raw alias keys in storage
+          // (e.g. both "kilocode" and "kilo"), not the collapsed sum: the
+          // collapsed form is indistinguishable from real usage, so writing it
+          // back would burn the heal floor on the first partial resubmit and
+          // permanently re-cement the double count. Day totals are identical
+          // either way (recalculateDayTotals sums all keys).
+          for (const clientName of mergeResult.foldPreservedClients) {
+            delete mergedClientBreakdown[clientName];
+            for (const [rawKey, rawData] of Object.entries(rawExistingBreakdown)) {
+              if ((LEGACY_CLIENT_ALIASES[rawKey] ?? rawKey) === clientName) {
+                mergedClientBreakdown[rawKey] = rawData;
+              }
+            }
+          }
           const dayTotals = recalculateDayTotals(mergedClientBreakdown);
 
           toUpdate.push({
